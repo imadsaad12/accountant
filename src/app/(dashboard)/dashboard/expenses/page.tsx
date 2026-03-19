@@ -60,6 +60,7 @@ export default function ExpensesPage() {
   const { orgSettings } = useOrgSettings();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -76,8 +77,12 @@ export default function ExpensesPage() {
     if (filterCategory) params.set("category", filterCategory);
     if (filterFrom) params.set("from", filterFrom);
     if (filterTo) params.set("to", filterTo);
-    const res = await fetch(`/api/expenses?${params}`);
-    setExpenses(res.ok ? await res.json() : []);
+    const [filteredRes, allRes] = await Promise.all([
+      fetch(`/api/expenses?${params}`),
+      fetch("/api/expenses"),
+    ]);
+    setExpenses(filteredRes.ok ? await filteredRes.json() : []);
+    setAllExpenses(allRes.ok ? await allRes.json() : []);
     setLoading(false);
   }
 
@@ -117,15 +122,16 @@ export default function ExpensesPage() {
     loadData();
   }
 
-  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  // Stat cards always reflect global totals (not affected by active filters)
+  const totalAmount = allExpenses.reduce((s, e) => s + e.amount, 0);
   const byCategory: Record<string, number> = {};
-  for (const exp of expenses) {
+  for (const exp of allExpenses) {
     byCategory[exp.category] = (byCategory[exp.category] ?? 0) + exp.amount;
   }
 
-  // This month
+  // This month (always global, not filtered)
   const now = new Date();
-  const thisMonth = expenses.filter(e => {
+  const thisMonth = allExpenses.filter(e => {
     const d = new Date(e.date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).reduce((s, e) => s + e.amount, 0);

@@ -141,9 +141,13 @@ export default function InvoicesPage() {
   async function deletePayment(paymentId: string) {
     if (!viewInvoice || !confirm("Delete this payment?")) return;
     await fetch(`/api/invoices/${viewInvoice.id}/payments?paymentId=${paymentId}`, { method: "DELETE" });
-    const res = await fetch(`/api/invoices/${viewInvoice.id}/payments`);
-    setPayments(res.ok ? await res.json() : []);
-    loadData();
+    const [paymentsRes, invRes] = await Promise.all([
+      fetch(`/api/invoices/${viewInvoice.id}/payments`),
+      fetch(`/api/invoices/${viewInvoice.id}`),
+      loadData(),
+    ]);
+    setPayments(paymentsRes.ok ? await paymentsRes.json() : []);
+    if (invRes.ok) setViewInvoice(await invRes.json());
   }
 
   function addItem() { setItems([...items, { ...emptyItem }]); }

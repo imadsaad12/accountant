@@ -65,11 +65,33 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canEdit(session.permissions, "invoices")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
-  await params; // consumed
+  const { id } = await params;
   const { searchParams } = new URL(req.url);
   const paymentId = searchParams.get("paymentId");
   if (!paymentId) return NextResponse.json({ error: "paymentId required" }, { status: 400 });
 
   await prisma.payment.deleteMany({ where: { id: paymentId, organizationId: session.organizationId } });
+
+  // Recalculate invoice status after payment deletion
+  const invoice = await prisma.invoice.findFirst({
+    where: { id, organizationId: session.organizationId },
+    include: { payments: true },
+  });
+  if (invoice) {
+    const totalPaid = invoice.payments.reduce((s, p) => s + p.amount, 0);
+    let newStatus: string;
+    if (totalPaid >= invoice.total) {
+      newStatus = "paid";
+    } else if (totalPaid > 0) {
+      newStatus = "partially_paid";
+    } else {
+      // No payments left — revert to sent if it was paid/partially_paid
+      newStatus = invoice.status === "paid" || invoice.status === "partially_paid" ? "sent" : invoice.status;
+    }
+    if (newStatus !== invoice.status) {
+      await prisma.invoice.update({ where: { id }, data: { status: newStatus } });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
