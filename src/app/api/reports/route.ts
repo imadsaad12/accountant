@@ -43,19 +43,14 @@ export async function GET(req: NextRequest) {
 
   if (type === "pl") {
     // Profit & Loss
-    const [paidInvoices, oneTimeExpenses, recurringExpenses, invoiceItems] = await Promise.all([
+    const [paidInvoices, allExpenses, invoiceItems] = await Promise.all([
       prisma.invoice.findMany({
         where: { organizationId: orgId, status: "paid", date: { gte: fromDate, lte: toDate } },
         include: { items: { include: { product: true } } },
       }),
-      // Non-recurring: only within the date range
+      // Fetch all expenses that started on or before the end of the period
       prisma.expense.findMany({
-        where: { organizationId: orgId, recurrence: "none", date: { gte: fromDate, lte: toDate } },
-        orderBy: { category: "asc" },
-      }),
-      // Recurring: fetch all (started on or before toDate), calculate occurrences in range
-      prisma.expense.findMany({
-        where: { organizationId: orgId, recurrence: { not: "none" }, date: { lte: toDate } },
+        where: { organizationId: orgId, date: { lte: toDate } },
         orderBy: { category: "asc" },
       }),
       prisma.invoiceItem.findMany({
@@ -78,16 +73,24 @@ export async function GET(req: NextRequest) {
 
     const grossProfit = revenue - cogs;
 
-    // Group expenses by category (one-time expenses counted once)
+    // Group expenses by category
+    // - One-time (none/null): count only if date falls within [fromDate, toDate]
+    // - Recurring: multiply amount by number of occurrences within the range
     const expensesByCategory: Record<string, number> = {};
-    for (const exp of oneTimeExpenses) {
-      expensesByCategory[exp.category] = (expensesByCategory[exp.category] ?? 0) + exp.amount;
-    }
-    // Recurring expenses multiplied by occurrence count within the range
-    for (const exp of recurringExpenses) {
-      const occurrences = countOccurrences(new Date(exp.date), exp.recurrence, fromDate, toDate);
-      if (occurrences > 0) {
-        expensesByCategory[exp.category] = (expensesByCategory[exp.category] ?? 0) + exp.amount * occurrences;
+    for (const exp of allExpenses) {
+      const recurrence = exp.recurrence || "none";
+      const expDate = new Date(exp.date);
+      let amount = 0;
+
+      if (recurrence === "none") {
+        if (expDate >= fromDate) amount = exp.amount;
+      } else {
+        const occurrences = countOccurrences(expDate, recurrence, fromDate, toDate);
+        amount = exp.amount * occurrences;
+      }
+
+      if (amount > 0) {
+        expensesByCategory[exp.category] = (expensesByCategory[exp.category] ?? 0) + amount;
       }
     }
 
