@@ -511,19 +511,22 @@ export default function InvoicesPage() {
                   {!canEdit ? (
                     <span className={`text-xs px-2 py-1 rounded-full font-medium border ${
                       inv.status === "paid" ? "text-emerald-400 border-emerald-500/20" :
+                      inv.status === "partially_paid" ? "text-amber-400 border-amber-500/20" :
                       inv.status === "sent" ? "text-blue-400 border-blue-500/20" :
                       inv.status === "overdue" ? "text-red-400 border-red-500/20" :
                       "text-slate-400 border-dark-border"
-                    }`}>{t(`status.${inv.status}`)}</span>
+                    }`}>{inv.status === "partially_paid" ? "Partially Paid" : t(`status.${inv.status}`)}</span>
                   ) : (
                     <select value={inv.status} onChange={e => updateStatus(inv.id, e.target.value)} className={`text-xs px-2 py-1 rounded-full font-medium border cursor-pointer bg-dark-input ${
                       inv.status === "paid" ? "text-emerald-400 border-emerald-500/20" :
+                      inv.status === "partially_paid" ? "text-amber-400 border-amber-500/20" :
                       inv.status === "sent" ? "text-blue-400 border-blue-500/20" :
                       inv.status === "overdue" ? "text-red-400 border-red-500/20" :
                       "text-slate-400 border-dark-border"
                     } disabled:opacity-50`}>
                       <option value="draft">{t("status.draft")}</option>
                       <option value="sent" disabled={!inv.client.email}>{t("status.sent")}{!inv.client.email ? ` ${t("invoices.no_email")}` : ""}</option>
+                      <option value="partially_paid">Partially Paid</option>
                       <option value="paid">{t("status.paid")}</option>
                       <option value="overdue">{t("status.overdue")}</option>
                     </select>

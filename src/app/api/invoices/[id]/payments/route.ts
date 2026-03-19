@@ -43,10 +43,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   const totalPaid = invoice.payments.reduce((s, p) => s + p.amount, 0) + payment.amount;
-  if (totalPaid >= invoice.total && invoice.status !== "paid") {
+  if (totalPaid >= invoice.total) {
     await prisma.invoice.update({ where: { id }, data: { status: "paid" } });
-  } else if (totalPaid > 0 && invoice.status === "draft") {
-    await prisma.invoice.update({ where: { id }, data: { status: "sent" } });
+  } else if (totalPaid > 0) {
+    await prisma.invoice.update({ where: { id }, data: { status: "partially_paid" } });
   }
 
   await logAudit({

@@ -22,7 +22,7 @@ export async function GET() {
   ]);
 
   const grossEarning = invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + i.subtotal, 0);
-  const pendingAmount = invoices.filter(i => i.status === "sent" || i.status === "overdue").reduce((sum, i) => sum + i.total, 0);
+  const pendingAmount = invoices.filter(i => i.status === "sent" || i.status === "overdue" || i.status === "partially_paid").reduce((sum, i) => sum + i.total, 0);
   const cogs = paidInvoiceItems.reduce((sum, item) => sum + (item.product?.cost ?? 0) * item.quantity, 0);
   const netEarning = grossEarning - cogs;
 
