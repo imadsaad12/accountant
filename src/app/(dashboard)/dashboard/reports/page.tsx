@@ -44,9 +44,10 @@ const EXPENSE_CATEGORIES: Record<string, string> = {
 
 function getDefaultRange() {
   const now = new Date();
-  const from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
-  const to = now.toISOString().split("T")[0];
-  return { from, to };
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return { from: `${year}-01-01`, to: `${year}-${month}-${day}` };
 }
 
 export default function ReportsPage() {
