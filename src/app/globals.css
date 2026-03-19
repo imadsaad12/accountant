@@ -1,26 +1,161 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-dark-bg: #0f1117;
+  --color-dark-card: #1a1d27;
+  --color-dark-card-hover: #1f2233;
+  --color-dark-border: #2a2d3a;
+  --color-dark-sidebar: #141620;
+  --color-dark-input: #1e2130;
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-muted: #4f46e510;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  background: var(--color-dark-bg);
+  color: var(--color-text-primary);
 }
+
+/* ─── Light theme ──────────────────────────────────────────────────────────── */
+
+/* CSS variable overrides (used by hand-written CSS like Recharts) */
+html.light {
+  --color-dark-bg: #f8fafc;
+  --color-dark-card: #ffffff;
+  --color-dark-card-hover: #f1f5f9;
+  --color-dark-border: #e2e8f0;
+  --color-dark-sidebar: #ffffff;
+  --color-dark-input: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+}
+
+html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* ── Backgrounds ── */
+html.light .bg-dark-bg       { background-color: #f8fafc !important; }
+html.light .bg-dark-card     { background-color: #ffffff !important; }
+html.light .bg-dark-card-hover { background-color: #f1f5f9 !important; }
+html.light .bg-dark-sidebar  { background-color: #ffffff !important; }
+html.light .bg-dark-input    { background-color: #f1f5f9 !important; }
+html.light .bg-dark-border   { background-color: #e2e8f0 !important; }
+
+html.light .bg-dark-bg\/50   { background-color: rgba(248,250,252,0.5) !important; }
+html.light .bg-dark-bg\/80   { background-color: rgba(248,250,252,0.8) !important; }
+html.light .bg-dark-input\/50 { background-color: rgba(241,245,249,0.5) !important; }
+html.light .bg-dark-input\/30 { background-color: rgba(241,245,249,0.3) !important; }
+
+/* ── Borders ── */
+html.light .border-dark-border          { border-color: #e2e8f0 !important; }
+html.light .border-dark-border\/50      { border-color: rgba(226,232,240,0.5) !important; }
+html.light .border-dark-border\/20      { border-color: rgba(226,232,240,0.2) !important; }
+html.light .border-t-2.border-dark-border { border-color: #cbd5e1 !important; }
+html.light .divide-dark-border > :not([hidden]) ~ :not([hidden])     { border-color: #e2e8f0 !important; }
+html.light .divide-dark-border\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(226,232,240,0.5) !important; }
+
+/* ── Text ── */
+html.light .text-text-primary   { color: #0f172a !important; }
+html.light .text-text-secondary { color: #475569 !important; }
+html.light .text-text-muted     { color: #94a3b8 !important; }
+
+/* ── Hover ── */
+html.light .hover\:bg-dark-card:hover       { background-color: #f8fafc !important; }
+html.light .hover\:bg-dark-card-hover:hover { background-color: #f1f5f9 !important; }
+html.light .hover\:bg-dark-input:hover      { background-color: #e2e8f0 !important; }
+html.light .hover\:text-text-primary:hover  { color: #0f172a !important; }
+html.light .hover\:text-text-secondary:hover { color: #475569 !important; }
+
+/* ── Cards: add depth via shadow ── */
+html.light .bg-dark-card.rounded-xl,
+html.light .bg-dark-card.rounded-2xl {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05) !important;
+}
+
+/* ── Sidebar border ── */
+html.light aside { border-right-color: #e2e8f0 !important; }
+
+/* ── Inputs / selects / textareas ── */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder { color: #94a3b8 !important; }
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #6366f1 !important;
+  outline: none;
+}
+
+/* ── Select options ── */
+html.light select option { background-color: #ffffff; color: #0f172a; }
+
+/* ── Tables ── */
+html.light table { background-color: transparent !important; }
+html.light th    { color: #64748b !important; }
+
+/* ── Scrollbar ── */
+html.light ::-webkit-scrollbar-track { background: #f1f5f9; }
+html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Recharts light mode ── */
+html.light .recharts-cartesian-grid line  { stroke: #e2e8f0 !important; }
+html.light .recharts-text                 { fill: #64748b !important; }
+html.light .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+}
+html.light .recharts-tooltip-item  { color: #0f172a !important; }
+html.light .recharts-tooltip-label { color: #475569 !important; }
+
+/* ── Modals / overlays ── */
+html.light .bg-black\/60 { background-color: rgba(15,23,42,0.4) !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+/* Custom scrollbar (dark) */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-dark-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-dark-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* Smooth theme transitions */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Recharts dark theme */
+.recharts-cartesian-grid line { stroke: var(--color-dark-border); }
+.recharts-text { fill: var(--color-text-secondary); }
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: var(--color-dark-card) !important;
+  border: 1px solid var(--color-dark-border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important;
+}
+.recharts-tooltip-item  { color: var(--color-text-primary) !important; }
+.recharts-tooltip-label { color: var(--color-text-secondary) !important; }

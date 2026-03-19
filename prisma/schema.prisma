@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  settings  String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  clients        Client[]
+  categories     Category[]
+  products       Product[]
+  employees      Employee[]
+  invoices       Invoice[]
+  auditLogs      AuditLog[]
+  payments       Payment[]
+  expenses       Expense[]
+  accounts       Account[]
+  journalEntries JournalEntry[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  username       String?      @unique
+  password       String
+  name           String
+  role           String       @default("employee")
+  permissions    String?      @db.Text
+  theme          String       @default("dark")
+  language       String       @default("en")
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  expenses       Expense[]
+
+  @@index([organizationId])
+}
+
+model Client {
+  id             String       @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?      @db.Text
+  city           String?
+  country        String?
+  taxId          String?
+  notes          String?      @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  invoices       Invoice[]
+
+  @@index([organizationId])
+}
+
+model Category {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  products       Product[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  name           String
+  sku            String
+  description    String?       @db.Text
+  price          Float
+  cost           Float         @default(0)
+  quantity       Int           @default(0)
+  minStock       Int           @default(5)
+  unit           String        @default("piece")
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id])
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  invoiceItems   InvoiceItem[]
+
+  @@unique([sku, organizationId])
+  @@index([organizationId])
+}
+
+model Employee {
+  id             String       @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  position       String
+  department     String?
+  salary         Float
+  currency       String       @default("USD")
+  hireDate       DateTime     @default(now())
+  status         String       @default("active")
+  address        String?      @db.Text
+  notes          String?      @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  number         String
+  clientId       String
+  client         Client        @relation(fields: [clientId], references: [id])
+  date           DateTime      @default(now())
+  dueDate        DateTime?
+  status         String        @default("draft")
+  subtotal       Float         @default(0)
+  tax            Float         @default(0)
+  taxRate        Float         @default(19)
+  total          Float         @default(0)
+  notes          String?       @db.Text
+  language       String        @default("en")
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  items          InvoiceItem[]
+  payments       Payment[]
+
+  @@unique([number, organizationId])
+  @@index([organizationId])
+}
+
+model Payment {
+  id             String       @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount         Float
+  date           DateTime     @default(now())
+  method         String       @default("cash")
+  reference      String?
+  note           String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([invoiceId])
+  @@index([organizationId])
+}
+
+model Expense {
+  id             String       @id @default(cuid())
+  date           DateTime
+  amount         Float
+  description    String
+  category       String
+  recurrence     String       @default("none")
+  vendor         String?
+  reference      String?
+  note           String?      @db.Text
+  accountId      String?
+  account        Account?     @relation(fields: [accountId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdById    String?
+  createdBy      User?        @relation(fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([date])
+}
+
+model Account {
+  id             String        @id @default(cuid())
+  code           String
+  name           String
+  type           String
+  subtype        String?
+  description    String?
+  isDefault      Boolean       @default(false)
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  expenses       Expense[]
+  journalLines   JournalLine[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+}
+
+model JournalEntry {
+  id             String        @id @default(cuid())
+  date           DateTime
+  description    String
+  reference      String?
+  type           String        @default("manual")
+  sourceId       String?
+  lines          JournalLine[]
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([date])
+}
+
+model JournalLine {
+  id             String       @id @default(cuid())
+  journalEntryId String
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId      String
+  account        Account      @relation(fields: [accountId], references: [id])
+  debit          Float        @default(0)
+  credit         Float        @default(0)
+  description    String?
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  userId         String
+  userName       String
+  userEmail      String
+  action         String
+  entity         String
+  entityId       String?
+  description    String       @db.Text
+  method         String       @default("manual")
+  metadata       String?      @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+  @@index([method])
+}
