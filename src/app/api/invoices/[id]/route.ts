@@ -36,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
 
     const subtotal = items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => sum + item.quantity * item.unitPrice, 0);
-    const taxRate = invoiceData.taxRate || 19;
+    const taxRate = invoiceData.taxRate != null ? invoiceData.taxRate : 19;
     const tax = subtotal * (taxRate / 100);
     const total = subtotal + tax;
 

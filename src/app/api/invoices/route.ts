@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   const number = `${prefix}-${String(nextSeq).padStart(5, "0")}`;
 
   const subtotal = items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => sum + item.quantity * item.unitPrice, 0);
-  const taxRate = invoiceData.taxRate || 19;
+  const taxRate = invoiceData.taxRate != null ? invoiceData.taxRate : 19;
   const tax = subtotal * (taxRate / 100);
   const total = subtotal + tax;
 
