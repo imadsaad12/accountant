@@ -516,7 +516,7 @@ export default function InvoicesPage() {
                       "text-slate-400 border-dark-border"
                     }`}>{t(`status.${inv.status}`)}</span>
                   ) : (
-                    <select value={inv.status} onChange={e => updateStatus(inv.id, e.target.value)} disabled={sendingEmail !== null} className={`text-xs px-2 py-1 rounded-full font-medium border cursor-pointer bg-dark-input ${
+                    <select value={inv.status} onChange={e => updateStatus(inv.id, e.target.value)} className={`text-xs px-2 py-1 rounded-full font-medium border cursor-pointer bg-dark-input ${
                       inv.status === "paid" ? "text-emerald-400 border-emerald-500/20" :
                       inv.status === "sent" ? "text-blue-400 border-blue-500/20" :
                       inv.status === "overdue" ? "text-red-400 border-red-500/20" :
