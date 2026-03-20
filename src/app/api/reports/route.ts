@@ -43,33 +43,48 @@ export async function GET(req: NextRequest) {
 
   if (type === "pl") {
     // Profit & Loss
-    const [paidInvoices, allExpenses, invoiceItems] = await Promise.all([
+    const [invoices, allExpenses] = await Promise.all([
       prisma.invoice.findMany({
-        where: { organizationId: orgId, status: "paid", date: { gte: fromDate, lte: toDate } },
-        include: { items: { include: { product: true } } },
+        where: {
+          organizationId: orgId,
+          status: { in: ["paid", "partially_paid"] },
+          date: { gte: fromDate, lte: toDate },
+        },
+        include: { items: { include: { product: true } }, payments: true },
       }),
       // Fetch all expenses that started on or before the end of the period
       prisma.expense.findMany({
         where: { organizationId: orgId, date: { lte: toDate } },
         orderBy: { category: "asc" },
       }),
-      prisma.invoiceItem.findMany({
-        where: {
-          invoice: { organizationId: orgId, status: "paid", date: { gte: fromDate, lte: toDate } },
-          productId: { not: null },
-        },
-        include: { product: true },
-      }),
     ]);
 
-    const revenue = paidInvoices.reduce((s, inv) => s + inv.subtotal, 0);
-    const taxCollected = paidInvoices.reduce((s, inv) => s + inv.tax, 0);
+    // Revenue = cash actually received:
+    //   - "paid" invoices: sum of their payments (= full invoice total)
+    //   - "partially_paid" invoices: sum of payments received so far
+    let revenue = 0;
+    let taxCollected = 0;
+    let cogs = 0;
 
-    // COGS: cost × quantity for items linked to products
-    const cogs = invoiceItems.reduce((s, item) => {
-      const cost = item.product?.cost ?? 0;
-      return s + cost * item.quantity;
-    }, 0);
+    for (const inv of invoices) {
+      const totalPaid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      revenue += totalPaid;
+
+      // Tax portion: prorate tax by (paid / total)
+      if (inv.total > 0) {
+        taxCollected += (totalPaid / inv.total) * inv.tax;
+      }
+
+      // COGS: prorate product costs by the paid fraction
+      const paidRatio = inv.total > 0 ? Math.min(totalPaid / inv.total, 1) : 0;
+      for (const item of inv.items) {
+        if (item.product) {
+          cogs += item.product.cost * item.quantity * paidRatio;
+        }
+      }
+    }
+
+    const invoiceCount = invoices.length;
 
     const grossProfit = revenue - cogs;
 
@@ -107,7 +122,7 @@ export async function GET(req: NextRequest) {
       expensesByCategory,
       totalExpenses,
       netProfit,
-      invoiceCount: paidInvoices.length,
+      invoiceCount,
     });
   }
 
@@ -161,7 +176,7 @@ export async function GET(req: NextRequest) {
   if (type === "aging") {
     const now = new Date();
     const invoices = await prisma.invoice.findMany({
-      where: { organizationId: orgId, status: { in: ["sent", "overdue"] } },
+      where: { organizationId: orgId, status: { in: ["sent", "overdue", "partially_paid"] } },
       include: { client: true, payments: true },
     });
 

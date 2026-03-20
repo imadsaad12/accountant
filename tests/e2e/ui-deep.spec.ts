@@ -25,7 +25,6 @@ const TS = Date.now();
 
 /** Parse a money string like "$1,234.56" or "1 234,56 €" → number */
 function parseMoney(text: string): number {
-  // Strip currency symbols and thousand-separators, keep digits, dot, minus
   const cleaned = text.replace(/[^0-9.\-]/g, "");
   return parseFloat(cleaned) || 0;
 }
@@ -40,14 +39,39 @@ async function ready(page: Page) {
   await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 15000 });
 }
 
-/** Find a dashboard stat card value by its label text */
-async function dashboardStat(page: Page, labelPattern: RegExp): Promise<number> {
-  const card = page.locator(".bg-dark-card, [class*='from-emerald'], [class*='from-teal'], [class*='from-amber'], [class*='from-blue'], [class*='from-pink'], [class*='from-cyan']")
-    .filter({ hasText: labelPattern })
-    .first();
-  const valueEl = card.locator("p.text-2xl");
-  const text = await valueEl.textContent();
+/**
+ * Read a dashboard stat card value by its exact label text.
+ * Labels are in <p class="text-sm text-text-muted font-medium"> elements.
+ * The value is the next sibling <p>.
+ */
+async function dashboardStat(page: Page, labelText: string): Promise<number> {
+  const label = page.locator("p.text-sm.text-text-muted.font-medium").filter({ hasText: labelText });
+  const text = await label.locator("xpath=following-sibling::p[1]").textContent();
   return parseMoney(text ?? "0");
+}
+
+/**
+ * After creating an invoice, the newest invoice appears first in the table
+ * (sorted by createdAt desc). Read its invoice number for later row lookups.
+ */
+async function readFirstInvoiceNumber(page: Page): Promise<string> {
+  const firstRow = page.locator("table tbody tr").first();
+  await expect(firstRow).toBeVisible({ timeout: 8000 });
+  return ((await firstRow.locator("td").first().textContent()) ?? "").trim();
+}
+
+/**
+ * Close any open modal/dialog by clicking the X (close) button in the modal header.
+ * Modals use a <div class="flex items-center justify-between"> header with an X button.
+ * Then waits for the modal overlay to be gone.
+ */
+async function closeModal(page: Page) {
+  // Click the X button inside the last open modal's header
+  const modal = page.locator(".fixed.inset-0").last();
+  await modal.locator("div.flex.items-center.justify-between button").first().click();
+  // Wait for the modal overlay to disappear
+  await expect(page.locator(".fixed.inset-0")).toHaveCount(0, { timeout: 5000 });
+  await ready(page);
 }
 
 // ─── 1. Invoice form – live math preview ─────────────────────────────────────
@@ -61,7 +85,6 @@ test.describe("Invoice form – live math preview", () => {
   });
 
   test("single item: row total = qty × unitPrice", async ({ page }) => {
-    // Select first available client
     await page.locator("select[required]").selectOption({ index: 1 });
 
     const qtyInputs = page.locator(".space-y-2 input[type='number']");
@@ -71,7 +94,6 @@ test.describe("Invoice form – live math preview", () => {
     await qtyInputs.nth(0).fill("4");
     await priceInputs.nth(1).fill("125");
 
-    // The per-row item total span shows $500.00
     const rowTotal = page.locator(".space-y-2 span.font-medium.text-text-primary").first();
     await expect(rowTotal).toContainText("$500.00");
   });
@@ -81,19 +103,16 @@ test.describe("Invoice form – live math preview", () => {
     const inputs = page.locator(".space-y-2 input[type='number']");
     await inputs.nth(0).fill("3");
     await inputs.nth(1).fill("200");
-    // subtotal = 600
     const preview = page.locator(".border-t.border-dark-border.pt-3");
     await expect(preview).toContainText("$600.00");
   });
 
   test("taxRate=20: tax preview = subtotal × 0.20", async ({ page }) => {
     await page.locator("select[required]").selectOption({ index: 1 });
-    // Set taxRate
     await page.locator("input[type='number'][min='0'][max='100']").fill("20");
     const inputs = page.locator(".space-y-2 input[type='number']");
     await inputs.nth(0).fill("5");
     await inputs.nth(1).fill("100");
-    // subtotal=500, tax=100, total=600
     const preview = page.locator(".border-t.border-dark-border.pt-3");
     await expect(preview).toContainText("$500.00"); // subtotal
     await expect(preview).toContainText("$100.00"); // tax (20%)
@@ -106,7 +125,6 @@ test.describe("Invoice form – live math preview", () => {
     const inputs = page.locator(".space-y-2 input[type='number']");
     await inputs.nth(0).fill("2");
     await inputs.nth(1).fill("350");
-    // subtotal=700, tax=0, total=700
     const preview = page.locator(".border-t.border-dark-border.pt-3");
     await expect(preview).toContainText("$700.00"); // subtotal
     await expect(preview).toContainText("$0.00");   // tax
@@ -114,24 +132,19 @@ test.describe("Invoice form – live math preview", () => {
 
   test("two items: subtotal = sum of both row totals", async ({ page }) => {
     await page.locator("select[required]").selectOption({ index: 1 });
-    // Item 1: qty=3 × price=100 = 300
     const inputs = page.locator(".space-y-2 input[type='number']");
     await inputs.nth(0).fill("3");
     await inputs.nth(1).fill("100");
 
-    // Add second item
     await page.getByRole("button", { name: /add item/i }).click();
 
-    // Item 2: qty=2 × price=75 = 150
     await inputs.nth(2).fill("2");
     await inputs.nth(3).fill("75");
 
-    // Row totals
     const rowTotals = page.locator(".space-y-2 span.font-medium.text-text-primary");
     await expect(rowTotals.nth(0)).toContainText("$300.00");
     await expect(rowTotals.nth(1)).toContainText("$150.00");
 
-    // Subtotal preview = 450
     const preview = page.locator(".border-t.border-dark-border.pt-3");
     await expect(preview).toContainText("$450.00");
   });
@@ -142,7 +155,6 @@ test.describe("Invoice form – live math preview", () => {
     const inputs = page.locator(".space-y-2 input[type='number']");
     await inputs.nth(0).fill("1");
     await inputs.nth(1).fill("1000");
-    // subtotal=1000, tax=190, total=1190
     const preview = page.locator(".border-t.border-dark-border.pt-3");
     await expect(preview).toContainText("$1000.00");
     await expect(preview).toContainText("$190.00");
@@ -155,16 +167,14 @@ test.describe("Invoice form – live math preview", () => {
     const inputs = page.locator(".space-y-2 input[type='number']");
     await inputs.nth(1).fill("50");
 
-    // qty=1 → $50
     await inputs.nth(0).fill("1");
     await expect(page.locator(".space-y-2 span.font-medium.text-text-primary").first()).toContainText("$50.00");
 
-    // qty=7 → $350
     await inputs.nth(0).fill("7");
     await expect(page.locator(".space-y-2 span.font-medium.text-text-primary").first()).toContainText("$350.00");
 
     const preview = page.locator(".border-t.border-dark-border.pt-3");
-    await expect(preview).toContainText("$350.00"); // subtotal = total (taxRate=0)
+    await expect(preview).toContainText("$350.00");
   });
 
   test("cancel closes modal without creating an invoice", async ({ page }) => {
@@ -191,7 +201,6 @@ test.describe("Invoice form – live math preview", () => {
 // ─── 2. Invoice detail view – numbers after save ──────────────────────────────
 
 test.describe("Invoice detail view – numbers after save", () => {
-  // Create one known invoice and verify detail numbers
   const QTY1 = 3, PRICE1 = 150; // item 1: 450
   const QTY2 = 2, PRICE2 = 80;  // item 2: 160
   // subtotal=610, taxRate=20, tax=122, total=732
@@ -232,9 +241,9 @@ test.describe("Invoice detail view – numbers after save", () => {
     await page.getByRole("button", { name: /new invoice/i }).last().click();
     await ready(page);
 
-    // Find the new row
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
-    await expect(row).toBeVisible({ timeout: 8000 });
+    // Find the newest invoice (first row, sorted by createdAt desc)
+    const invNumber = await readFirstInvoiceNumber(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
 
     // Table shows correct total
     await expect(row.locator("td.text-right.font-medium")).toContainText(`$${EXPECTED_TOTAL.toFixed(2)}`);
@@ -244,11 +253,8 @@ test.describe("Invoice detail view – numbers after save", () => {
     await expect(page.locator("h2").filter({ hasText: /invoice/i })).toBeVisible({ timeout: 5000 });
 
     const modal = page.locator(".fixed.inset-0").last();
-    // Subtotal line
     await expect(modal).toContainText(`$${EXPECTED_SUBTOTAL.toFixed(2)}`);
-    // Tax line
     await expect(modal).toContainText(`$${EXPECTED_TAX.toFixed(2)}`);
-    // Total line
     await expect(modal).toContainText(`$${EXPECTED_TOTAL.toFixed(2)}`);
 
     // Item 1 row: $450.00
@@ -261,11 +267,9 @@ test.describe("Invoice detail view – numbers after save", () => {
     await expect(modal.locator(".text-orange-400")).toContainText(`$${EXPECTED_TOTAL.toFixed(2)}`);
 
     // Cleanup
-    await page.keyboard.press("Escape");
-    await ready(page);
-    const deleteRow = page.locator(`tr:has-text("${DESC}")`).first();
+    await closeModal(page);
     page.on("dialog", d => d.accept());
-    await deleteRow.locator("button[title='Delete']").click();
+    await page.locator("table tbody tr").filter({ hasText: invNumber }).locator("button[title='Delete']").click();
     await ready(page);
   });
 });
@@ -277,7 +281,11 @@ test.describe("Payment flow – balance and status", () => {
   // Invoice: 1 × $800, taxRate=0 → total=$800
   const TOTAL = 800;
 
-  async function createInvoiceAndOpen(page: Page) {
+  /**
+   * Creates the invoice, reads the invoice number from the first table row,
+   * sets status to "sent", opens the detail modal, and returns the invoice number.
+   */
+  async function createInvoiceAndOpen(page: Page): Promise<string> {
     await page.goto("/dashboard/invoices");
     await ready(page);
 
@@ -293,22 +301,27 @@ test.describe("Payment flow – balance and status", () => {
     await page.getByRole("button", { name: /new invoice/i }).last().click();
     await ready(page);
 
+    // Read invoice number from the newest (first) row
+    const invNumber = await readFirstInvoiceNumber(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
+
     // Set status to sent so payment form appears
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
-    await expect(row).toBeVisible({ timeout: 8000 });
-    const statusSelect = row.locator("select");
-    await statusSelect.selectOption("sent");
+    await row.locator("select").selectOption("sent");
     await ready(page);
 
     // Open detail
     await row.locator("button[title='View']").click();
     await expect(page.locator("h2").filter({ hasText: /invoice/i })).toBeVisible({ timeout: 5000 });
+
+    return invNumber;
   }
 
-  async function cleanup(page: Page) {
-    await page.keyboard.press("Escape");
-    await ready(page);
-    const deleteRow = page.locator(`tr:has-text("${DESC}")`).first();
+  async function cleanup(page: Page, invNumber: string) {
+    // Close the modal using the X button (Escape key does NOT close these modals)
+    if (await page.locator(".fixed.inset-0").count() > 0) {
+      await closeModal(page);
+    }
+    const deleteRow = page.locator("table tbody tr").filter({ hasText: invNumber });
     if (await deleteRow.count() > 0) {
       page.on("dialog", d => d.accept());
       await deleteRow.locator("button[title='Delete']").click();
@@ -317,32 +330,30 @@ test.describe("Payment flow – balance and status", () => {
   }
 
   test("initial balance = invoice total, paid = $0.00", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
     await expect(modal.locator(".text-emerald-400").filter({ hasText: "$0.00" })).toBeVisible();
     await expect(modal.locator(".text-orange-400")).toContainText(`$${TOTAL.toFixed(2)}`);
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("after partial payment: paid increases, balance decreases by exact amount", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
 
-    // Add payment = $300
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill("300");
     await modal.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // Paid = $300.00, balance = $500.00
     await expect(modal.locator(".text-emerald-400")).toContainText("$300.00");
     await expect(modal.locator(".text-orange-400")).toContainText("$500.00");
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("after partial payment: status badge becomes 'Partially Paid' (amber)", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill("300");
@@ -350,41 +361,35 @@ test.describe("Payment flow – balance and status", () => {
     await ready(page);
     await page.waitForTimeout(500);
 
-    // Close and check table row status
-    await page.keyboard.press("Escape");
-    await ready(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
-    const statusSelect = row.locator("select");
-    await expect(statusSelect).toHaveValue("partially_paid");
-    await cleanup(page);
+    await closeModal(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
+    await expect(row.locator("select")).toHaveValue("partially_paid");
+    await cleanup(page, invNumber);
   });
 
   test("two partial payments: paid = sum, balance = total - sum", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
 
-    // Payment 1: $300
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill("300");
     await modal.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // Payment 2: $200
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill("200");
     await modal.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // paid=500, balance=300
     await expect(modal.locator(".text-emerald-400")).toContainText("$500.00");
     await expect(modal.locator(".text-orange-400")).toContainText("$300.00");
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("full payment: balance = $0.00 and status becomes Paid", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
 
     await modal.getByRole("button", { name: /add payment/i }).click();
@@ -393,41 +398,34 @@ test.describe("Payment flow – balance and status", () => {
     await ready(page);
     await page.waitForTimeout(500);
 
-    // paid=$800, balance=$0
     await expect(modal.locator(".text-emerald-400")).toContainText(`$${TOTAL.toFixed(2)}`);
-    // Balance panel should switch to emerald (paid off)
     const balancePanel = modal.locator("[class*='border-orange']");
-    await expect(balancePanel).toHaveCount(0); // no more orange panel
+    await expect(balancePanel).toHaveCount(0);
 
-    // Status in table
-    await page.keyboard.press("Escape");
-    await ready(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    await closeModal(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await expect(row.locator("select")).toHaveValue("paid");
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("payment Add button disappears once status = paid", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
 
-    // Pay in full
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill(String(TOTAL));
     await modal.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // The "Add Payment" button should no longer be shown (status=paid)
     await expect(modal.getByRole("button", { name: /add payment/i })).toHaveCount(0);
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("payment history shows each payment entry with correct amount", async ({ page }) => {
-    await createInvoiceAndOpen(page);
+    const invNumber = await createInvoiceAndOpen(page);
     const modal = page.locator(".fixed.inset-0").last();
 
-    // Add 3 payments
     for (const amount of [100, 250, 150]) {
       await modal.getByRole("button", { name: /add payment/i }).click();
       await modal.locator("input[placeholder='0.00']").fill(String(amount));
@@ -436,19 +434,16 @@ test.describe("Payment flow – balance and status", () => {
       await page.waitForTimeout(300);
     }
 
-    // History list should have 3 entries
     const entries = modal.locator(".space-y-1\\.5 > div");
     await expect(entries).toHaveCount(3);
 
-    // Each amount should be visible
     await expect(modal).toContainText("$100.00");
     await expect(modal).toContainText("$250.00");
     await expect(modal).toContainText("$150.00");
 
-    // Paid = 500, balance = 300
     await expect(modal.locator(".text-emerald-400")).toContainText("$500.00");
     await expect(modal.locator(".text-orange-400")).toContainText("$300.00");
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 });
 
@@ -458,7 +453,7 @@ test.describe("Payment deletion – status revert", () => {
   const DESC = `PayDel-${TS}`;
   const TOTAL = 600;
 
-  async function setup(page: Page) {
+  async function setup(page: Page): Promise<string> {
     await page.goto("/dashboard/invoices");
     await ready(page);
 
@@ -471,17 +466,22 @@ test.describe("Payment deletion – status revert", () => {
     await page.getByRole("button", { name: /new invoice/i }).last().click();
     await ready(page);
 
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const invNumber = await readFirstInvoiceNumber(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
+
     await row.locator("select").selectOption("sent");
     await ready(page);
     await row.locator("button[title='View']").click();
     await expect(page.locator("h2").filter({ hasText: /invoice/i })).toBeVisible({ timeout: 5000 });
+
+    return invNumber;
   }
 
-  async function cleanup(page: Page) {
-    await page.keyboard.press("Escape");
-    await ready(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+  async function cleanup(page: Page, invNumber: string) {
+    if (await page.locator(".fixed.inset-0").count() > 0) {
+      await closeModal(page);
+    }
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     if (await row.count() > 0) {
       page.on("dialog", d => d.accept());
       await row.locator("button[title='Delete']").click();
@@ -490,44 +490,37 @@ test.describe("Payment deletion – status revert", () => {
   }
 
   test("deleting the only payment reverts status back to sent", async ({ page }) => {
-    await setup(page);
+    const invNumber = await setup(page);
     const modal = page.locator(".fixed.inset-0").last();
 
-    // Add partial payment
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill("200");
     await modal.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // Verify partially_paid
-    await page.keyboard.press("Escape");
-    await ready(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    await closeModal(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await expect(row.locator("select")).toHaveValue("partially_paid");
 
-    // Reopen and delete payment
     await row.locator("button[title='View']").click();
     await expect(page.locator("h2").filter({ hasText: /invoice/i })).toBeVisible({ timeout: 5000 });
     const modalInner = page.locator(".fixed.inset-0").last();
 
     page.on("dialog", d => d.accept());
-    await modalInner.locator(".space-y-1\\.5 button").last().click(); // trash on payment
+    await modalInner.locator(".space-y-1\\.5 button").last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // Status reverts to sent
-    await page.keyboard.press("Escape");
-    await ready(page);
-    await expect(page.locator(`tr:has-text("${DESC}")`).first().locator("select")).toHaveValue("sent");
-    await cleanup(page);
+    await closeModal(page);
+    await expect(page.locator("table tbody tr").filter({ hasText: invNumber }).locator("select")).toHaveValue("sent");
+    await cleanup(page, invNumber);
   });
 
   test("deleting one of two payments keeps status as partially_paid", async ({ page }) => {
-    await setup(page);
+    const invNumber = await setup(page);
     const modal = page.locator(".fixed.inset-0").last();
 
-    // Two payments: $200 + $100
     await modal.getByRole("button", { name: /add payment/i }).click();
     await modal.locator("input[placeholder='0.00']").fill("200");
     await modal.getByRole("button", { name: /save/i }).last().click();
@@ -540,24 +533,20 @@ test.describe("Payment deletion – status revert", () => {
     await ready(page);
     await page.waitForTimeout(400);
 
-    // paid=300, balance=300
     await expect(modal.locator(".text-emerald-400")).toContainText("$300.00");
 
-    // Delete the second payment (last trash button)
     page.on("dialog", d => d.accept());
     const trashBtns = modal.locator(".space-y-1\\.5 button");
     await trashBtns.last().click();
     await ready(page);
     await page.waitForTimeout(500);
 
-    // paid=200, balance=400; status still partially_paid
     await expect(modal.locator(".text-emerald-400")).toContainText("$200.00");
     await expect(modal.locator(".text-orange-400")).toContainText("$400.00");
 
-    await page.keyboard.press("Escape");
-    await ready(page);
-    await expect(page.locator(`tr:has-text("${DESC}")`).first().locator("select")).toHaveValue("partially_paid");
-    await cleanup(page);
+    await closeModal(page);
+    await expect(page.locator("table tbody tr").filter({ hasText: invNumber }).locator("select")).toHaveValue("partially_paid");
+    await cleanup(page, invNumber);
   });
 });
 
@@ -567,12 +556,14 @@ test.describe("Dashboard stat cards", () => {
   test("stat card labels all visible (Gross Earning, Net Earning, Pending)", async ({ page }) => {
     await page.goto("/dashboard");
     await ready(page);
-    await expect(page.locator("text=Gross Earning")).toBeVisible();
-    await expect(page.locator("text=Net Earning")).toBeVisible();
-    await expect(page.locator("text=Pending")).toBeVisible();
-    await expect(page.locator("text=Clients")).toBeVisible();
-    await expect(page.locator("text=Employees")).toBeVisible();
-    await expect(page.locator("text=Invoices")).toBeVisible();
+    // Use specific <p> selector to avoid strict mode with nav links
+    const labels = page.locator("p.text-sm.text-text-muted.font-medium");
+    await expect(labels.filter({ hasText: "Gross Earning" })).toBeVisible();
+    await expect(labels.filter({ hasText: "Net Earning" })).toBeVisible();
+    await expect(labels.filter({ hasText: "Pending" })).toBeVisible();
+    await expect(labels.filter({ hasText: "Clients" })).toBeVisible();
+    await expect(labels.filter({ hasText: "Employees" })).toBeVisible();
+    await expect(labels.filter({ hasText: "Invoices" })).toBeVisible();
   });
 
   test("all stat values are non-negative numbers", async ({ page }) => {
@@ -594,26 +585,17 @@ test.describe("Dashboard stat cards", () => {
     await page.goto("/dashboard");
     await ready(page);
 
-    // Get the Gross Earning card value
-    const grossCard = page.locator(".bg-dark-card, [class*='bg-gradient']")
-      .filter({ hasText: "Gross Earning" }).first();
-    const grossVal = parseMoney(await grossCard.locator("p.text-2xl").textContent() ?? "");
+    const grossVal = await dashboardStat(page, "Gross Earning");
     expect(grossVal).toBeGreaterThanOrEqual(0);
 
-    // Net earning ≤ gross earning (cogs can only reduce it)
-    const netCard = page.locator(".bg-dark-card, [class*='bg-gradient']")
-      .filter({ hasText: "Net Earning" }).first();
-    const netVal = parseMoney(await netCard.locator("p.text-2xl").textContent() ?? "");
+    const netVal = await dashboardStat(page, "Net Earning");
     expect(netVal).toBeLessThanOrEqual(grossVal);
   });
 
   test("invoice count stat increments by 1 after creating an invoice", async ({ page }) => {
-    // Read initial count
     await page.goto("/dashboard");
     await ready(page);
-    const invoiceCard = page.locator(".bg-dark-card, [class*='bg-gradient']")
-      .filter({ hasText: "Invoices" }).first();
-    const initialCount = parseMoney(await invoiceCard.locator("p.text-2xl").textContent() ?? "");
+    const initialCount = await dashboardStat(page, "Invoices");
 
     // Create one invoice
     await page.goto("/dashboard/invoices");
@@ -627,18 +609,18 @@ test.describe("Dashboard stat cards", () => {
     await page.getByRole("button", { name: /new invoice/i }).last().click();
     await ready(page);
 
-    // Navigate to dashboard and verify count increased
+    // Read invoice number for cleanup
+    const dashInvNumber = await readFirstInvoiceNumber(page);
+
     await page.goto("/dashboard");
     await ready(page);
-    const newCard = page.locator(".bg-dark-card, [class*='bg-gradient']")
-      .filter({ hasText: "Invoices" }).first();
-    const newCount = parseMoney(await newCard.locator("p.text-2xl").textContent() ?? "");
+    const newCount = await dashboardStat(page, "Invoices");
     expect(newCount).toBe(initialCount + 1);
 
     // Cleanup
     await page.goto("/dashboard/invoices");
     await ready(page);
-    const row = page.locator(`tr:has-text("DashCount-${TS}")`).first();
+    const row = page.locator("table tbody tr").filter({ hasText: dashInvNumber });
     page.on("dialog", d => d.accept());
     await row.locator("button[title='Delete']").click();
     await ready(page);
@@ -647,23 +629,19 @@ test.describe("Dashboard stat cards", () => {
   test("client count stat increments after creating a client", async ({ page }) => {
     await page.goto("/dashboard");
     await ready(page);
-    const clientCard = page.locator(".bg-dark-card, [class*='bg-gradient']")
-      .filter({ hasText: "Clients" }).first();
-    const initialCount = parseMoney(await clientCard.locator("p.text-2xl").textContent() ?? "");
+    const initialCount = await dashboardStat(page, "Clients");
 
     // Create client
     await page.goto("/dashboard/clients");
     await ready(page);
     await page.getByRole("button", { name: /add client/i }).click();
-    await page.locator("input[name='name'], input[placeholder*='ame']").first().fill(`DashClient-${TS}`);
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await page.locator("form input[required]").first().fill(`DashClient-${TS}`);
+    await page.getByRole("button", { name: /add client|save/i }).last().click();
     await ready(page);
 
     await page.goto("/dashboard");
     await ready(page);
-    const newCard = page.locator(".bg-dark-card, [class*='bg-gradient']")
-      .filter({ hasText: "Clients" }).first();
-    const newCount = parseMoney(await newCard.locator("p.text-2xl").textContent() ?? "");
+    const newCount = await dashboardStat(page, "Clients");
     expect(newCount).toBe(initialCount + 1);
 
     // Cleanup
@@ -678,12 +656,10 @@ test.describe("Dashboard stat cards", () => {
   test("recent invoices table on dashboard shows correct totals", async ({ page }) => {
     await page.goto("/dashboard");
     await ready(page);
-    // Recent invoices section
-    const recentSection = page.locator("text=Recent Invoices").locator("xpath=../../../..");
+    const recentSection = page.locator("text=Recent Invoices").first().locator("xpath=../../../..");
     const rows = recentSection.locator("tr");
     const rowCount = await rows.count();
     if (rowCount > 0) {
-      // Each row should show a dollar amount
       const firstRow = rows.first();
       await expect(firstRow).toContainText(/\$/);
     }
@@ -698,6 +674,7 @@ test.describe("Expenses stat cards – global totals", () => {
   const DESC = `ExpStat-${TS}`;
 
   async function readTotalStat(page: Page): Promise<number> {
+    // The Total Expenses stat card is the first .text-danger element (before table rows)
     const statCard = page.locator(".text-danger").first();
     return parseMoney(await statCard.textContent() ?? "");
   }
@@ -708,7 +685,6 @@ test.describe("Expenses stat cards – global totals", () => {
 
     const before = await readTotalStat(page);
 
-    // Add expense
     await page.getByRole("button", { name: /add expense/i }).click();
     await page.locator("input[type='date']").first().fill("2026-01-15");
     await page.locator("input[placeholder='0.00']").fill(AMOUNT_STR);
@@ -732,13 +708,11 @@ test.describe("Expenses stat cards – global totals", () => {
 
     const before = await readTotalStat(page);
 
-    // Apply a category filter
     await page.locator("select").first().selectOption("rent");
     await page.getByRole("button", { name: /search/i }).click();
     await ready(page);
 
     const after = await readTotalStat(page);
-    // Total stat should remain unchanged (global, not filtered)
     expect(after).toBe(before);
   });
 
@@ -761,13 +735,11 @@ test.describe("Expenses stat cards – global totals", () => {
     await page.goto("/dashboard/expenses");
     await ready(page);
 
-    const now = new Date();
     const thisMonthTotal = parseMoney(
       await page.locator(".text-2xl.font-bold.text-text-primary").first().textContent() ?? ""
     );
     expect(thisMonthTotal).toBeGreaterThanOrEqual(0);
 
-    // Even when date filter is for a different month, this-month stat stays
     await page.locator("input[type='date']").nth(0).fill("2020-01-01");
     await page.locator("input[type='date']").nth(1).fill("2020-12-31");
     await page.getByRole("button", { name: /search/i }).click();
@@ -786,7 +758,6 @@ test.describe("Expenses stat cards – global totals", () => {
     await page.goto("/dashboard/expenses");
     await ready(page);
 
-    // Add
     await page.getByRole("button", { name: /add expense/i }).click();
     await page.locator("input[type='date']").first().fill("2026-01-15");
     await page.locator("input[placeholder='0.00']").fill(String(AMOUNT2));
@@ -796,7 +767,6 @@ test.describe("Expenses stat cards – global totals", () => {
 
     const before = await readTotalStat(page);
 
-    // Delete
     const row = page.locator(`tr:has-text("${DESC2}")`).first();
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
@@ -810,11 +780,7 @@ test.describe("Expenses stat cards – global totals", () => {
     await page.goto("/dashboard/expenses");
     await ready(page);
 
-    const total = await readTotalStat(page);
-
-    // Category breakdown card shows individual categories
-    // Sum of visible category amounts ≤ total (filtered-list categories may differ from all)
-    // Just verify the by-category section is visible and has amounts
+    await readTotalStat(page); // just ensure it's readable
     await expect(page.locator("text=/by category/i")).toBeVisible();
   });
 });
@@ -833,42 +799,20 @@ test.describe("P&L Report – arithmetic validation via UI", () => {
     await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 15000 });
   }
 
-  async function readPLNumbers(page: Page) {
-    // Revenue card: emerald-400
-    const revenueCard = page.locator(".text-xl.font-bold.text-emerald-400").first();
-    const revenue = parseMoney(await revenueCard.textContent() ?? "");
-
-    // Gross profit card: blue-400
-    const grossCard = page.locator(".text-xl.font-bold.text-blue-400").first();
-    const grossProfit = parseMoney(await grossCard.textContent() ?? "");
-
-    // Total expenses card: orange-400
-    const expCard = page.locator(".text-xl.font-bold.text-orange-400").first();
-    const totalExpenses = parseMoney(await expCard.textContent() ?? "");
-
-    // Net profit card (emerald or red)
-    const netCard = page.locator(".text-xl.font-bold").filter({
-      hasText: /\$|€/,
-    }).last();
-    const netProfit = parseMoney(await netCard.textContent() ?? "");
-
-    return { revenue, grossProfit, totalExpenses, netProfit };
-  }
-
   test("P&L summary cards are all visible after generation", async ({ page }) => {
     await generatePL(page, "2025-01-01", "2025-12-31");
-    await expect(page.locator("text=Revenue")).toBeVisible();
-    await expect(page.locator("text=/gross profit/i")).toBeVisible();
-    await expect(page.locator("text=/operating expenses/i")).toBeVisible();
-    await expect(page.locator("text=/net profit/i")).toBeVisible();
+    // Use .first() to avoid strict mode with multiple "Revenue" elements
+    await expect(page.locator("text=Revenue").first()).toBeVisible();
+    await expect(page.locator("text=/gross profit/i").first()).toBeVisible();
+    await expect(page.locator("text=/operating expenses/i").first()).toBeVisible();
+    await expect(page.locator("text=/net profit/i").first()).toBeVisible();
   });
 
   test("P&L: grossProfit = revenue − cogs (both shown in income table)", async ({ page }) => {
     await generatePL(page, "2025-01-01", "2025-12-31");
 
-    // Income table shows: Revenue, COGS, Gross Profit
     const incomeTable = page.locator(".bg-emerald-500\\/5").locator("table");
-    if (await incomeTable.count() === 0) return; // no data, skip
+    if (await incomeTable.count() === 0) return;
 
     const rows = incomeTable.locator("tbody tr");
     const rowCount = await rows.count();
@@ -895,11 +839,9 @@ test.describe("P&L Report – arithmetic validation via UI", () => {
     const rowCount = await rows.count();
     if (rowCount < 2) return;
 
-    // Last row is the "Total" row
     const totalText = await rows.last().locator("td.text-right").textContent();
     const total = parseMoney(totalText ?? "");
 
-    // Sum of all category rows (excluding total row)
     let categorySum = 0;
     for (let i = 0; i < rowCount - 1; i++) {
       const rowText = await rows.nth(i).locator("td.text-right").textContent();
@@ -921,23 +863,19 @@ test.describe("P&L Report – arithmetic validation via UI", () => {
   test("P&L: future date range shows $0 revenue with no error", async ({ page }) => {
     await generatePL(page, "2099-01-01", "2099-12-31");
     await expect(page.locator("body")).not.toContainText(/error|500|failed/i);
-    // Revenue card should show $0.00
     await expect(page.locator(".text-xl.font-bold.text-emerald-400").first()).toContainText("$0.00");
   });
 
   test("switching P&L tab → Aging tab → back to P&L resets numbers", async ({ page }) => {
     await generatePL(page, "2025-01-01", "2025-12-31");
-    await expect(page.locator("text=Revenue")).toBeVisible();
+    await expect(page.locator("text=Revenue").first()).toBeVisible();
 
-    // Switch to aging
     await page.locator("button").filter({ hasText: /aging/i }).click();
     await page.getByRole("button", { name: /generate/i }).click();
     await ready(page);
     await expect(page.locator("text=/current|aging/i").first()).toBeVisible();
 
-    // Switch back to P&L
     await page.locator("button").filter({ hasText: /p&l|profit/i }).click();
-    // Report should be cleared (no stale results)
     await expect(page.locator("text=Revenue")).toHaveCount(0);
   });
 
@@ -950,12 +888,11 @@ test.describe("P&L Report – arithmetic validation via UI", () => {
 
     const rows = page.locator("table tbody tr");
     const count = await rows.count();
-    if (count === 0) return; // no outstanding invoices
+    if (count === 0) return;
 
-    // Each row should have non-negative balance
     for (let i = 0; i < Math.min(count, 5); i++) {
       const cells = rows.nth(i).locator("td");
-      const balanceText = await cells.nth(4).textContent(); // Balance column
+      const balanceText = await cells.nth(4).textContent();
       const balance = parseMoney(balanceText ?? "");
       expect(balance).toBeGreaterThanOrEqual(0);
     }
@@ -968,7 +905,6 @@ test.describe("P&L Report – arithmetic validation via UI", () => {
     await page.getByRole("button", { name: /generate/i }).click();
     await ready(page);
 
-    // Bucket labels should be visible
     await expect(page.locator("text=/Current|1.30|31.60|61.90|90\\+/i").first()).toBeVisible();
   });
 
@@ -976,13 +912,11 @@ test.describe("P&L Report – arithmetic validation via UI", () => {
     await page.goto("/dashboard/reports");
     await ready(page);
 
-    // Not visible before generation
     await expect(page.getByRole("button", { name: /export pdf/i })).toHaveCount(0);
 
     await page.locator("button").filter({ hasText: /generate/i }).click();
     await ready(page);
 
-    // Visible after generation
     await expect(page.getByRole("button", { name: /export pdf/i })).toBeVisible();
   });
 });
@@ -995,10 +929,14 @@ test.describe("Employees – salary auto-expense", () => {
   const SALARY = 4500;
   const POS = `Engineer-${TS}`;
 
-  async function deleteEmployee(page: Page) {
+  async function readExpenseTotal(page: Page): Promise<number> {
+    return parseMoney(await page.locator(".text-danger").first().textContent() ?? "");
+  }
+
+  async function deleteEmployee(page: Page, name: string) {
     await page.goto("/dashboard/employees");
     await ready(page);
-    const row = page.locator(`tr:has-text("${FIRST}")`).first();
+    const row = page.locator(`tr:has-text("${name}")`).first();
     if (await row.count() > 0) {
       page.on("dialog", d => d.accept());
       await row.locator("button").last().click();
@@ -1006,28 +944,36 @@ test.describe("Employees – salary auto-expense", () => {
     }
   }
 
+  /**
+   * Fill employee form (no placeholders, use nth-based required input selectors):
+   *   form input[required] nth(0) = firstName
+   *   form input[required] nth(1) = lastName
+   *   form input[required] nth(2) = position
+   *   form input[required][type='number'] = salary
+   */
+  async function fillEmployeeForm(page: Page, firstName: string, lastName: string, position: string, salary: number) {
+    await page.locator("form input[required]").nth(0).fill(firstName);
+    await page.locator("form input[required]").nth(1).fill(lastName);
+    await page.locator("form input[required]").nth(2).fill(position);
+    await page.locator("form input[required][type='number']").fill(String(salary));
+  }
+
   test("creating employee adds salary expense in expenses page", async ({ page }) => {
-    // Note expense total before
     await page.goto("/dashboard/expenses");
     await ready(page);
-    const totalBefore = parseMoney(await page.locator(".text-danger").first().textContent() ?? "");
+    const totalBefore = await readExpenseTotal(page);
 
-    // Create employee
     await page.goto("/dashboard/employees");
     await ready(page);
     await page.getByRole("button", { name: /add employee/i }).click();
-    await page.locator("input[placeholder*='irst']").fill(FIRST);
-    await page.locator("input[placeholder*='ast']").fill(LAST);
-    await page.locator("input[placeholder*='osition']").fill(POS);
-    await page.locator("input[type='number']").first().fill(String(SALARY));
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await fillEmployeeForm(page, FIRST, LAST, POS, SALARY);
+    await page.getByRole("button", { name: /add employee|save/i }).last().click();
     await ready(page);
 
-    // Navigate to expenses and verify salary expense was created
     await page.goto("/dashboard/expenses");
     await ready(page);
 
-    const totalAfter = parseMoney(await page.locator(".text-danger").first().textContent() ?? "");
+    const totalAfter = await readExpenseTotal(page);
     expect(r(totalAfter - totalBefore)).toBe(r(SALARY));
 
     // Filter by salaries category
@@ -1035,13 +981,12 @@ test.describe("Employees – salary auto-expense", () => {
     await page.getByRole("button", { name: /search/i }).click();
     await ready(page);
 
-    // Find the salary row for this employee
+    // Salary expense row contains the employee's first name
     const salaryRow = page.locator(`tr:has-text("${FIRST}")`).first();
     await expect(salaryRow).toBeVisible({ timeout: 6000 });
-    // Amount in the row
     await expect(salaryRow).toContainText(String(SALARY));
 
-    await deleteEmployee(page);
+    await deleteEmployee(page, FIRST);
   });
 
   test("employee salary is displayed correctly in table", async ({ page }) => {
@@ -1049,59 +994,47 @@ test.describe("Employees – salary auto-expense", () => {
     await ready(page);
 
     await page.getByRole("button", { name: /add employee/i }).click();
-    await page.locator("input[placeholder*='irst']").fill(FIRST + "2");
-    await page.locator("input[placeholder*='ast']").fill(LAST);
-    await page.locator("input[placeholder*='osition']").fill(POS);
-    await page.locator("input[type='number']").first().fill(String(SALARY));
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await fillEmployeeForm(page, FIRST + "2", LAST, POS, SALARY);
+    await page.getByRole("button", { name: /add employee|save/i }).last().click();
     await ready(page);
 
-    // Find row and verify salary shown
     const row = page.locator(`tr:has-text("${FIRST}2")`).first();
     await expect(row).toBeVisible({ timeout: 6000 });
     await expect(row).toContainText(new Intl.NumberFormat("en").format(SALARY));
 
-    // Cleanup
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
     await ready(page);
   });
 
   test("editing employee salary updates salary expense", async ({ page }) => {
-    // Create
     await page.goto("/dashboard/employees");
     await ready(page);
     await page.getByRole("button", { name: /add employee/i }).click();
-    await page.locator("input[placeholder*='irst']").fill(FIRST + "3");
-    await page.locator("input[placeholder*='ast']").fill(LAST);
-    await page.locator("input[placeholder*='osition']").fill(POS);
-    await page.locator("input[type='number']").first().fill("3000");
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await fillEmployeeForm(page, FIRST + "3", LAST, POS, 3000);
+    await page.getByRole("button", { name: /add employee|save/i }).last().click();
     await ready(page);
 
-    // Read expenses total
     await page.goto("/dashboard/expenses");
     await ready(page);
-    const before = parseMoney(await page.locator(".text-danger").first().textContent() ?? "");
+    const before = await readExpenseTotal(page);
 
-    // Edit salary
     await page.goto("/dashboard/employees");
     await ready(page);
     const empRow = page.locator(`tr:has-text("${FIRST}3")`).first();
-    await empRow.locator("button").filter({ hasText: "" }).first().click(); // edit button (pencil)
+    await empRow.locator("button").first().click(); // pencil (edit) button
     await expect(page.locator("h2").filter({ hasText: /employee/i })).toBeVisible({ timeout: 5000 });
-    await page.locator("input[type='number']").first().clear();
-    await page.locator("input[type='number']").first().fill("5000");
+    const salaryInput = page.locator("form input[required][type='number']");
+    await salaryInput.clear();
+    await salaryInput.fill("5000");
     await page.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
 
-    // Expense total should increase by (5000 - 3000) = 2000
     await page.goto("/dashboard/expenses");
     await ready(page);
-    const after = parseMoney(await page.locator(".text-danger").first().textContent() ?? "");
+    const after = await readExpenseTotal(page);
     expect(r(after - before)).toBe(2000);
 
-    // Cleanup
     await page.goto("/dashboard/employees");
     await ready(page);
     const row = page.locator(`tr:has-text("${FIRST}3")`).first();
@@ -1116,30 +1049,30 @@ test.describe("Employees – salary auto-expense", () => {
 test.describe("Stock – inventory quantity tracking", () => {
   const PRODUCT_NAME = `StockProd-${TS}`;
   const INITIAL_QTY = 20;
-  const INVOICE_QTY = 3; // will be used in invoice
+  const INVOICE_QTY = 3;
 
-  async function createProduct(page: Page) {
+  async function createProduct(page: Page, name: string) {
     await page.goto("/dashboard/stock");
     await ready(page);
     await page.getByRole("button", { name: /add product/i }).click();
     await expect(page.locator("h2").filter({ hasText: /product/i })).toBeVisible({ timeout: 5000 });
 
-    await page.locator("input[placeholder*='Product name']").fill(PRODUCT_NAME);
-    // Price > cost
+    // Stock name input has no placeholder; use first required input
+    await page.locator("form input[required]").first().fill(name);
     const numInputs = page.locator("form input[type='number']");
-    await numInputs.nth(0).fill("99"); // price
-    await numInputs.nth(1).fill("50"); // cost
+    await numInputs.nth(0).fill("99");         // price
+    await numInputs.nth(1).fill("50");          // cost
     await numInputs.nth(2).fill(String(INITIAL_QTY)); // quantity
-    await numInputs.nth(3).fill("2"); // minStock
+    await numInputs.nth(3).fill("2");           // minStock
 
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await page.getByRole("button", { name: /add product|save/i }).last().click();
     await ready(page);
   }
 
-  async function deleteProduct(page: Page) {
+  async function deleteProduct(page: Page, name: string) {
     await page.goto("/dashboard/stock");
     await ready(page);
-    const row = page.locator(`tr:has-text("${PRODUCT_NAME}")`).first();
+    const row = page.locator(`tr:has-text("${name}")`).first();
     if (await row.count() > 0) {
       page.on("dialog", d => d.accept());
       await row.locator("button").last().click();
@@ -1148,107 +1081,104 @@ test.describe("Stock – inventory quantity tracking", () => {
   }
 
   test("product stock quantity shown in table matches what was entered", async ({ page }) => {
-    await createProduct(page);
+    await createProduct(page, PRODUCT_NAME);
     const row = page.locator(`tr:has-text("${PRODUCT_NAME}")`).first();
     await expect(row).toBeVisible({ timeout: 6000 });
     await expect(row).toContainText(String(INITIAL_QTY));
-    await deleteProduct(page);
+    await deleteProduct(page, PRODUCT_NAME);
   });
 
   test("product quantity decreases by invoice qty when product is used in invoice", async ({ page }) => {
-    await createProduct(page);
+    await createProduct(page, PRODUCT_NAME);
 
-    // Verify initial stock
     let row = page.locator(`tr:has-text("${PRODUCT_NAME}")`).first();
     await expect(row).toContainText(String(INITIAL_QTY));
 
-    // Create invoice using this product
     await page.goto("/dashboard/invoices");
     await ready(page);
     await page.getByRole("button", { name: /new invoice/i }).click();
-    await page.locator("select[required]").selectOption({ index: 1 }); // client
+    await page.locator("select[required]").selectOption({ index: 1 });
     await page.locator("input[type='number'][min='0'][max='100']").fill("0");
 
-    // Select the product in the first item row
     const productSelect = page.locator(".space-y-2 select").first();
     await productSelect.selectOption({ label: PRODUCT_NAME });
 
-    // Set quantity to INVOICE_QTY
     await page.locator(".space-y-2 input[type='number']").nth(0).fill(String(INVOICE_QTY));
 
     await page.getByRole("button", { name: /new invoice/i }).last().click();
     await ready(page);
 
-    // Check stock page
+    // Read invoice number for cleanup
+    const invNum = await readFirstInvoiceNumber(page);
+
     await page.goto("/dashboard/stock");
     await ready(page);
     row = page.locator(`tr:has-text("${PRODUCT_NAME}")`).first();
-    const expectedQty = INITIAL_QTY - INVOICE_QTY; // 17
+    const expectedQty = INITIAL_QTY - INVOICE_QTY;
     await expect(row).toContainText(String(expectedQty));
 
     // Cleanup invoice then product
     await page.goto("/dashboard/invoices");
     await ready(page);
-    const invRow = page.locator(`tr:has-text("${PRODUCT_NAME}")`).first();
+    const invRow = page.locator("table tbody tr").filter({ hasText: invNum });
     if (await invRow.count() > 0) {
       page.on("dialog", d => d.accept());
       await invRow.locator("button[title='Delete']").click();
       await ready(page);
     }
-    await deleteProduct(page);
+    await deleteProduct(page, PRODUCT_NAME);
   });
 
   test("low stock alert appears when quantity ≤ minStock", async ({ page }) => {
+    const lowName = `LowStock-${TS}`;
     await page.goto("/dashboard/stock");
     await ready(page);
     await page.getByRole("button", { name: /add product/i }).click();
 
-    await page.locator("input[placeholder*='Product name']").fill(`LowStock-${TS}`);
+    await page.locator("form input[required]").first().fill(lowName);
     const numInputs = page.locator("form input[type='number']");
     await numInputs.nth(0).fill("10"); // price
     await numInputs.nth(1).fill("5");  // cost
     await numInputs.nth(2).fill("3");  // quantity
     await numInputs.nth(3).fill("5");  // minStock (qty 3 ≤ minStock 5 → low stock)
 
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await page.getByRole("button", { name: /add product|save/i }).last().click();
     await ready(page);
 
-    // Dashboard should show low stock alert for this product
     await page.goto("/dashboard");
     await ready(page);
     await expect(page.locator("text=Low Stock Alerts")).toBeVisible();
-    await expect(page.locator(`text=LowStock-${TS}`)).toBeVisible({ timeout: 6000 });
+    await expect(page.locator(`text=${lowName}`)).toBeVisible({ timeout: 6000 });
 
     // Cleanup
     await page.goto("/dashboard/stock");
     await ready(page);
-    const row = page.locator(`tr:has-text("LowStock-${TS}")`).first();
+    const row = page.locator(`tr:has-text("${lowName}")`).first();
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
     await ready(page);
   });
 
   test("product price and cost shown correctly in table", async ({ page }) => {
+    const name = `PriceTest-${TS}`;
     await page.goto("/dashboard/stock");
     await ready(page);
     await page.getByRole("button", { name: /add product/i }).click();
 
-    const name = `PriceTest-${TS}`;
-    await page.locator("input[placeholder*='Product name']").fill(name);
+    await page.locator("form input[required]").first().fill(name);
     const numInputs = page.locator("form input[type='number']");
     await numInputs.nth(0).fill("199.99"); // price
     await numInputs.nth(1).fill("75.50");  // cost
     await numInputs.nth(2).fill("10");
     await numInputs.nth(3).fill("2");
 
-    await page.getByRole("button", { name: /save/i }).last().click();
+    await page.getByRole("button", { name: /add product|save/i }).last().click();
     await ready(page);
 
     const row = page.locator(`tr:has-text("${name}")`).first();
     await expect(row).toContainText("199.99");
     await expect(row).toContainText("75.50");
 
-    // Cleanup
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
     await ready(page);
@@ -1258,18 +1188,15 @@ test.describe("Stock – inventory quantity tracking", () => {
     await page.goto("/dashboard/stock");
     await ready(page);
 
-    // Apply "Low Stock Only" filter
     await page.locator("select").filter({ has: page.locator("option[value='low']") }).selectOption("low");
     await ready(page);
 
     const rows = page.locator("table tbody tr");
     const count = await rows.count();
     if (count > 0) {
-      // Every row should have a low-stock badge or indicator
       const emptyMsg = page.locator("text=/no products/i");
       const hasEmpty = await emptyMsg.count();
       if (!hasEmpty) {
-        // rows exist and should be low stock items
         expect(count).toBeGreaterThan(0);
       }
     }
@@ -1286,16 +1213,15 @@ test.describe("Clients – invoice count tracking", () => {
     await ready(page);
 
     await page.getByRole("button", { name: /add client/i }).click();
-    await page.locator("input").filter({ has: page.locator("[name='name'], [placeholder*='ame']") }).first().fill(CLIENT_NAME);
-    await page.getByRole("button", { name: /save/i }).last().click();
+    // Client name input has no placeholder; use first required input
+    await page.locator("form input[required]").first().fill(CLIENT_NAME);
+    await page.getByRole("button", { name: /add client|save/i }).last().click();
     await ready(page);
 
     const row = page.locator(`tr:has-text("${CLIENT_NAME}")`).first();
     await expect(row).toBeVisible({ timeout: 6000 });
-    // Invoice count column should show 0
     await expect(row).toContainText("0");
 
-    // Cleanup
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
     await ready(page);
@@ -1307,7 +1233,7 @@ test.describe("Clients – invoice count tracking", () => {
 test.describe("Invoice status dropdown – full lifecycle", () => {
   const DESC = `StatusTest-${TS}`;
 
-  async function createDraftInvoice(page: Page) {
+  async function createDraftInvoice(page: Page): Promise<string> {
     await page.goto("/dashboard/invoices");
     await ready(page);
     await page.getByRole("button", { name: /new invoice/i }).click();
@@ -1318,12 +1244,13 @@ test.describe("Invoice status dropdown – full lifecycle", () => {
     await page.locator(".space-y-2 input[type='number']").nth(1).fill("500");
     await page.getByRole("button", { name: /new invoice/i }).last().click();
     await ready(page);
+    return readFirstInvoiceNumber(page);
   }
 
-  async function cleanup(page: Page) {
+  async function cleanup(page: Page, invNumber: string) {
     await page.goto("/dashboard/invoices");
     await ready(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     if (await row.count() > 0) {
       page.on("dialog", d => d.accept());
       await row.locator("button[title='Delete']").click();
@@ -1332,51 +1259,51 @@ test.describe("Invoice status dropdown – full lifecycle", () => {
   }
 
   test("new invoice defaults to Draft status with slate badge", async ({ page }) => {
-    await createDraftInvoice(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const invNumber = await createDraftInvoice(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await expect(row.locator("select")).toHaveValue("draft");
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("changing status from Draft → Sent updates badge color to blue", async ({ page }) => {
-    await createDraftInvoice(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const invNumber = await createDraftInvoice(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await row.locator("select").selectOption("sent");
     await ready(page);
     await expect(row.locator("select")).toHaveValue("sent");
     const select = row.locator("select");
     await expect(select).toHaveClass(/text-blue-400/);
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("changing status to Overdue shows red badge", async ({ page }) => {
-    await createDraftInvoice(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const invNumber = await createDraftInvoice(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await row.locator("select").selectOption("overdue");
     await ready(page);
     const select = row.locator("select");
     await expect(select).toHaveClass(/text-red-400/);
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("changing status to Paid shows emerald badge", async ({ page }) => {
-    await createDraftInvoice(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const invNumber = await createDraftInvoice(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await row.locator("select").selectOption("paid");
     await ready(page);
     const select = row.locator("select");
     await expect(select).toHaveClass(/text-emerald-400/);
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 
   test("manually setting status to Partially Paid shows amber badge", async ({ page }) => {
-    await createDraftInvoice(page);
-    const row = page.locator(`tr:has-text("${DESC}")`).first();
+    const invNumber = await createDraftInvoice(page);
+    const row = page.locator("table tbody tr").filter({ hasText: invNumber });
     await row.locator("select").selectOption("partially_paid");
     await ready(page);
     const select = row.locator("select");
     await expect(select).toHaveClass(/text-amber-400/);
-    await cleanup(page);
+    await cleanup(page, invNumber);
   });
 });
 
@@ -1396,7 +1323,6 @@ test.describe("Invoice form – validation guards", () => {
     await page.locator(".space-y-2 input[type='number']").nth(0).fill("1");
     await page.locator(".space-y-2 input[type='number']").nth(1).fill("100");
     await page.getByRole("button", { name: /new invoice/i }).last().click();
-    // Modal should stay open
     await expect(page.locator("h2").filter({ hasText: /invoice/i })).toBeVisible();
     const countAfter = await page.locator("table tbody tr").count();
     expect(countAfter).toBe(countBefore);
@@ -1405,18 +1331,17 @@ test.describe("Invoice form – validation guards", () => {
   test("negative tax rate not accepted (min=0)", async ({ page }) => {
     const taxInput = page.locator("input[type='number'][min='0'][max='100']");
     await taxInput.fill("-5");
-    const val = await taxInput.inputValue();
-    // Browser or app should clamp/reject negative value
-    expect(parseFloat(val)).toBeGreaterThanOrEqual(0);
+    // HTML5 validity: input with min=0 and value=-5 violates rangeUnderflow
+    const isValid = await taxInput.evaluate((el: HTMLInputElement) => el.validity.valid);
+    expect(isValid).toBe(false);
   });
 
   test("tax rate above 100 not accepted (max=100)", async ({ page }) => {
     const taxInput = page.locator("input[type='number'][min='0'][max='100']");
     await taxInput.fill("150");
-    const val = await taxInput.inputValue();
-    // Browser may clamp; just verify it's a number
-    const num = parseFloat(val);
-    expect(isNaN(num) || num <= 100).toBeTruthy();
+    // HTML5 validity: input with max=100 and value=150 violates rangeOverflow
+    const isValid = await taxInput.evaluate((el: HTMLInputElement) => el.validity.valid);
+    expect(isValid).toBe(false);
   });
 });
 
@@ -1442,7 +1367,6 @@ test.describe("Expenses – CRUD and number validation", () => {
     await expect(row).toContainText("876.54");
     await expect(row).toContainText(/marketing/i);
 
-    // Cleanup
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
     await ready(page);
@@ -1460,9 +1384,8 @@ test.describe("Expenses – CRUD and number validation", () => {
     await page.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
 
-    // Edit to new amount
     const row = page.locator(`tr:has-text("${desc}")`).first();
-    await row.locator("button").first().click(); // Edit button
+    await row.locator("button").first().click();
     await expect(page.locator("h2").filter({ hasText: /edit/i })).toBeVisible({ timeout: 4000 });
     await page.locator("input[placeholder='0.00']").fill("750.25");
     await page.getByRole("button", { name: /save/i }).last().click();
@@ -1470,7 +1393,6 @@ test.describe("Expenses – CRUD and number validation", () => {
 
     await expect(page.locator(`tr:has-text("${desc}")`).first()).toContainText("750.25");
 
-    // Cleanup
     page.on("dialog", d => d.accept());
     await page.locator(`tr:has-text("${desc}")`).first().locator("button").last().click();
     await ready(page);
@@ -1485,17 +1407,14 @@ test.describe("Expenses – CRUD and number validation", () => {
     await page.locator("input[type='date']").first().fill("2026-01-01");
     await page.locator("input[placeholder='0.00']").fill("2000");
     await page.locator("form input[required]").last().fill(desc);
-    // Set recurrence to monthly
     await page.locator("select").filter({ has: page.locator("option[value='monthly']") }).selectOption("monthly");
     await page.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
 
     const row = page.locator(`tr:has-text("${desc}")`).first();
     await expect(row).toBeVisible({ timeout: 6000 });
-    // Should show a recurrence badge like "↻ Monthly"
     await expect(row).toContainText(/monthly/i);
 
-    // Cleanup
     page.on("dialog", d => d.accept());
     await row.locator("button").last().click();
     await ready(page);
@@ -1514,21 +1433,20 @@ test.describe("Expenses – CRUD and number validation", () => {
     await page.getByRole("button", { name: /save/i }).last().click();
     await ready(page);
 
-    // Open edit
     const row = page.locator(`tr:has-text("${desc}")`).first();
     await row.locator("button").first().click();
     await expect(page.locator("h2").filter({ hasText: /edit/i })).toBeVisible({ timeout: 4000 });
 
-    // Verify pre-filled values
     const amountInput = page.locator("input[placeholder='0.00']");
     expect(parseFloat(await amountInput.inputValue())).toBe(333.33);
 
     const categorySelect = page.locator("select[required]");
     await expect(categorySelect).toHaveValue("utilities");
 
-    await page.keyboard.press("Escape");
+    // Close the edit modal (Escape doesn't work; use closeModal or Cancel button)
+    await closeModal(page);
 
-    // Cleanup
+    page.on("dialog", d => d.accept());
     await page.locator(`tr:has-text("${desc}")`).first().locator("button").last().click();
     await ready(page);
   });

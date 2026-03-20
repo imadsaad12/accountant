@@ -46,6 +46,18 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "ai")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
+  // Check org token limit
+  const org = await prisma.organization.findUnique({
+    where: { id: session.organizationId },
+    select: { aiTokensLimit: true, aiTokensUsed: true, status: true },
+  });
+  if (!org || org.status === "inactive") {
+    return NextResponse.json({ error: "Account inactive" }, { status: 403 });
+  }
+  if (org.aiTokensUsed >= org.aiTokensLimit) {
+    return NextResponse.json({ error: "AI token limit reached. Contact your administrator." }, { status: 429 });
+  }
+
   const { message, conversationHistory = [] } = await req.json();
 
   const context = await getBusinessContext(session.organizationId, session.permissions);
@@ -206,6 +218,15 @@ RULES:
     system: systemPrompt,
     messages,
   });
+
+  // Track token usage
+  const tokensUsed = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0);
+  if (tokensUsed > 0) {
+    await prisma.organization.update({
+      where: { id: session.organizationId },
+      data: { aiTokensUsed: { increment: tokensUsed } },
+    });
+  }
 
   const contentBlock = response.content[0];
   const assistantMessage = contentBlock.type === "text" ? contentBlock.text : "";

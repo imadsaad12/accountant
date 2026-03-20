@@ -120,6 +120,22 @@ export default function AIAssistantPage() {
       });
 
       const data = await res.json();
+
+      if (res.status === 429) {
+        setMessages([...updatedMessages, {
+          role: "assistant",
+          content: "⚠️ **AI token limit reached.** Your organization has used all available AI tokens for this period. Please contact your administrator to increase the limit or reset your usage.",
+        }]);
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setMessages([...updatedMessages, { role: "assistant", content: `Sorry, something went wrong (${res.status}). Please try again.` }]);
+        setLoading(false);
+        return;
+      }
+
       const isWriteAction = data.action && !["export_invoices", "export_pdf", "export_report"].includes(data.action.type);
       const assistantMessage: Message = {
         role: "assistant",
