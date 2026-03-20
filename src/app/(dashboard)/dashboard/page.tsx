@@ -71,9 +71,9 @@ export default function DashboardPage() {
     { label: t("dashboard.gross"), value: `${sym}${data.grossEarning.toLocaleString()}`, icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
     { label: t("dashboard.net"), value: `${sym}${data.netEarning.toLocaleString()}`, icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5", iconBg: "bg-teal-500/20", iconColor: "text-teal-400", trend: null, up: true },
     { label: t("dashboard.pending"), value: `${sym}${data.pendingAmount.toLocaleString()}`, icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5", iconBg: "bg-amber-500/20", iconColor: "text-amber-400", trend: null, up: false },
-    { label: t("dashboard.clients"), value: data.clientCount, icon: Users, gradient: "from-blue-500/20 to-blue-600/5", iconBg: "bg-blue-500/20", iconColor: "text-blue-400", trend: "+3", up: true },
+    { label: t("dashboard.clients"), value: data.clientCount, icon: Users, gradient: "from-blue-500/20 to-blue-600/5", iconBg: "bg-blue-500/20", iconColor: "text-blue-400", trend: data.newClientsThisMonth > 0 ? `+${data.newClientsThisMonth} this month` : null, up: true },
     { label: t("dashboard.employees"), value: data.employeeCount, icon: UserCog, gradient: "from-pink-500/20 to-pink-600/5", iconBg: "bg-pink-500/20", iconColor: "text-pink-400", trend: null, up: true },
-    { label: t("dashboard.invoices"), value: data.invoiceCount, icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5", iconBg: "bg-cyan-500/20", iconColor: "text-cyan-400", trend: "+5", up: true },
+    { label: t("dashboard.invoices"), value: data.invoiceCount, icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5", iconBg: "bg-cyan-500/20", iconColor: "text-cyan-400", trend: data.newInvoicesThisMonth > 0 ? `+${data.newInvoicesThisMonth} this month` : null, up: true },
   ];
 
   // Build chart data from invoices

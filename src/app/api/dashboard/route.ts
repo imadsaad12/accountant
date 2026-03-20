@@ -8,7 +8,11 @@ export async function GET() {
 
   const orgId = session.organizationId;
 
-  const [clientCount, productCount, employeeCount, invoices, paidInvoiceItems, lowStockProducts, recentInvoices, allPayments] = await Promise.all([
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [clientCount, productCount, employeeCount, invoices, paidInvoiceItems, lowStockProducts, recentInvoices, allPayments, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
     prisma.client.count({ where: { organizationId: orgId } }),
     prisma.product.count({ where: { organizationId: orgId } }),
     prisma.employee.count({ where: { organizationId: orgId } }),
@@ -20,6 +24,8 @@ export async function GET() {
     prisma.product.findMany({ where: { organizationId: orgId, quantity: { lte: 5 } }, select: { id: true, name: true, quantity: true, minStock: true } }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, take: 5, orderBy: { createdAt: "desc" }, include: { client: true } }),
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
+    prisma.client.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
+    prisma.invoice.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
   ]);
 
   // Build a map of invoiceId → total payments received
@@ -53,5 +59,7 @@ export async function GET() {
     pendingAmount,
     lowStockProducts,
     recentInvoices,
+    newClientsThisMonth,
+    newInvoicesThisMonth,
   });
 }
