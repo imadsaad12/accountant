@@ -22,6 +22,7 @@ const STATUS_STYLES: Record<string, string> = {
   sent: "bg-blue-500/15 text-blue-400",
   overdue: "bg-red-500/15 text-red-400",
   draft: "bg-dark-input text-text-muted",
+  partially_paid: "bg-amber-500/15 text-amber-400",
 };
 
 function fmt(n: number) {
