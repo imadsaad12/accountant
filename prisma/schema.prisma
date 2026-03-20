@@ -275,3 +275,11 @@ model AuditLog {
   @@index([createdAt])
   @@index([method])
 }
+
+model PlatformConfig {
+  id                   String   @id @default("singleton")
+  defaultAiTokensLimit Int      @default(10000)
+  defaultTrialDays     Int      @default(15)
+  defaultMaxUsers      Int      @default(5)
+  updatedAt            DateTime @updatedAt
+}

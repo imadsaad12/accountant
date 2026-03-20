@@ -20,9 +20,15 @@ export async function POST(req: NextRequest) {
     const hashed = await hashPassword(password);
 
     // Create organization and admin user in a transaction
+    const platformConfig = await prisma.platformConfig.upsert({
+      where: { id: "singleton" },
+      update: {},
+      create: { id: "singleton" },
+    });
+
     const { user, organization } = await prisma.$transaction(async (tx) => {
       const trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 15);
+      trialEndsAt.setDate(trialEndsAt.getDate() + platformConfig.defaultTrialDays);
 
       const organization = await tx.organization.create({
         data: {
@@ -30,8 +36,8 @@ export async function POST(req: NextRequest) {
           status: "trial",
           plan: "trial",
           trialEndsAt,
-          maxUsers: 5,
-          aiTokensLimit: 10000,
+          maxUsers: platformConfig.defaultMaxUsers,
+          aiTokensLimit: platformConfig.defaultAiTokensLimit,
           aiTokensUsed: 0,
         },
       });
