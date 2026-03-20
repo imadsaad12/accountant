@@ -79,7 +79,7 @@ export default function EmployeesPage() {
       position: emp.position,
       department: emp.department || "",
       salary: String(emp.salary),
-      currency: emp.currency || "USD",
+      currency: orgSettings.defaultCurrency,
       hireDate: emp.hireDate ? emp.hireDate.split("T")[0] : "",
       status: emp.status,
       address: emp.address || "",
@@ -222,9 +222,7 @@ export default function EmployeesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.currency")}</label>
-                  <select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
-                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
-                  </select>
+                  <input disabled value={orgSettings.defaultCurrency} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-muted rounded-lg cursor-not-allowed opacity-60" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
