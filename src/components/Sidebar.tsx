@@ -45,7 +45,12 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
   const t = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
+  const [optimisticPath, setOptimisticPath] = useState<string | null>(null);
   const isAdmin = user.role === "admin";
+
+  useEffect(() => {
+    setOptimisticPath(null);
+  }, [pathname]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -97,14 +102,16 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-0.5 mt-2 overflow-y-auto">
         {visibleItems.map((item) => {
+          const activePath = optimisticPath ?? pathname;
           const isActive =
             item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : pathname.startsWith(item.href);
+              ? activePath === "/dashboard"
+              : activePath.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setOptimisticPath(item.href)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
                 isActive
                   ? "bg-accent/10 text-accent-hover border border-accent/20"
@@ -122,14 +129,15 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
         {isAdmin && (
           <Link
             href="/dashboard/team"
+            onClick={() => setOptimisticPath("/dashboard/team")}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-              pathname.startsWith("/dashboard/team")
+              (optimisticPath ?? pathname).startsWith("/dashboard/team")
                 ? "bg-accent/10 text-accent-hover border border-accent/20"
                 : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
             }`}
             title={collapsed ? t("nav.team") : undefined}
           >
-            <UsersRound size={18} className={pathname.startsWith("/dashboard/team") ? "text-accent" : ""} />
+            <UsersRound size={18} className={(optimisticPath ?? pathname).startsWith("/dashboard/team") ? "text-accent" : ""} />
             {!collapsed && <span>{t("nav.team")}</span>}
           </Link>
         )}
@@ -137,14 +145,15 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
         {/* Settings — always visible */}
         <Link
           href="/dashboard/settings"
+          onClick={() => setOptimisticPath("/dashboard/settings")}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-            pathname.startsWith("/dashboard/settings")
+            (optimisticPath ?? pathname).startsWith("/dashboard/settings")
               ? "bg-accent/10 text-accent-hover border border-accent/20"
               : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
           }`}
           title={collapsed ? t("nav.settings") : undefined}
         >
-          <Settings size={18} className={pathname.startsWith("/dashboard/settings") ? "text-accent" : ""} />
+          <Settings size={18} className={(optimisticPath ?? pathname).startsWith("/dashboard/settings") ? "text-accent" : ""} />
           {!collapsed && <span>{t("nav.settings")}</span>}
         </Link>
       </nav>
