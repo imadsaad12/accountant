@@ -72,6 +72,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { client: true, items: { include: { product: true } } },
   });
 
+  // BUG-001 fix: when status changes to "paid", auto-create a full payment if none covers the total
+  if (invoiceData.status === "paid" && existing.status !== "paid") {
+    const existingPayments = await prisma.payment.aggregate({ where: { invoiceId: id }, _sum: { amount: true } });
+    const alreadyPaid = existingPayments._sum.amount ?? 0;
+    const remaining = invoice.total - alreadyPaid;
+    if (remaining > 0) {
+      await prisma.payment.create({
+        data: { invoiceId: id, organizationId: session.organizationId, amount: remaining, date: new Date(), method: "cash", note: "Auto-recorded when status set to Paid" },
+      });
+    }
+  }
+
   const statusChanged = invoiceData.status ? `status to "${invoiceData.status}"` : "";
   await logAudit({ session, action: "update", entity: "invoice", entityId: invoice.id, description: `Updated invoice ${invoice.number}${statusChanged ? ` - changed ${statusChanged}` : ""}` });
 

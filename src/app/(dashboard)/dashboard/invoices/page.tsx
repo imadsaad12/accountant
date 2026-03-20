@@ -233,7 +233,7 @@ export default function InvoicesPage() {
     }
   }
 
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const subtotal = Math.max(0, items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0));
   const tax = subtotal * (parseFloat(form.taxRate) / 100);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent"></div></div>;
@@ -427,7 +427,7 @@ export default function InvoicesPage() {
                   <input type="date" min={form.date} value={form.dueDate} onChange={e => { if (form.date && e.target.value < form.date) return; setForm({ ...form, dueDate: e.target.value }); }} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("invoices.tax_rate")} (%)</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("invoices.tax_rate")}</label>
                   <input type="number" step="0.1" min="0" max="100" value={form.taxRate} onChange={e => setForm({ ...form, taxRate: e.target.value })} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                 </div>
               </div>

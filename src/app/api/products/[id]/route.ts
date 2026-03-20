@@ -36,8 +36,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!canEdit(session.permissions, "products")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const product = await prisma.product.findFirst({ where: { id, organizationId: session.organizationId } });
+  const product = await prisma.product.findFirst({ where: { id, organizationId: session.organizationId }, include: { _count: { select: { invoiceItems: true } } } });
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (product._count.invoiceItems > 0)
+    return NextResponse.json({ error: `Cannot delete "${product.name}" — it is referenced in ${product._count.invoiceItems} invoice(s).` }, { status: 409 });
 
   await prisma.product.delete({ where: { id } });
   await logAudit({ session, action: "delete", entity: "product", entityId: id, description: `Deleted product "${product.name}"` });

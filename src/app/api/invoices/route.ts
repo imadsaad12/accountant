@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
   const number = `${prefix}-${String(nextSeq).padStart(5, "0")}`;
 
   const subtotal = items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => sum + item.quantity * item.unitPrice, 0);
+  if (subtotal <= 0) return NextResponse.json({ error: "Invoice total must be greater than $0." }, { status: 400 });
   const taxRate = invoiceData.taxRate != null ? invoiceData.taxRate : 19;
   const tax = subtotal * (taxRate / 100);
   const total = subtotal + tax;
@@ -86,6 +87,11 @@ export async function POST(req: NextRequest) {
 
   for (const item of items) {
     if (item.productId) {
+      const product = await prisma.product.findUnique({ where: { id: item.productId }, select: { quantity: true, name: true } });
+      if (product && item.quantity > product.quantity) {
+        await prisma.invoice.delete({ where: { id: invoice.id } });
+        return NextResponse.json({ error: `Insufficient stock for "${product.name}". Available: ${product.quantity}, requested: ${item.quantity}.` }, { status: 400 });
+      }
       await prisma.product.update({
         where: { id: item.productId },
         data: { quantity: { decrement: item.quantity } },

@@ -168,7 +168,7 @@ export default function ExpensesPage() {
               {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([cat, amt]) => (
                 <div key={cat} className="flex items-center justify-between text-xs">
                   <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.other}`}>{t(`expenses.cat.${cat}`)}</span>
-                  <span className="text-text-secondary font-medium">{currencySymbol}{amt.toFixed(0)}</span>
+                  <span className="text-text-secondary font-medium">{currencySymbol}{amt.toFixed(2)}</span>
                 </div>
               ))}
             </div>

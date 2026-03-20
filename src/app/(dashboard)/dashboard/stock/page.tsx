@@ -135,7 +135,8 @@ export default function StockPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("stock.delete_confirm"))) return;
-    await fetch(`/api/products/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json(); alert(d.error || t("common.error")); return; }
     loadData();
   }
 
