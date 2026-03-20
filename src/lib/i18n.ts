@@ -57,6 +57,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "status.active": "Active",
     "status.inactive": "Inactive",
     "status.on_leave": "On Leave",
+    "status.partially_paid": "Partially Paid",
 
     // Dashboard
     "dashboard.title": "Dashboard",
@@ -425,6 +426,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "status.active": "Actif",
     "status.inactive": "Inactif",
     "status.on_leave": "En congé",
+    "status.partially_paid": "Partiellement payée",
 
     // Dashboard
     "dashboard.title": "Tableau de bord",
