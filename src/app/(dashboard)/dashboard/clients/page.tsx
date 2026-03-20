@@ -89,7 +89,12 @@ export default function ClientsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("clients.delete_confirm"))) return;
-    await fetch(`/api/clients/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || t("common.error"));
+      return;
+    }
     loadClients();
   }
 

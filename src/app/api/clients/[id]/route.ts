@@ -47,8 +47,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!canEdit(session.permissions, "clients")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const client = await prisma.client.findFirst({ where: { id, organizationId: session.organizationId } });
+  const client = await prisma.client.findFirst({ where: { id, organizationId: session.organizationId }, include: { _count: { select: { invoices: true } } } });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (client._count.invoices > 0)
+    return NextResponse.json({ error: `Cannot delete this client — they have ${client._count.invoices} invoice(s) on record. Delete or reassign the invoices first.` }, { status: 409 });
 
   await prisma.client.delete({ where: { id } });
   await logAudit({ session, action: "delete", entity: "client", entityId: id, description: `Deleted client "${client.name}"` });
