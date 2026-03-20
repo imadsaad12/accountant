@@ -71,7 +71,7 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
     <aside
       className={`${
         collapsed ? "w-[72px]" : "w-64"
-      } bg-dark-sidebar border-r border-dark-border flex flex-col transition-all duration-300`}
+      } bg-dark-sidebar border-r border-dark-border flex flex-col transition-all duration-300 h-screen overflow-hidden shrink-0`}
     >
       {/* Logo */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-2 space-y-0.5 mt-2">
+      <nav className="flex-1 p-2 space-y-0.5 mt-2 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive =
             item.href === "/dashboard"
@@ -150,7 +150,7 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
       </nav>
 
       {/* User & Logout */}
-      <div className="p-2 border-t border-dark-border">
+      <div className="p-2 border-t border-dark-border shrink-0">
         {!collapsed && (
           <div className="px-3 py-2 mb-1">
             <div className="flex items-center gap-2.5">
