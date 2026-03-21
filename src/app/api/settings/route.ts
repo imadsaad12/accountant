@@ -11,7 +11,7 @@ export async function GET() {
   const [org, user] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: session.organizationId },
-      select: { settings: true },
+      select: { settings: true, name: true },
     }),
     prisma.user.findUnique({
       where: { id: session.userId },
@@ -21,6 +21,7 @@ export async function GET() {
 
   return NextResponse.json({
     orgSettings: parseOrgSettings(org?.settings),
+    orgName: org?.name ?? "",
     userPrefs: {
       theme: user?.theme ?? "dark",
       language: user?.language ?? "en",
@@ -39,17 +40,36 @@ export async function PUT(req: NextRequest) {
     if (!canEdit(session.permissions, "settings")) {
       return NextResponse.json({ error: "No permission" }, { status: 403 });
     }
-    const current = await prisma.organization.findUnique({
-      where: { id: session.organizationId },
-      select: { settings: true },
-    });
-    const current_settings = parseOrgSettings(current?.settings);
-    const updated = { ...current_settings, ...body.data };
-    await prisma.organization.update({
-      where: { id: session.organizationId },
-      data: { settings: JSON.stringify(updated) },
-    });
-    return NextResponse.json({ orgSettings: updated });
+
+    // Handle org name update separately
+    if (body.data.orgName !== undefined) {
+      const name = String(body.data.orgName).trim();
+      if (name) {
+        await prisma.organization.update({
+          where: { id: session.organizationId },
+          data: { name },
+        });
+      }
+    }
+
+    // Handle org settings (JSON blob)
+    const { orgName, ...settingsData } = body.data;
+    void orgName; // acknowledged
+    if (Object.keys(settingsData).length > 0) {
+      const current = await prisma.organization.findUnique({
+        where: { id: session.organizationId },
+        select: { settings: true },
+      });
+      const current_settings = parseOrgSettings(current?.settings);
+      const updated = { ...current_settings, ...settingsData };
+      await prisma.organization.update({
+        where: { id: session.organizationId },
+        data: { settings: JSON.stringify(updated) },
+      });
+      return NextResponse.json({ orgSettings: updated });
+    }
+
+    return NextResponse.json({ success: true });
   }
 
   if (body.type === "user") {

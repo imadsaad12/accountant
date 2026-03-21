@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Globe, Palette, Phone, DollarSign, Lock } from "lucide-react";
+import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2 } from "lucide-react";
 import { COUNTRIES } from "@/components/PhoneInput";
 import { useTranslation, useSetLang } from "@/components/LanguageProvider";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -24,7 +24,7 @@ interface OrgSettings {
 }
 interface UserPrefs {
   theme: "dark" | "light";
-  language: "en" | "fr";
+  language: "en" | "fr" | "ar";
 }
 
 function SavedBadge({ show, label }: { show: boolean; label: string }) {
@@ -41,6 +41,8 @@ export default function SettingsPage() {
   const setLang = useSetLang();
   const { updateOrgSettings } = useOrgSettings();
   const [orgSettings, setOrgSettings] = useState<OrgSettings>({ defaultPhoneCountry: "LB", defaultCurrency: "USD" });
+  const [orgName, setOrgName] = useState("");
+  const [orgNameDraft, setOrgNameDraft] = useState("");
   const [userPrefs, setUserPrefs] = useState<UserPrefs>({ theme: "dark", language: "en" });
   const [canEditOrg, setCanEditOrg] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,8 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         setOrgSettings(data.orgSettings);
+        setOrgName(data.orgName ?? "");
+        setOrgNameDraft(data.orgName ?? "");
         setUserPrefs(data.userPrefs);
         setCanEditOrg(data.canEditOrg);
       })
@@ -60,7 +64,7 @@ export default function SettingsPage() {
 
   async function saveOrg(updated: OrgSettings) {
     setOrgSettings(updated);
-    updateOrgSettings(updated); // update context immediately — all pages react
+    updateOrgSettings(updated);
     await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -70,16 +74,26 @@ export default function SettingsPage() {
     setTimeout(() => setOrgSaved(false), 2000);
   }
 
+  async function saveOrgName() {
+    if (!orgNameDraft.trim() || orgNameDraft === orgName) return;
+    setOrgName(orgNameDraft);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "org", data: { orgName: orgNameDraft } }),
+    });
+    setOrgSaved(true);
+    setTimeout(() => setOrgSaved(false), 2000);
+  }
+
   async function saveUser(updated: UserPrefs) {
     setUserPrefs(updated);
-    // Apply theme immediately and persist to localStorage
     localStorage.setItem("theme", updated.theme);
     if (updated.theme === "light") {
       document.documentElement.classList.add("light");
     } else {
       document.documentElement.classList.remove("light");
     }
-    // Apply language immediately — no refresh needed
     setLang(updated.language as Lang);
     await fetch("/api/settings", {
       method: "PUT",
@@ -97,7 +111,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">{t("settings.title")}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("settings.title")}</h1>
         <p className="text-text-muted text-sm mt-1">{t("settings.subtitle")}</p>
       </div>
 
@@ -121,6 +135,24 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="p-5 space-y-5">
+            {/* Organization Name */}
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-2">
+                <Building2 size={14} className="text-accent" />
+                {t("settings.org_name")}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={orgNameDraft}
+                  onChange={(e) => setOrgNameDraft(e.target.value)}
+                  onBlur={saveOrgName}
+                  onKeyDown={(e) => e.key === "Enter" && saveOrgName()}
+                  className="flex-1 px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+                />
+              </div>
+            </div>
+
             {/* Default Phone Country */}
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-2">
@@ -206,8 +238,8 @@ export default function SettingsPage() {
             <label className="text-sm font-medium text-text-secondary mb-3 block">
               {t("settings.language")}
             </label>
-            <div className="flex gap-3">
-              {([["en", "🇬🇧 English"], ["fr", "🇫🇷 Français"]] as const).map(([code, label]) => (
+            <div className="flex gap-3 flex-wrap">
+              {([["en", "🇬🇧 English"], ["fr", "🇫🇷 Français"], ["ar", "🇱🇧 العربية"]] as const).map(([code, label]) => (
                 <button
                   key={code}
                   type="button"

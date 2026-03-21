@@ -263,7 +263,7 @@ export default function AIAssistantPage() {
     <div className="flex flex-col h-[calc(100vh-3rem)]">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">AI Assistant</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">AI Assistant</h1>
           <p className="text-sm text-text-muted">Talk to your business assistant using text or voice in English, French, or Arabic</p>
         </div>
         <div className="flex items-center gap-2">

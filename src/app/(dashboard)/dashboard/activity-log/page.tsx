@@ -79,7 +79,7 @@ export default function ActivityLogPage() {
             <ScrollText size={20} className="text-accent" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">{t("activity.title")}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("activity.title")}</h1>
             <p className="text-sm text-text-muted">{total} {t("activity.total_recorded")}</p>
           </div>
         </div>

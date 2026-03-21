@@ -87,7 +87,7 @@ export default function Sidebar({
     <aside
       className={[
         // Mobile: fixed overlay
-        "fixed inset-y-0 left-0 z-50 h-screen",
+        "fixed inset-y-0 left-0 z-50 h-screen h-[100dvh]",
         // Desktop: static in-flow
         "md:static md:z-auto",
         // Width
@@ -195,7 +195,7 @@ export default function Sidebar({
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent/60 to-purple-500/60 flex items-center justify-center text-xs font-bold text-white">
                 {user.name.charAt(0).toUpperCase()}
               </div>
-              <div className="overflow-hidden">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-text-primary truncate">{user.name}</p>
                 <p className="text-[10px] text-text-muted truncate">{user.email}</p>
               </div>
