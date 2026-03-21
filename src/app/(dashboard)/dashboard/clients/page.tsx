@@ -20,7 +20,7 @@ interface Client {
   _count?: { invoices: number };
 }
 
-type SortField = "name" | "email" | "city" | "invoices";
+type SortField = "name" | "email" | "city" | "invoices" | "";
 type SortDir = "asc" | "desc";
 
 const emptyClient = { name: "", email: "", phone: "", address: "", city: "", country: "", notes: "" };
@@ -38,7 +38,7 @@ export default function ClientsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterCity, setFilterCity] = useState("");
-  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => { loadClients(); }, []);
@@ -113,6 +113,7 @@ export default function ClientsPage() {
         (!filterCity || c.city === filterCity)
       )
       .sort((a, b) => {
+        if (!sortField) return 0;
         let va: string | number = "";
         let vb: string | number = "";
         if (sortField === "name") { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }

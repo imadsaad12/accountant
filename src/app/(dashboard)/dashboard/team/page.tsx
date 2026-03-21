@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2, Shield, X, Check, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
 import { ALL_FEATURES, FEATURE_LABELS, DEFAULT_EMPLOYEE_PERMISSIONS, type Permissions, type Feature } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
@@ -20,6 +20,9 @@ interface User {
   permissions: string | null;
   createdAt: string;
 }
+
+type TeamSortField = "name" | "role" | "joined" | "";
+type SortDir = "asc" | "desc";
 
 const emptyForm = {
   name: "",
@@ -146,6 +149,8 @@ export default function TeamPage() {
   const [error, setError] = useState("");
   const [showPermissions, setShowPermissions] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<TeamSortField>("");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -232,6 +237,30 @@ export default function TeamPage() {
     setDeleteConfirm(null);
   }
 
+  function toggleSort(field: TeamSortField) {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  }
+
+  function SortIcon({ field }: { field: TeamSortField }) {
+    if (sortField !== field) return <ChevronUp size={12} className="opacity-30" />;
+    return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
+  }
+
+  const sortedUsers = useMemo(() => {
+    if (!sortField) return users;
+    return [...users].sort((a, b) => {
+      let va: string = "";
+      let vb: string = "";
+      if (sortField === "name") { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
+      else if (sortField === "role") { va = a.role; vb = b.role; }
+      else if (sortField === "joined") { va = a.createdAt; vb = b.createdAt; }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [users, sortField, sortDir]);
+
   function getPermissionSummary(user: User): string {
     if (user.role === "admin") return t("team.full_access");
     if (!user.permissions) return t("team.no_access");
@@ -270,15 +299,15 @@ export default function TeamPage() {
           <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-dark-border bg-dark-input/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("team.full_name")}</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("field.role")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort("name")}><span className="inline-flex items-center gap-1">{t("team.full_name")} <SortIcon field="name" /></span></th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort("role")}><span className="inline-flex items-center gap-1">{t("field.role")} <SortIcon field="role" /></span></th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("team.permissions")}</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("team.joined")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort("joined")}><span className="inline-flex items-center gap-1">{t("team.joined")} <SortIcon field="joined" /></span></th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-border">
-              {users.map((user) => (
+              {sortedUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-dark-input/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">

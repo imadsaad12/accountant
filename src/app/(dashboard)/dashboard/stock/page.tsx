@@ -25,7 +25,7 @@ interface Category {
   name: string;
 }
 
-type SortField = "name" | "sku" | "category" | "price" | "quantity";
+type SortField = "name" | "sku" | "category" | "price" | "quantity" | "";
 type SortDir = "asc" | "desc";
 
 const emptyProduct = { name: "", sku: "", description: "", price: "", cost: "", quantity: "", minStock: "5", unit: "piece", categoryId: "" };
@@ -70,7 +70,7 @@ export default function StockPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
-  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => { loadData(); }, []);
@@ -165,6 +165,7 @@ export default function StockPage() {
         (filterStock === "all" || (filterStock === "low" ? p.quantity <= p.minStock : p.quantity > p.minStock))
       )
       .sort((a, b) => {
+        if (!sortField) return 0;
         let va: string | number = "";
         let vb: string | number = "";
         if (sortField === "name") { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }

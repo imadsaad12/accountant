@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2, X, Edit2, TrendingDown } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -27,6 +27,9 @@ const RECURRENCE_OPTIONS = [
   { value: "quarterly", label: "Quarterly" },
   { value: "yearly", label: "Yearly" },
 ];
+
+type ExpSortField = "date" | "description" | "category" | "vendor" | "amount" | "";
+type SortDir = "asc" | "desc";
 
 const CATEGORIES = ["rent", "utilities", "salaries", "office", "travel", "marketing", "insurance", "maintenance", "other"];
 
@@ -68,6 +71,8 @@ export default function ExpensesPage() {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
+  const [sortField, setSortField] = useState<ExpSortField>("");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => { loadData(); }, []);
 
@@ -121,6 +126,32 @@ export default function ExpensesPage() {
     await fetch(`/api/expenses/${id}`, { method: "DELETE" });
     loadData();
   }
+
+  function toggleSort(field: ExpSortField) {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  }
+
+  function SortIcon({ field }: { field: ExpSortField }) {
+    if (sortField !== field) return <ChevronUp size={12} className="opacity-30" />;
+    return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
+  }
+
+  const sortedExpenses = useMemo(() => {
+    if (!sortField) return expenses;
+    return [...expenses].sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+      if (sortField === "date") { va = a.date; vb = b.date; }
+      else if (sortField === "description") { va = a.description.toLowerCase(); vb = b.description.toLowerCase(); }
+      else if (sortField === "category") { va = a.category.toLowerCase(); vb = b.category.toLowerCase(); }
+      else if (sortField === "vendor") { va = (a.vendor || "").toLowerCase(); vb = (b.vendor || "").toLowerCase(); }
+      else if (sortField === "amount") { va = a.amount; vb = b.amount; }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [expenses, sortField, sortDir]);
 
   // Stat cards always reflect global totals (not affected by active filters)
   const totalAmount = allExpenses.reduce((s, e) => s + e.amount, 0);
@@ -257,18 +288,18 @@ export default function ExpensesPage() {
             <table className="w-full min-w-[560px]">
               <thead className="bg-dark-bg/50">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.date")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.description")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("expenses.category")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("expenses.vendor")}</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("payments.amount")}</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("date")}><span className="inline-flex items-center gap-1">{t("field.date")} <SortIcon field="date" /></span></th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("description")}><span className="inline-flex items-center gap-1">{t("field.description")} <SortIcon field="description" /></span></th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("category")}><span className="inline-flex items-center gap-1">{t("expenses.category")} <SortIcon field="category" /></span></th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("vendor")}><span className="inline-flex items-center gap-1">{t("expenses.vendor")} <SortIcon field="vendor" /></span></th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("amount")}><span className="inline-flex items-center gap-1 justify-end">{t("payments.amount")} <SortIcon field="amount" /></span></th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-border/50">
-                {expenses.length === 0 ? (
+                {sortedExpenses.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">{t("expenses.empty")}</td></tr>
-                ) : expenses.map(exp => (
+                ) : sortedExpenses.map(exp => (
                   <tr key={exp.id} className="hover:bg-dark-card-hover">
                     <td className="px-4 py-3 text-sm text-text-secondary">{new Date(exp.date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-sm text-text-primary font-medium">

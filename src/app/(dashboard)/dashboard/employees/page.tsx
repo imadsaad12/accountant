@@ -23,7 +23,7 @@ interface Employee {
   notes: string | null;
 }
 
-type SortField = "name" | "position" | "department" | "salary" | "hireDate";
+type SortField = "name" | "position" | "department" | "salary" | "hireDate" | "";
 type SortDir = "asc" | "desc";
 
 const CURRENCIES = [
@@ -52,7 +52,7 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterDept, setFilterDept] = useState("");
-  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => { loadEmployees(); }, []);
@@ -120,6 +120,7 @@ export default function EmployeesPage() {
         (!filterDept || e.department === filterDept)
       )
       .sort((a, b) => {
+        if (!sortField) return 0;
         let va: string | number = "";
         let vb: string | number = "";
         if (sortField === "name") { va = `${a.firstName} ${a.lastName}`.toLowerCase(); vb = `${b.firstName} ${b.lastName}`.toLowerCase(); }

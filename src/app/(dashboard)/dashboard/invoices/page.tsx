@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle, ChevronUp, ChevronDown } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Loader2 } from "lucide-react";
@@ -59,6 +59,9 @@ interface Invoice {
   items: InvoiceItem[];
 }
 
+type InvSortField = "number" | "client" | "date" | "dueDate" | "total" | "status" | "";
+type SortDir = "asc" | "desc";
+
 const emptyItem = { description: "", quantity: 1, unitPrice: 0, total: 0, productId: "" };
 const PAYMENT_METHODS = ["cash", "bank_transfer", "check", "card"];
 
@@ -80,6 +83,8 @@ export default function InvoicesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<InvSortField>("");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showForm, setShowForm] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
@@ -246,6 +251,33 @@ export default function InvoicesPage() {
       alert(t("invoices.pdf_error"));
     }
   }
+
+  function toggleSort(field: InvSortField) {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  }
+
+  function SortIcon({ field }: { field: InvSortField }) {
+    if (sortField !== field) return <ChevronUp size={12} className="opacity-30" />;
+    return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
+  }
+
+  const sortedInvoices = useMemo(() => {
+    if (!sortField) return invoices;
+    return [...invoices].sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+      if (sortField === "number") { va = a.number.toLowerCase(); vb = b.number.toLowerCase(); }
+      else if (sortField === "client") { va = a.client.name.toLowerCase(); vb = b.client.name.toLowerCase(); }
+      else if (sortField === "date") { va = a.date; vb = b.date; }
+      else if (sortField === "dueDate") { va = a.dueDate || ""; vb = b.dueDate || ""; }
+      else if (sortField === "total") { va = a.total; vb = b.total; }
+      else if (sortField === "status") { va = a.status; vb = b.status; }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [invoices, sortField, sortDir]);
 
   const subtotal = Math.max(0, items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0));
   const discountPct = parseFloat(form.discount) || 0;
@@ -561,19 +593,19 @@ export default function InvoicesPage() {
         <table className="w-full min-w-[640px]">
           <thead className="bg-dark-bg/50">
             <tr>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("invoices.number")}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("invoices.client")}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.date")}</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("invoices.due_date")}</th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.total")}</th>
-              <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.status")}</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("number")}><span className="inline-flex items-center gap-1">{t("invoices.number")} <SortIcon field="number" /></span></th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("client")}><span className="inline-flex items-center gap-1">{t("invoices.client")} <SortIcon field="client" /></span></th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("date")}><span className="inline-flex items-center gap-1">{t("field.date")} <SortIcon field="date" /></span></th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("dueDate")}><span className="inline-flex items-center gap-1">{t("invoices.due_date")} <SortIcon field="dueDate" /></span></th>
+              <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("total")}><span className="inline-flex items-center gap-1 justify-end">{t("field.total")} <SortIcon field="total" /></span></th>
+              <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("status")}><span className="inline-flex items-center gap-1 justify-center">{t("field.status")} <SortIcon field="status" /></span></th>
               <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-dark-border/50">
-            {invoices.length === 0 ? (
+            {sortedInvoices.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted">{t("invoices.empty")}</td></tr>
-            ) : invoices.map(inv => (
+            ) : sortedInvoices.map(inv => (
               <tr key={inv.id} className="hover:bg-dark-card-hover">
                 <td className="px-4 py-3 text-sm font-mono font-medium text-text-primary">{inv.number}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
