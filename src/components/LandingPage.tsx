@@ -540,34 +540,54 @@ export default function LandingPage() {
             <p className="text-slate-400">Start free for 15 days. No credit card required.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {[
-              { name: "Trial", price: "Free", duration: "15 days", highlight: false, color: "border-white/10",      features: [{ t: "All features included", w: false }, { t: "Up to 2 users", w: true }, { t: "50,000 AI tokens", w: true }, { t: "15 days validity", w: true }],                                    cta: "Start free trial", href: "/register" },
-              { name: "Pro",   price: "$49",  duration: "/month",   highlight: true,  color: "border-indigo-500/50", features: [{ t: "All features included", w: false }, { t: "Unlimited users", w: false }, { t: "500,000 AI tokens", w: false }, { t: "Priority support", w: false }],                                       cta: "Get started",      href: "/register" },
-            ].map(plan => (
-              <div key={plan.name} className={`relative rounded-2xl border ${plan.color} p-8 ${plan.highlight ? "bg-indigo-600/10" : "bg-white/[0.02]"}`}>
-                {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>}
-                <div className="mb-6">
-                  <p className="text-slate-400 text-sm mb-1">{plan.name}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">{plan.price}</span>
-                    <span className="text-slate-400">{plan.duration}</span>
-                  </div>
+            {/* Trial card */}
+            <div className="relative rounded-2xl border border-white/10 p-8 bg-white/[0.02]">
+              <div className="mb-6">
+                <p className="text-slate-400 text-sm mb-1">Trial</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-white">Free</span>
+                  <span className="text-slate-400">15 days</span>
                 </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map(f => (
-                    <li key={f.t} className="flex items-center gap-2 text-sm">
-                      {f.w
-                        ? <TriangleAlert size={14} className="text-amber-400 shrink-0" />
-                        : <CheckCircle  size={14} className="text-indigo-400 shrink-0" />}
-                      <span className={f.w ? "text-amber-200/80" : "text-slate-300"}>{f.t}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href={plan.href} className={`block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors ${plan.highlight ? "bg-indigo-600 hover:bg-indigo-500 text-white" : "border border-white/10 hover:border-white/20 text-slate-300 hover:text-white"}`}>
-                  {plan.cta}
-                </Link>
               </div>
-            ))}
+              <ul className="space-y-3 mb-8">
+                {[{ t: "All features included", w: false }, { t: "Up to 2 users", w: true }, { t: "50,000 AI tokens", w: true }, { t: "15 days validity", w: true }].map(f => (
+                  <li key={f.t} className="flex items-center gap-2 text-sm">
+                    {f.w ? <TriangleAlert size={14} className="text-amber-400 shrink-0" /> : <CheckCircle size={14} className="text-indigo-400 shrink-0" />}
+                    <span className={f.w ? "text-amber-200/80" : "text-slate-300"}>{f.t}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/register" className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors border border-white/10 hover:border-white/20 text-slate-300 hover:text-white">
+                Start free trial
+              </Link>
+            </div>
+
+            {/* Pro card */}
+            <div className="relative rounded-2xl border border-indigo-500/50 p-8 bg-indigo-600/10">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>
+              <div className="mb-6">
+                <p className="text-slate-400 text-sm mb-1">Pro</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-4xl font-bold text-white">$49.99</span>
+                  <span className="text-slate-400">/month</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full font-medium">First 3 months</span>
+                  <span className="text-xs text-slate-500">then <span className="line-through">$99.99</span>/mo</span>
+                </div>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {[{ t: "All features included", w: false }, { t: "Unlimited users", w: false }, { t: "500,000 AI tokens", w: false }, { t: "Priority support", w: false }].map(f => (
+                  <li key={f.t} className="flex items-center gap-2 text-sm">
+                    <CheckCircle size={14} className="text-indigo-400 shrink-0" />
+                    <span className="text-slate-300">{f.t}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/register" className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors bg-indigo-600 hover:bg-indigo-500 text-white">
+                Get started
+              </Link>
+            </div>
           </div>
         </div>
       </section>
