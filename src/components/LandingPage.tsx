@@ -214,12 +214,12 @@ function Screenshot({ src, alt }: { src: string; alt: string }) {
 // ─── Feature card ────────────────────────────────────────────────────────────
 function FeatureCard({ icon: Icon, title, desc, color }: { icon: React.ElementType; title: string; desc: string; color: string }) {
   return (
-    <div className="group p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-indigo-500/40 hover:bg-white/[0.06] transition-all duration-300">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${color}`}>
-        <Icon size={20} className="text-white" />
+    <div className="group p-4 sm:p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-indigo-500/40 hover:bg-white/[0.06] transition-all duration-300">
+      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-3 sm:mb-4 ${color}`}>
+        <Icon size={18} className="text-white" />
       </div>
-      <h3 className="text-white font-semibold mb-2">{title}</h3>
-      <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+      <h3 className="text-white font-semibold mb-1.5 text-sm sm:text-base">{title}</h3>
+      <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">{desc}</p>
     </div>
   );
 }
@@ -386,7 +386,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Invoices, expenses, inventory, payroll, and AI-powered insights — all in one platform.
+            Invoices, expenses, inventory, payroll and AI-powered insights. All in one platform.
             Built for SMBs. Works in English, French, and Arabic.
           </p>
 
@@ -438,15 +438,15 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">One platform, zero spreadsheets</h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">Replace 6 different tools with one connected system that keeps every number consistent.</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <FeatureCard icon={FileText}   title="Smart Invoicing"   color="bg-indigo-500/20"  desc="Live preview, payment tracking, and auto status from Sent → Partially Paid → Paid." />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <FeatureCard icon={FileText}   title="Smart Invoicing"   color="bg-indigo-500/20"  desc="Live preview, payment tracking and auto status from Sent to Partially Paid to Paid." />
           <FeatureCard icon={TrendingUp} title="Financial Reports" color="bg-emerald-500/20" desc="P&L and receivables aging from live data. Export to PDF in one click." />
-          <FeatureCard icon={Bot}        title="AI Assistant"      color="bg-purple-500/20"  desc="Ask questions in English, French, or Arabic. Your AI knows your business." />
-          <FeatureCard icon={Package}    title="Stock & Inventory" color="bg-amber-500/20"   desc="Low-stock alerts, auto-decrement on invoice, cost vs price margin tracking." />
+          <FeatureCard icon={Bot}        title="AI Assistant"      color="bg-purple-500/20"  desc="Ask questions or give commands in English, French, or Arabic. The AI reads and acts on your data." />
+          <FeatureCard icon={Package}    title="Stock & Inventory" color="bg-amber-500/20"   desc="Low stock alerts, auto decrement on invoice and cost vs price margin tracking." />
           <FeatureCard icon={Receipt}    title="Expense Tracking"  color="bg-red-500/20"     desc="Categorized expenses feed directly into P&L and net earnings." />
           <FeatureCard icon={UserCog}    title="Employee Payroll"  color="bg-pink-500/20"    desc="Salary records that flow into financial calculations automatically." />
-          <FeatureCard icon={Shield}     title="Role Permissions"  color="bg-cyan-500/20"    desc="Per-feature view/edit permissions enforced at the API level." />
-          <FeatureCard icon={Activity}   title="Activity Log"      color="bg-orange-500/20"  desc="Full audit trail — who did what, when, across every module." />
+          <FeatureCard icon={Shield}     title="Role Permissions"  color="bg-cyan-500/20"    desc="Per feature view and edit permissions enforced at the API level." />
+          <FeatureCard icon={Activity}   title="Activity Log"      color="bg-orange-500/20"  desc="Full audit trail of who did what, when, across every module." />
         </div>
       </section>
 
@@ -460,8 +460,8 @@ export default function LandingPage() {
         <ShowcaseSection
           badge="Invoicing"
           title="Full invoice lifecycle in one place"
-          subtitle="From draft to paid — automatically."
-          description="Create invoices with a live preview, add line items, apply tax rates, and record multiple payments. Status transitions from Sent → Partially Paid → Paid automatically as payments come in."
+          subtitle="From draft to paid, automatically."
+          description="Create invoices with a live preview, add line items, apply tax rates and record multiple payments. Status moves from Sent to Partially Paid to Paid automatically as payments come in."
           images={[
             { src: S("Invoices1.png"), alt: "Invoice list" },
             { src: S("Invoices2.png"), alt: "Invoice detail" },
@@ -471,8 +471,8 @@ export default function LandingPage() {
         <ShowcaseSection
           badge="AI Assistant"
           title="Ask your AI anything about your business"
-          subtitle="English, French, Arabic — it understands all three."
-          description="Your AI assistant has full context of your live business data. Ask about revenue, overdue clients, or instruct it to create records. Every action requires your confirmation before executing."
+          subtitle="English, French and Arabic. Fully supported."
+          description="Your AI assistant has full context of your live business data. Ask about revenue, check overdue clients, or tell it to create invoices, add expenses and update records. Every action asks for your confirmation before it runs."
           images={[{ src: S("Ai assistance.png"), alt: "AI Assistant" }]}
           reverse
         />
@@ -481,7 +481,7 @@ export default function LandingPage() {
           badge="Financial Reports"
           title="Profit & Loss in seconds, not hours"
           subtitle="Real numbers, not estimates."
-          description="Select a date range and generate a complete P&L report — revenue, COGS, operating expenses, and net profit — all from live data. Export to PDF with one click."
+          description="Select a date range and generate a complete P&L report covering revenue, COGS, operating expenses and net profit, all from live data. Export to PDF with one click."
           images={[{ src: S("Reports.png"), alt: "Financial Reports" }]}
         />
 
@@ -509,7 +509,7 @@ export default function LandingPage() {
           badge="Team & Tax"
           title="Control access and stay compliant"
           subtitle="Permissions and tax visibility in one place."
-          description="Set granular view/edit permissions per feature for each team member. Monitor tax collected vs pending across all invoices — broken down by invoice, rate, and status."
+          description="Set granular view and edit permissions per feature for each team member. Monitor tax collected vs pending across all invoices, broken down by invoice, rate and status."
           images={[
             { src: S("Team.png"), alt: "Team management" },
             { src: S("Tax.png"),  alt: "Tax overview" },
@@ -576,7 +576,7 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Ready to take control of your finances?</h2>
         <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-          Join businesses that use Accountant to manage invoices, track expenses, and get AI-powered insights — in minutes.
+          Join businesses that use Accountant to manage invoices, track expenses and get AI-powered insights. Get started in minutes.
         </p>
         <Link href="/register" className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-xl shadow-indigo-600/30 hover:-translate-y-0.5">
           Start your free trial <ChevronRight size={18} />

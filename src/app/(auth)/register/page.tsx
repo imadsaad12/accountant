@@ -36,11 +36,11 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dark-bg relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-dark-bg relative overflow-hidden p-4 py-8">
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-accent/10 blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full bg-accent/5 blur-3xl pointer-events-none" />
 
-      <div className="relative max-w-md w-full space-y-8 p-8 bg-dark-card border border-dark-border rounded-2xl shadow-2xl">
+      <div className="relative max-w-md w-full space-y-6 p-5 sm:p-8 bg-dark-card border border-dark-border rounded-2xl shadow-2xl">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-text-primary">Accountant</h1>
           <p className="mt-2 text-text-muted">Create your organization</p>
