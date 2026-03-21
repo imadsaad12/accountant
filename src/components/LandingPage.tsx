@@ -584,9 +584,14 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors bg-indigo-600 hover:bg-indigo-500 text-white">
-                Get started
-              </Link>
+              <a
+                href="https://mail.google.com/mail/?view=cm&to=example@example.com&su=Interested%20in%20Accountant%20Pro&body=Hi%2C%0A%0AI%27m%20interested%20in%20the%20Pro%20plan.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors bg-indigo-600 hover:bg-indigo-500 text-white"
+              >
+                Contact us
+              </a>
             </div>
           </div>
         </div>
