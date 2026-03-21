@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import CashentLogo from "@/components/CashentLogo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function RegisterPage() {
 
       <div className="relative max-w-md w-full space-y-6 p-5 sm:p-8 bg-dark-card border border-dark-border rounded-2xl shadow-2xl">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-text-primary">Accountant</h1>
+          <CashentLogo className="text-4xl" />
           <p className="mt-2 text-text-muted">Create your organization</p>
         </div>
 

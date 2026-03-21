@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -12,19 +12,18 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   ScrollText,
   UsersRound,
   Receipt,
   Settings,
   TrendingDown,
-  BookOpen,
   BarChart2,
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { canView, type Permissions } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
+import CashentLogo from "@/components/CashentLogo";
 
 const NAV_ITEMS = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, feature: "dashboard" as const },
@@ -52,7 +51,7 @@ export default function Sidebar({
   onMobileClose?: () => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+
   const t = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
@@ -104,13 +103,9 @@ export default function Sidebar({
       {/* Logo */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between">
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center">
-              <Sparkles size={16} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-text-primary tracking-tight">{orgName}</h1>
-            </div>
+          <div className="flex flex-col">
+            <CashentLogo className="text-xl" />
+            <span className="text-xs text-text-muted truncate">{orgName}</span>
           </div>
         )}
         {/* Desktop collapse button */}

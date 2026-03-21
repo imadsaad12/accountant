@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   doc.setTextColor(100, 100, 100);
   const companyX = isRTL ? 20 : pageWidth - 20;
   const companyAlign = isRTL ? "left" : "right";
-  doc.text("Accountant", companyX, 20, { align: companyAlign });
+  doc.text("Cashent", companyX, 20, { align: companyAlign });
   doc.text("Business Management System", companyX, 25, { align: companyAlign });
 
   // Invoice details
@@ -158,20 +158,29 @@ export async function POST(req: NextRequest) {
   const totalsAlign: "left" | "right" = isRTL ? "left" : "right";
 
   doc.setFontSize(10);
-  doc.text(`${lang.subtotal}: $${invoice.subtotal.toFixed(2)}`, totalsX, finalY, { align: totalsAlign });
-  doc.text(`${lang.tax} (${invoice.taxRate}%): $${invoice.tax.toFixed(2)}`, totalsX, finalY + 7, { align: totalsAlign });
+  let totalsY = finalY;
+  doc.text(`${lang.subtotal}: $${invoice.subtotal.toFixed(2)}`, totalsX, totalsY, { align: totalsAlign });
+  totalsY += 7;
+  if (invoice.discount > 0) {
+    doc.setTextColor(34, 197, 94);
+    doc.text(`Discount (${invoice.discount}%): -$${(invoice.subtotal * invoice.discount / 100).toFixed(2)}`, totalsX, totalsY, { align: totalsAlign });
+    doc.setTextColor(60, 60, 60);
+    totalsY += 7;
+  }
+  doc.text(`${lang.tax} (${invoice.taxRate}%): $${invoice.tax.toFixed(2)}`, totalsX, totalsY, { align: totalsAlign });
+  totalsY += 11;
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(37, 99, 235);
-  doc.text(`${lang.grandTotal}: $${invoice.total.toFixed(2)}`, totalsX, finalY + 18, { align: totalsAlign });
+  doc.text(`${lang.grandTotal}: $${invoice.total.toFixed(2)}`, totalsX, totalsY, { align: totalsAlign });
 
   // Notes
   if (invoice.notes) {
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(`${lang.notes}: ${invoice.notes}`, isRTL ? pageWidth - 20 : 20, finalY + 35, { align: detailsAlign });
+    doc.text(`${lang.notes}: ${invoice.notes}`, isRTL ? pageWidth - 20 : 20, totalsY + 18, { align: detailsAlign });
   }
 
   // Footer

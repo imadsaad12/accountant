@@ -60,7 +60,7 @@ export function generateInvoicePDF(invoice: InvoiceData, language?: string): Buf
   else doc.setFont("helvetica", "normal");
   const companyX = isRTL ? 20 : pageWidth - 20;
   const companyAlign: "left" | "right" = isRTL ? "left" : "right";
-  doc.text("Accountant", companyX, 20, { align: companyAlign });
+  doc.text("Cashent", companyX, 20, { align: companyAlign });
   doc.text("Business Management System", companyX, 25, { align: companyAlign });
 
   // Invoice details

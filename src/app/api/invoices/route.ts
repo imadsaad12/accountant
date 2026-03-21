@@ -58,14 +58,18 @@ export async function POST(req: NextRequest) {
   const subtotal = items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => sum + item.quantity * item.unitPrice, 0);
   if (subtotal <= 0) return NextResponse.json({ error: "Invoice total must be greater than $0." }, { status: 400 });
   const taxRate = invoiceData.taxRate != null ? invoiceData.taxRate : 19;
-  const tax = subtotal * (taxRate / 100);
-  const total = subtotal + tax;
+  const discount = invoiceData.discount != null ? invoiceData.discount : 0;
+  const discountAmount = subtotal * (discount / 100);
+  const afterDiscount = subtotal - discountAmount;
+  const tax = afterDiscount * (taxRate / 100);
+  const total = afterDiscount + tax;
 
   const invoice = await prisma.invoice.create({
     data: {
       ...invoiceData,
       number,
       subtotal,
+      discount,
       tax,
       taxRate,
       total,

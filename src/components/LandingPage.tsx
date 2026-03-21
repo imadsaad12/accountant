@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import CashentLogo from "@/components/CashentLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
@@ -302,10 +303,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrollY > 20 || mobileMenuOpen ? "bg-[#080b12]/95 backdrop-blur-xl border-b border-white/[0.06]" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
-              <BarChart3 size={16} className="text-white" />
-            </div>
-            <span className="font-bold text-lg text-white">Accountant</span>
+            <CashentLogo className="text-2xl" />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
             <a href="#features" onClick={e => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-white transition-colors cursor-pointer">Features</a>
@@ -585,7 +583,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <a
-                href="mailto:example@example.com?subject=Interested%20in%20Accountant%20Pro&body=Hi%2C%0A%0AI%27m%20interested%20in%20the%20Pro%20plan.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
+                href="mailto:imad.alhaj.saad@gmail.com?subject=Interested%20in%20Cashent%20Pro&body=Hi%2C%0A%0AI%27m%20interested%20in%20the%20Pro%20plan.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
                 className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors bg-indigo-600 hover:bg-indigo-500 text-white"
               >
                 Contact us
@@ -599,7 +597,7 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Ready to take control of your finances?</h2>
         <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-          Join businesses that use Accountant to manage invoices, track expenses and get AI-powered insights. Get started in minutes.
+          Join businesses that use Cashent to manage invoices, track expenses and get AI-powered insights. Get started in minutes.
         </p>
         <Link href="/register" className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-xl shadow-indigo-600/30 hover:-translate-y-0.5">
           Start your free trial <ChevronRight size={18} />
@@ -610,12 +608,9 @@ export default function LandingPage() {
       <footer className="border-t border-white/[0.06] max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-500 rounded-lg flex items-center justify-center">
-              <BarChart3 size={14} className="text-white" />
-            </div>
-            <span className="font-bold text-white">Accountant</span>
+            <CashentLogo className="text-xl" />
           </div>
-          <p className="text-slate-500 text-sm">© 2026 Accountant. All rights reserved.</p>
+          <p className="text-slate-500 text-sm">© 2026 Cashent. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-slate-500">
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>

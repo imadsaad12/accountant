@@ -23,9 +23,9 @@ export async function sendInvoiceEmail(
   };
 
   const bodies: Record<string, string> = {
-    en: `Dear Customer,\n\nPlease find attached invoice ${invoiceNumber}.\n\nThank you for your business.\n\nBest regards,\nAccountant Team`,
-    fr: `Cher client,\n\nVeuillez trouver ci-joint la facture ${invoiceNumber}.\n\nMerci pour votre confiance.\n\nCordialement,\nL'équipe Accountant`,
-    ar: `عزيزي العميل،\n\nيرجى الاطلاع على الفاتورة المرفقة ${invoiceNumber}.\n\nشكراً لتعاملكم معنا.\n\nمع أطيب التحيات،\nفريق Accountant`,
+    en: `Dear Customer,\n\nPlease find attached invoice ${invoiceNumber}.\n\nThank you for your business.\n\nBest regards,\nCashent Team`,
+    fr: `Cher client,\n\nVeuillez trouver ci-joint la facture ${invoiceNumber}.\n\nMerci pour votre confiance.\n\nCordialement,\nL'équipe Cashent`,
+    ar: `عزيزي العميل،\n\nيرجى الاطلاع على الفاتورة المرفقة ${invoiceNumber}.\n\nشكراً لتعاملكم معنا.\n\nمع أطيب التحيات،\nفريق Cashent`,
   };
 
   await transporter.sendMail({

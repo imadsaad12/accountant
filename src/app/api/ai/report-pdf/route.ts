@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      `Accountant - AI Report | Page ${i} of ${pageCount}`,
+      `Cashent - AI Report | Page ${i} of ${pageCount}`,
       pageWidth / 2,
       doc.internal.pageSize.getHeight() - 10,
       { align: "center" }

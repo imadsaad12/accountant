@@ -136,6 +136,7 @@ model Invoice {
   dueDate        DateTime?
   status         String        @default("draft")
   subtotal       Float         @default(0)
+  discount       Float         @default(0)
   tax            Float         @default(0)
   taxRate        Float         @default(19)
   total          Float         @default(0)

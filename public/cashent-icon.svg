@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 120" fill="none">
+  <defs>
+    <linearGradient id="g" x1="10" y1="82" x2="120" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#4f46e5"/>
+      <stop offset="55%"  stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bold C  center=(60,52) r=33 opening=±50° -->
+  <!-- top=(81,27)  bottom=(81,77) -->
+  <path d="M 81 27 A 33 33 0 1 0 81 77"
+        stroke="url(#g)" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- Smooth rising trend line -->
+  <path d="M 10 82 C 35 62 84 40 112 20"
+        stroke="url(#g)" stroke-width="5.5" stroke-linecap="round"/>
+
+  <!-- L-corner arrowhead -->
+  <path d="M 96 20 L 112 20 L 112 36"
+        stroke="url(#g)" stroke-width="5.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   const context = await getBusinessContext(session.organizationId, session.permissions);
 
-  const systemPrompt = `You are an AI assistant for an accounting/business management application called "Accountant". You help business owners manage their operations.
+  const systemPrompt = `You are an AI assistant for an accounting/business management application called "Cashent". You help business owners manage their operations.
 
 Today's date: ${new Date().toISOString().split("T")[0]}
 
@@ -124,8 +124,9 @@ Export invoices by date range:
 
 Export specific invoice as PDF:
 \`\`\`action
-{"type": "export_pdf", "invoiceId": "the-invoice-id", "language": "fr", "confirmMessage": "Export invoice INV-XXXXX as PDF"}
+{"type": "export_pdf", "invoiceId": "the-invoice-id", "language": "en", "confirmMessage": "Export invoice INV-XXXXX as PDF"}
 \`\`\`
+IMPORTANT: PDF language must be "en" or "fr" only. NEVER use "ar" — if the user speaks Arabic, default to "en".
 
 Download AI response/statistics as PDF report:
 When the user asks to download, save, or export the statistics, summary, or data you just provided as a PDF, include this action block. Put the FULL formatted content of your response (the data/statistics) into the "content" field as an array of sections. Each section has a "heading" and "text" (the text should be the detailed data, use \\n for line breaks).
@@ -187,7 +188,7 @@ Delete employee:
 
 Add invoice:
 \`\`\`action
-{"type": "add_invoice", "clientId": "client-id", "taxRate": 19, "language": "fr", "items": [{"description": "...", "quantity": 1, "unitPrice": 0, "productId": "optional-product-id"}], "confirmMessage": "Create invoice for CLIENT with X items, total $AMOUNT"}
+{"type": "add_invoice", "clientId": "client-id", "taxRate": 19, "language": "en", "items": [{"description": "...", "quantity": 1, "unitPrice": 0, "productId": "optional-product-id"}], "confirmMessage": "Create invoice for CLIENT with X items, total $AMOUNT"}
 \`\`\`
 
 Update invoice status:

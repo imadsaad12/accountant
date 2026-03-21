@@ -176,7 +176,7 @@ export default function AIAssistantPage() {
         const pdfRes = await fetch("/api/invoices/pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ invoiceId: inv.id, language: action.language || inv.language || "fr" }),
+          body: JSON.stringify({ invoiceId: inv.id, language: action.language === "fr" ? "fr" : "en" }),
         });
         const blob = await pdfRes.blob();
         const url = URL.createObjectURL(blob);
@@ -190,7 +190,7 @@ export default function AIAssistantPage() {
       const pdfRes = await fetch("/api/invoices/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId: action.invoiceId, language: action.language || "fr" }),
+        body: JSON.stringify({ invoiceId: action.invoiceId, language: action.language === "fr" ? "fr" : "en" }),
       });
       const blob = await pdfRes.blob();
       const url = URL.createObjectURL(blob);

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 195" fill="none">
+  <defs>
+    <linearGradient id="g" x1="15" y1="125" x2="185" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#4f46e5"/>
+      <stop offset="55%"  stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bold C  center=(92,78) r=50 opening=±50°  -->
+  <!-- top=(124,40)  bottom=(124,116) -->
+  <path d="M 124 40 A 50 50 0 1 0 124 116"
+        stroke="url(#g)" stroke-width="17" stroke-linecap="round"/>
+
+  <!-- Smooth rising trend line through the C -->
+  <path d="M 18 122 C 55 95 128 58 172 32"
+        stroke="url(#g)" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- L-corner arrowhead at tip -->
+  <path d="M 153 32 L 172 32 L 172 51"
+        stroke="url(#g)" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Wordmark -->
+  <text x="100" y="177"
+        font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="900" font-size="28" letter-spacing="6"
+        text-anchor="middle" fill="url(#g)">CASHENT</text>
+</svg>

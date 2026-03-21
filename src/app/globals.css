@@ -115,11 +115,31 @@ html.light .bg-black\/60 { background-color: rgba(15,23,42,0.35) !important; }
 ::-webkit-scrollbar-thumb { background: var(--color-dark-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
-/* Smooth theme transitions */
-* {
+/* Smooth theme transitions — scoped to avoid Safari animation interference */
+body, main, aside, header, footer, nav, section, article,
+div, span, a, button, input, select, textarea, label,
+th, td, tr, table, li, ul, ol, p, h1, h2, h3, h4, h5, h6 {
   transition-property: background-color, border-color, color;
   transition-duration: 200ms;
   transition-timing-function: ease;
+}
+
+/* Safari: backdrop-filter vendor prefix for modal overlays */
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.backdrop-blur-xl {
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.backdrop-blur {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 /* Recharts dark theme */

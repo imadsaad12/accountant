@@ -48,6 +48,7 @@ interface Invoice {
   dueDate: string | null;
   status: string;
   subtotal: number;
+  discount: number;
   tax: number;
   taxRate: number;
   total: number;
@@ -81,7 +82,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
-  const [form, setForm] = useState({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", language: "fr", notes: "", status: "draft" });
+  const [form, setForm] = useState({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
   const [items, setItems] = useState<typeof emptyItem[]>([{ ...emptyItem }]);
 
   // Payment state
@@ -172,6 +173,7 @@ export default function InvoicesPage() {
     const payload = {
       ...form,
       taxRate: parseFloat(form.taxRate),
+      discount: parseFloat(form.discount) || 0,
       items: items.map(item => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, productId: item.productId || undefined })),
     };
     await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -206,7 +208,7 @@ export default function InvoicesPage() {
       const pageWidth = doc.internal.pageSize.getWidth();
       doc.setFontSize(24); doc.setTextColor(37, 99, 235); doc.text(pdfT.invoice, 20, 30);
       doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.setFont("helvetica", "normal");
-      doc.text("Accountant", pageWidth - 20, 20, { align: "right" });
+      doc.text("Cashent", pageWidth - 20, 20, { align: "right" });
       doc.text("Business Management System", pageWidth - 20, 25, { align: "right" });
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
       let y = 45;
@@ -223,11 +225,20 @@ export default function InvoicesPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
-      doc.text(`${pdfT.subtotal}: $${Number(fullInvoice.subtotal).toFixed(2)}`, pageWidth - 20, finalY, { align: "right" });
-      doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): $${Number(fullInvoice.tax).toFixed(2)}`, pageWidth - 20, finalY + 7, { align: "right" });
+      let pdfTotalsY = finalY;
+      doc.text(`${pdfT.subtotal}: $${Number(fullInvoice.subtotal).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      pdfTotalsY += 7;
+      if (fullInvoice.discount > 0) {
+        doc.setTextColor(34, 197, 94);
+        doc.text(`Discount (${fullInvoice.discount}%): -$${(Number(fullInvoice.subtotal) * fullInvoice.discount / 100).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+        doc.setTextColor(60, 60, 60);
+        pdfTotalsY += 7;
+      }
+      doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): $${Number(fullInvoice.tax).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      pdfTotalsY += 11;
       doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
-      doc.text(`${pdfT.grandTotal}: $${Number(fullInvoice.total).toFixed(2)}`, pageWidth - 20, finalY + 18, { align: "right" });
-      if (fullInvoice.notes) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100); doc.text(`${pdfT.notes}: ${fullInvoice.notes}`, 20, finalY + 35); }
+      doc.text(`${pdfT.grandTotal}: $${Number(fullInvoice.total).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      if (fullInvoice.notes) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100); doc.text(`${pdfT.notes}: ${fullInvoice.notes}`, 20, pdfTotalsY + 18); }
       doc.setFontSize(9); doc.setTextColor(150, 150, 150); doc.text(pdfT.thankYou, pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
       doc.save(`${fullInvoice.number}-${lang}.pdf`);
     } catch (err) {
@@ -237,7 +248,10 @@ export default function InvoicesPage() {
   }
 
   const subtotal = Math.max(0, items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0));
-  const tax = subtotal * (parseFloat(form.taxRate) / 100);
+  const discountPct = parseFloat(form.discount) || 0;
+  const discountAmount = subtotal * (discountPct / 100);
+  const afterDiscount = subtotal - discountAmount;
+  const tax = afterDiscount * (parseFloat(form.taxRate) / 100);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent"></div></div>;
 
@@ -247,7 +261,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> {t("invoices.add")}
           </button>
         )}
@@ -314,6 +328,12 @@ export default function InvoicesPage() {
                   <span>{t("invoices.subtotal")}</span>
                   <span className="font-medium text-text-primary">{currencySymbol}{viewInvoice.subtotal.toFixed(2)}</span>
                 </div>
+                {viewInvoice.discount > 0 && (
+                  <div className="flex justify-between text-text-secondary">
+                    <span>Discount ({viewInvoice.discount}%)</span>
+                    <span className="font-medium text-emerald-400">-{currencySymbol}{(viewInvoice.subtotal * viewInvoice.discount / 100).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("invoices.tax")} ({viewInvoice.taxRate}%)</span>
                   <span className="font-medium text-text-primary">{currencySymbol}{viewInvoice.tax.toFixed(2)}</span>
@@ -448,7 +468,7 @@ export default function InvoicesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.date")}</label>
                   <input type="date" value={form.date} onChange={e => { const newDate = e.target.value; setForm({ ...form, date: newDate, dueDate: form.dueDate && form.dueDate < newDate ? "" : form.dueDate }); }} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -460,6 +480,10 @@ export default function InvoicesPage() {
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("invoices.tax_rate")}</label>
                   <input type="number" step="0.1" min="0" max="100" value={form.taxRate} onChange={e => setForm({ ...form, taxRate: e.target.value })} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Discount (%)</label>
+                  <input type="number" step="0.1" min="0" max="100" value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                 </div>
               </div>
 
@@ -503,13 +527,19 @@ export default function InvoicesPage() {
                   <span>{t("invoices.subtotal")}</span>
                   <span className="font-medium text-text-primary">{currencySymbol}{subtotal.toFixed(2)}</span>
                 </div>
+                {discountPct > 0 && (
+                  <div className="flex justify-between text-text-secondary">
+                    <span>Discount ({form.discount}%)</span>
+                    <span className="font-medium text-emerald-400">-{currencySymbol}{discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("invoices.tax")} ({form.taxRate}%)</span>
                   <span className="font-medium text-text-primary">{currencySymbol}{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between border-t border-dark-border pt-1.5">
                   <span className="font-semibold text-text-primary">{t("field.total")}</span>
-                  <span className="text-base font-bold text-accent">{currencySymbol}{(subtotal + tax).toFixed(2)}</span>
+                  <span className="text-base font-bold text-accent">{currencySymbol}{(afterDiscount + tax).toFixed(2)}</span>
                 </div>
               </div>
 
