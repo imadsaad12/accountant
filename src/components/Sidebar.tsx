@@ -85,9 +85,10 @@ export default function Sidebar({
 
   return (
     <aside
+      style={{ height: "100dvh" }}
       className={[
         // Mobile: fixed overlay
-        "fixed inset-y-0 left-0 z-50 h-screen h-[100dvh]",
+        "fixed inset-y-0 left-0 z-50",
         // Desktop: static in-flow
         "md:static md:z-auto",
         // Width
@@ -188,7 +189,7 @@ export default function Sidebar({
       </nav>
 
       {/* User & Logout */}
-      <div className="p-2 border-t border-dark-border shrink-0">
+      <div className="p-2 border-t border-dark-border shrink-0" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
         {!collapsed && (
           <div className="px-3 py-2 mb-1">
             <div className="flex items-center gap-2.5">

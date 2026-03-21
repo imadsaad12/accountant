@@ -16,7 +16,7 @@ export default function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen h-[100dvh] bg-dark-bg">
+    <div className="flex bg-dark-bg" style={{ height: "100dvh" }}>
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
