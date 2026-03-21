@@ -188,23 +188,23 @@ export default function StockPage() {
   return (
     <PermissionGuard feature="products">
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">{t("stock.title")}</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("stock.title")}</h1>
         {canEdit && (
           <div className="flex gap-2">
-            <button onClick={() => setShowCategoryForm(true)} className="flex items-center gap-2 px-4 py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-sm font-medium">
-              <Plus size={18} /> {t("stock.add_category")}
+            <button onClick={() => setShowCategoryForm(true)} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-xs sm:text-sm font-medium">
+              <Plus size={14} /> {t("stock.add_category")}
             </button>
-            <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-              <Plus size={18} /> {t("stock.add")}
+            <button onClick={openCreate} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-xs sm:text-sm font-medium">
+              <Plus size={14} /> {t("stock.add")}
             </button>
           </div>
         )}
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex gap-3 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="relative w-full">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             value={search}
@@ -213,22 +213,24 @@ export default function StockPage() {
             className="w-full pl-9 pr-3 py-2 bg-dark-card border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-accent focus:border-accent"
           />
         </div>
-        {categories.length > 0 && (
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
-            <option value="">{t("common.all_categories")}</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <div className="flex flex-wrap gap-2">
+          {categories.length > 0 && (
+            <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+              <option value="">{t("common.all_categories")}</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <select value={filterStock} onChange={e => setFilterStock(e.target.value as "all" | "low" | "ok")} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+            <option value="all">{t("stock.filter.all")}</option>
+            <option value="low">{t("stock.filter.low")}</option>
+            <option value="ok">{t("stock.filter.ok")}</option>
           </select>
-        )}
-        <select value={filterStock} onChange={e => setFilterStock(e.target.value as "all" | "low" | "ok")} className="px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
-          <option value="all">{t("stock.filter.all")}</option>
-          <option value="low">{t("stock.filter.low")}</option>
-          <option value="ok">{t("stock.filter.ok")}</option>
-        </select>
+        </div>
       </div>
 
       {showCategoryForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-text-primary">{t("stock.new_category")}</h2>
               <button onClick={() => setShowCategoryForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
@@ -245,15 +247,15 @@ export default function StockPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-text-primary">{editing ? t("stock.edit") : t("stock.add")}</h2>
               <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {editing ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.name")} *</label>
                     <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -273,7 +275,7 @@ export default function StockPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.description")}</label>
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("stock.unit_price")} *</label>
                   <input required type="number" step="0.01" min="0" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -335,8 +337,8 @@ export default function StockPage() {
         </div>
       )}
 
-      <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <table className="w-full">
+      <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
+        <table className="w-full min-w-[580px]">
           <thead className="bg-dark-bg/50">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("name")}>

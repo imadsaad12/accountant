@@ -11,18 +11,28 @@ interface LangCtx {
 
 const LanguageContext = createContext<LangCtx>({ lang: "en", setLang: () => {} });
 
+function applyDir(lang: Lang) {
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.documentElement.lang = lang;
+}
+
 export function LanguageProvider({ lang: serverLang, children }: { lang: Lang; children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(serverLang);
 
-  // On mount, prefer localStorage over server value (instant reactivity)
   useEffect(() => {
     const stored = localStorage.getItem("lang") as Lang | null;
-    if (stored === "en" || stored === "fr") setLangState(stored);
-  }, []);
+    if (stored === "en" || stored === "fr" || stored === "ar") {
+      setLangState(stored);
+      applyDir(stored);
+    } else {
+      applyDir(serverLang);
+    }
+  }, [serverLang]);
 
   function setLang(newLang: Lang) {
     setLangState(newLang);
     localStorage.setItem("lang", newLang);
+    applyDir(newLang);
   }
 
   return <LanguageContext.Provider value={{ lang, setLang }}>{children}</LanguageContext.Provider>;

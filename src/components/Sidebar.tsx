@@ -20,6 +20,7 @@ import {
   TrendingDown,
   BookOpen,
   BarChart2,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { canView, type Permissions } from "@/lib/permissions";
@@ -39,7 +40,17 @@ const NAV_ITEMS = [
   { href: "/dashboard/tax", labelKey: "nav.tax", icon: Receipt, feature: "tax" as const },
 ];
 
-export default function Sidebar({ user }: { user: { name: string; email: string; role?: string } }) {
+export default function Sidebar({
+  user,
+  orgName,
+  mobileOpen = false,
+  onMobileClose = () => {},
+}: {
+  user: { name: string; email: string; role?: string };
+  orgName: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslation();
@@ -74,9 +85,20 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
 
   return (
     <aside
-      className={`${
-        collapsed ? "w-[72px]" : "w-64"
-      } bg-dark-sidebar border-r border-dark-border flex flex-col transition-all duration-300 h-screen overflow-hidden shrink-0`}
+      className={[
+        // Mobile: fixed overlay
+        "fixed inset-y-0 left-0 z-50 h-screen",
+        // Desktop: static in-flow
+        "md:static md:z-auto",
+        // Width
+        collapsed ? "md:w-[72px] w-64" : "w-64",
+        // Mobile open/close via transform
+        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        // Common
+        "bg-dark-sidebar border-r border-dark-border flex flex-col",
+        "transition-transform md:transition-all duration-300",
+        "overflow-hidden shrink-0",
+      ].join(" ")}
     >
       {/* Logo */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between">
@@ -86,16 +108,23 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
               <Sparkles size={16} className="text-white" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-text-primary tracking-tight">Accountant</h1>
-              <p className="text-[10px] text-text-muted truncate max-w-[140px]">{user.name}</p>
+              <h1 className="text-base font-bold text-text-primary tracking-tight">{orgName}</h1>
             </div>
           </div>
         )}
+        {/* Desktop collapse button */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg hover:bg-dark-card text-text-muted hover:text-text-secondary"
+          className="hidden md:block p-1.5 rounded-lg hover:bg-dark-card text-text-muted hover:text-text-secondary"
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+        {/* Mobile close button */}
+        <button
+          onClick={onMobileClose}
+          className="md:hidden p-1.5 rounded-lg hover:bg-dark-card text-text-muted hover:text-text-secondary"
+        >
+          <X size={16} />
         </button>
       </div>
 
@@ -111,7 +140,7 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setOptimisticPath(item.href)}
+              onClick={() => { setOptimisticPath(item.href); onMobileClose(); }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
                 isActive
                   ? "bg-accent/10 text-accent-hover border border-accent/20"
@@ -129,7 +158,7 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
         {isAdmin && (
           <Link
             href="/dashboard/team"
-            onClick={() => setOptimisticPath("/dashboard/team")}
+            onClick={() => { setOptimisticPath("/dashboard/team"); onMobileClose(); }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
               (optimisticPath ?? pathname).startsWith("/dashboard/team")
                 ? "bg-accent/10 text-accent-hover border border-accent/20"
@@ -145,7 +174,7 @@ export default function Sidebar({ user }: { user: { name: string; email: string;
         {/* Settings — always visible */}
         <Link
           href="/dashboard/settings"
-          onClick={() => setOptimisticPath("/dashboard/settings")}
+          onClick={() => { setOptimisticPath("/dashboard/settings"); onMobileClose(); }}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
             (optimisticPath ?? pathname).startsWith("/dashboard/settings")
               ? "bg-accent/10 text-accent-hover border border-accent/20"

@@ -135,18 +135,18 @@ export default function ClientsPage() {
   return (
     <PermissionGuard feature="clients">
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">{t("clients.title")}</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("clients.title")}</h1>
         {canEdit && (
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-            <Plus size={18} /> {t("clients.add")}
+          <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+            <Plus size={16} /> {t("clients.add")}
           </button>
         )}
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex gap-3 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="relative w-full">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             value={search}
@@ -156,16 +156,18 @@ export default function ClientsPage() {
           />
         </div>
         {cities.length > 0 && (
-          <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className="px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
-            <option value="">{t("common.all_cities")}</option>
-            {cities.map(city => <option key={city} value={city}>{city}</option>)}
-          </select>
+          <div className="flex flex-wrap gap-2">
+            <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+              <option value="">{t("common.all_cities")}</option>
+              {cities.map(city => <option key={city} value={city}>{city}</option>)}
+            </select>
+          </div>
         )}
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-text-primary">{editing ? t("clients.edit") : t("clients.add")}</h2>
               <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
@@ -175,7 +177,7 @@ export default function ClientsPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.name")} *</label>
                 <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.email")}</label>
                   <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -189,7 +191,7 @@ export default function ClientsPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.address")}</label>
                 <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.city")}</label>
                   <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -215,8 +217,8 @@ export default function ClientsPage() {
         </div>
       )}
 
-      <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <table className="w-full">
+      <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
+        <table className="w-full min-w-[560px]">
           <thead className="bg-dark-bg/50">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("name")}>

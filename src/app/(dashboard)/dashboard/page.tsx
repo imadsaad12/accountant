@@ -116,29 +116,29 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-text-primary">{t("dashboard.title")}</h1>
-        <p className="text-sm text-text-muted mt-1">{t("dashboard.overview")}</p>
+      <div className="mb-4 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("dashboard.title")}</h1>
+        <p className="text-xs sm:text-sm text-text-muted mt-0.5 sm:mt-1">{t("dashboard.overview")}</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
         {stats.map((stat) => (
-          <div key={stat.label} className={`bg-gradient-to-br ${stat.gradient} bg-dark-card rounded-xl p-5 border border-dark-border hover:border-dark-border/80 group`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-text-muted font-medium">{stat.label}</p>
-                <p className="text-2xl font-bold text-text-primary mt-1">{stat.value}</p>
+          <div key={stat.label} className={`bg-gradient-to-br ${stat.gradient} bg-dark-card rounded-xl p-3 sm:p-5 border border-dark-border hover:border-dark-border/80 group`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-sm text-text-muted font-medium truncate">{stat.label}</p>
+                <p className="text-base sm:text-2xl font-bold text-text-primary mt-0.5 sm:mt-1 truncate">{stat.value}</p>
                 {stat.trend && (
-                  <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${stat.up ? "text-emerald-400" : "text-red-400"}`}>
+                  <div className={`hidden sm:flex items-center gap-1 mt-2 text-xs font-medium ${stat.up ? "text-emerald-400" : "text-red-400"}`}>
                     {stat.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     <span>{stat.trend}</span>
                     <span className="text-text-muted ml-1">{t("dashboard.vs_last_month")}</span>
                   </div>
                 )}
               </div>
-              <div className={`${stat.iconBg} p-3 rounded-xl`}>
-                <stat.icon className={stat.iconColor} size={22} />
+              <div className={`${stat.iconBg} p-1.5 sm:p-3 rounded-lg sm:rounded-xl shrink-0`}>
+                <stat.icon className={stat.iconColor} size={16} />
               </div>
             </div>
           </div>
@@ -146,10 +146,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
         {/* Revenue Area Chart */}
-        <div className="lg:col-span-2 bg-dark-card rounded-xl p-5 border border-dark-border">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-2 bg-dark-card rounded-xl p-3 sm:p-5 border border-dark-border">
+          <div className="flex items-center justify-between mb-3 sm:mb-6">
             <div>
               <h2 className="text-base font-semibold text-text-primary">{t("dashboard.revenue_trend")}</h2>
               <p className="text-xs text-text-muted mt-0.5">{t("dashboard.daily_trend")}</p>
@@ -158,7 +158,7 @@ export default function DashboardPage() {
               {sym}{data.grossEarning.toLocaleString()} {t("dashboard.gross_label")}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={areaData}>
               <defs>
                 <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
@@ -227,15 +227,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Bar Chart + Low Stock Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mb-4 sm:mb-8">
         {/* Invoice Amounts Bar Chart */}
-        <div className="bg-dark-card rounded-xl p-5 border border-dark-border">
-          <div className="mb-6">
+        <div className="bg-dark-card rounded-xl p-3 sm:p-5 border border-dark-border">
+          <div className="mb-3 sm:mb-6">
             <h2 className="text-base font-semibold text-text-primary">{t("dashboard.monthly_invoices")}</h2>
             <p className="text-xs text-text-muted mt-0.5">{t("dashboard.latest_totals")}</p>
           </div>
           {barData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={200}>
               <BarChart data={barData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
                 <XAxis dataKey="name" stroke={chartAxis} fontSize={10} tickLine={false} axisLine={false} />
@@ -260,8 +260,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Low Stock Alerts */}
-        <div className="bg-dark-card rounded-xl p-5 border border-dark-border">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-dark-card rounded-xl p-3 sm:p-5 border border-dark-border">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <AlertTriangle size={18} className="text-amber-400" />
             <h2 className="text-base font-semibold text-text-primary">{t("dashboard.low_stock")}</h2>
           </div>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
 
       {/* Recent Invoices Table */}
       <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <div className="p-5 border-b border-dark-border">
+        <div className="p-3 sm:p-5 border-b border-dark-border">
           <h2 className="text-base font-semibold text-text-primary">{t("dashboard.recent_invoices")}</h2>
           <p className="text-xs text-text-muted mt-0.5">{t("dashboard.latest_billing")}</p>
         </div>
@@ -311,7 +311,8 @@ export default function DashboardPage() {
             <p className="text-sm">{t("dashboard.no_recent")}</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="bg-dark-bg/50">
                 <th className="text-left px-5 py-3 text-xs font-medium text-text-muted uppercase tracking-wider">{t("tax.invoice")}</th>
@@ -341,6 +342,7 @@ export default function DashboardPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

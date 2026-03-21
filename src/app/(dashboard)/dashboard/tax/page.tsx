@@ -54,37 +54,37 @@ export default function TaxPage() {
     <PermissionGuard feature="tax">
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text-primary">{t("tax.title")}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("tax.title")}</h1>
           <p className="text-text-muted text-sm mt-1">{t("tax.subtitle")}</p>
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("tax.collected")}</p>
-            <p className="text-2xl font-bold text-green-400">{sym}{fmt(paidTax)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-400">{sym}{fmt(paidTax)}</p>
             <p className="text-xs text-text-muted mt-1">{t("tax.collected_hint")}</p>
           </div>
-          <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("tax.pending")}</p>
-            <p className="text-2xl font-bold text-yellow-400">{sym}{fmt(pendingTax)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-yellow-400">{sym}{fmt(pendingTax)}</p>
             <p className="text-xs text-text-muted mt-1">{t("tax.pending_hint")}</p>
           </div>
-          <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+          <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("tax.total_invoices")}</p>
-            <p className="text-2xl font-bold text-text-primary">{invoices.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-text-primary">{invoices.length}</p>
             <p className="text-xs text-text-muted mt-1">{t("tax.all_statuses")}</p>
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <div className="bg-dark-card border border-dark-border rounded-xl overflow-x-auto">
           {loading ? (
             <div className="p-8 text-center text-text-muted">{t("common.loading")}</div>
           ) : invoices.length === 0 ? (
             <div className="p-8 text-center text-text-muted">{t("invoices.empty")}</div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b border-dark-border bg-dark-input/50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("tax.invoice")}</th>

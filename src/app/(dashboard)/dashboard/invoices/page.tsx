@@ -7,6 +7,7 @@ import autoTable from "jspdf-autotable";
 import { Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
+import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 
 interface Client {
   id: string;
@@ -72,6 +73,8 @@ export default function InvoicesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("invoices");
   const t = useTranslation();
+  const { orgSettings } = useOrgSettings();
+  const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -241,56 +244,84 @@ export default function InvoicesPage() {
   return (
     <PermissionGuard feature="invoices">
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-            <Plus size={18} /> {t("invoices.add")}
+          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+            <Plus size={16} /> {t("invoices.add")}
           </button>
         )}
       </div>
 
       {/* View Invoice Modal */}
       {viewInvoice && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-text-primary">{t("tax.invoice")} {viewInvoice.number}</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-text-primary">{t("tax.invoice")} <span className="text-accent font-mono">{viewInvoice.number}</span></h2>
+              </div>
               <button onClick={() => setViewInvoice(null)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-text-muted">{t("invoices.client")}:</span> <span className="font-medium text-text-primary">{viewInvoice.client.name}</span></div>
-                <div><span className="text-text-muted">{t("field.date")}:</span> <span className="font-medium text-text-primary">{new Date(viewInvoice.date).toLocaleDateString()}</span></div>
-                <div><span className="text-text-muted">{t("field.status")}:</span> <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${viewInvoice.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : viewInvoice.status === "sent" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-slate-500/10 text-slate-400"}`}>{t(`status.${viewInvoice.status}`)}</span></div>
-                <div><span className="text-text-muted">{t("invoices.due_date")}:</span> <span className="font-medium text-text-primary">{viewInvoice.dueDate ? new Date(viewInvoice.dueDate).toLocaleDateString() : "-"}</span></div>
+              {/* Invoice meta */}
+              <div className="grid grid-cols-2 gap-2 bg-dark-bg/40 rounded-xl p-3 border border-dark-border/50">
+                <div>
+                  <p className="text-xs text-text-muted mb-0.5">{t("invoices.client")}</p>
+                  <p className="text-sm font-medium text-text-primary">{viewInvoice.client.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted mb-0.5">{t("field.status")}</p>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${viewInvoice.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : viewInvoice.status === "sent" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : viewInvoice.status === "overdue" ? "bg-red-500/10 text-red-400 border border-red-500/20" : viewInvoice.status === "partially_paid" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-slate-500/10 text-slate-400 border border-slate-500/20"}`}>{t(`status.${viewInvoice.status}`)}</span>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted mb-0.5">{t("field.date")}</p>
+                  <p className="text-sm text-text-primary">{new Date(viewInvoice.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted mb-0.5">{t("invoices.due_date")}</p>
+                  <p className="text-sm text-text-primary">{viewInvoice.dueDate ? new Date(viewInvoice.dueDate).toLocaleDateString() : "-"}</p>
+                </div>
               </div>
 
-              <table className="w-full text-sm">
-                <thead className="bg-dark-bg/50">
-                  <tr>
-                    <th className="text-left px-3 py-2 text-text-muted">{t("field.description")}</th>
-                    <th className="text-right px-3 py-2 text-text-muted">{t("field.quantity")}</th>
-                    <th className="text-right px-3 py-2 text-text-muted">{t("field.price")}</th>
-                    <th className="text-right px-3 py-2 text-text-muted">{t("field.total")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewInvoice.items.map((item, i) => (
-                    <tr key={i} className="border-b border-dark-border/50">
-                      <td className="px-3 py-2 text-text-primary">{item.description}</td>
-                      <td className="px-3 py-2 text-right text-text-secondary">{item.quantity}</td>
-                      <td className="px-3 py-2 text-right text-text-secondary">${item.unitPrice.toFixed(2)}</td>
-                      <td className="px-3 py-2 text-right text-text-primary">${item.total.toFixed(2)}</td>
+              {/* Items table */}
+              <div className="rounded-xl border border-dark-border overflow-x-auto">
+                <table className="w-full text-sm min-w-[380px]">
+                  <thead className="bg-dark-bg/60">
+                    <tr>
+                      <th className="text-left px-3 py-2.5 text-xs font-medium text-text-muted uppercase">{t("field.description")}</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium text-text-muted uppercase">{t("field.quantity")}</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium text-text-muted uppercase">{t("field.price")}</th>
+                      <th className="text-right px-3 py-2.5 text-xs font-medium text-text-muted uppercase">{t("field.total")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-dark-border/50">
+                    {viewInvoice.items.map((item, i) => (
+                      <tr key={i} className="hover:bg-dark-bg/30">
+                        <td className="px-3 py-2.5 text-text-primary">{item.description}</td>
+                        <td className="px-3 py-2.5 text-right text-text-secondary">{item.quantity}</td>
+                        <td className="px-3 py-2.5 text-right text-text-secondary">{currencySymbol}{item.unitPrice.toFixed(2)}</td>
+                        <td className="px-3 py-2.5 text-right font-medium text-text-primary">{currencySymbol}{item.total.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-              <div className="text-right space-y-1 text-sm">
-                <div className="text-text-secondary">{t("invoices.subtotal")}: <span className="font-medium text-text-primary">${viewInvoice.subtotal.toFixed(2)}</span></div>
-                <div className="text-text-secondary">{t("invoices.tax")} ({viewInvoice.taxRate}%): <span className="font-medium text-text-primary">${viewInvoice.tax.toFixed(2)}</span></div>
-                <div className="text-lg font-bold text-text-primary">{t("field.total")}: ${viewInvoice.total.toFixed(2)}</div>
+              {/* Totals */}
+              <div className="bg-dark-bg/40 rounded-xl border border-dark-border/50 p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between text-text-secondary">
+                  <span>{t("invoices.subtotal")}</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{viewInvoice.subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-text-secondary">
+                  <span>{t("invoices.tax")} ({viewInvoice.taxRate}%)</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{viewInvoice.tax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t border-dark-border pt-1.5">
+                  <span className="font-semibold text-text-primary">{t("field.total")}</span>
+                  <span className="text-base font-bold text-accent">{currencySymbol}{viewInvoice.total.toFixed(2)}</span>
+                </div>
               </div>
 
               {/* Payments Panel */}
@@ -309,7 +340,7 @@ export default function InvoicesPage() {
                 {/* Payment Form */}
                 {showPaymentForm && (
                   <form onSubmit={handleAddPayment} className="bg-dark-bg/50 border border-dark-border rounded-xl p-4 mb-3 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-text-secondary mb-1 block">{t("payments.amount")} *</label>
                         <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="0.00" />
@@ -319,7 +350,7 @@ export default function InvoicesPage() {
                         <input type="date" value={paymentForm.date} onChange={e => setPaymentForm({ ...paymentForm, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-text-secondary mb-1 block">{t("payments.method")}</label>
                         <select value={paymentForm.method} onChange={e => setPaymentForm({ ...paymentForm, method: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
@@ -394,14 +425,14 @@ export default function InvoicesPage() {
 
       {/* Create Invoice Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-text-primary">{t("invoices.add")}</h2>
               <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("invoices.client")} *</label>
                   <select required value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
@@ -417,7 +448,7 @@ export default function InvoicesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.date")}</label>
                   <input type="date" value={form.date} onChange={e => { const newDate = e.target.value; setForm({ ...form, date: newDate, dueDate: form.dueDate && form.dueDate < newDate ? "" : form.dueDate }); }} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -435,38 +466,51 @@ export default function InvoicesPage() {
               {/* Line Items */}
               <div>
                 <label className="text-sm font-medium text-text-secondary mb-2 block">{t("invoices.items")}</label>
-                <div className="grid grid-cols-[160px_1fr_72px_96px_88px_30px] gap-2 px-1 mb-1">
-                  <span className="text-xs font-medium text-text-muted uppercase">{t("invoices.product")}</span>
-                  <span className="text-xs font-medium text-text-muted uppercase">{t("field.description")}</span>
-                  <span className="text-xs font-medium text-text-muted uppercase">{t("field.quantity")}</span>
-                  <span className="text-xs font-medium text-text-muted uppercase">{t("invoices.unit_price")}</span>
-                  <span className="text-xs font-medium text-text-muted uppercase text-right">{t("field.total")}</span>
-                  <span />
-                </div>
-                <div className="space-y-2">
-                  {items.map((item, idx) => (
-                    <div key={idx} className="grid grid-cols-[160px_1fr_72px_96px_88px_30px] gap-2 items-center">
-                      <select value={item.productId} onChange={e => updateItem(idx, "productId", e.target.value)} className="px-2 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
-                        <option value="">{t("invoices.custom_item")}</option>
-                        {products.map(p => <option key={p.id} value={p.id}>{p.name} (${p.price})</option>)}
-                      </select>
-                      <input placeholder={t("field.description")} required value={item.description} onChange={e => updateItem(idx, "description", e.target.value)} className="w-full px-2 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" />
-                      <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-2 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-                      <input type="number" step="0.01" min="0" value={item.unitPrice} onChange={e => updateItem(idx, "unitPrice", parseFloat(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-2 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-                      <span className="text-sm text-right font-medium text-text-primary">${(item.quantity * item.unitPrice).toFixed(2)}</span>
-                      <button type="button" onClick={() => removeItem(idx)} className={`text-text-muted hover:text-danger p-1 ${items.length <= 1 ? "invisible" : ""}`}><Trash2 size={14} /></button>
+                <div className="overflow-x-auto rounded-lg border border-dark-border">
+                  <div className="min-w-[520px]">
+                    <div className="grid grid-cols-[150px_1fr_68px_90px_80px_28px] gap-2 px-2 py-1.5 bg-dark-bg/50 border-b border-dark-border">
+                      <span className="text-xs font-medium text-text-muted uppercase">{t("invoices.product")}</span>
+                      <span className="text-xs font-medium text-text-muted uppercase">{t("field.description")}</span>
+                      <span className="text-xs font-medium text-text-muted uppercase">{t("field.quantity")}</span>
+                      <span className="text-xs font-medium text-text-muted uppercase">{t("invoices.unit_price")}</span>
+                      <span className="text-xs font-medium text-text-muted uppercase text-right">{t("field.total")}</span>
+                      <span />
                     </div>
-                  ))}
+                    <div className="divide-y divide-dark-border/50">
+                      {items.map((item, idx) => (
+                        <div key={idx} className="grid grid-cols-[150px_1fr_68px_90px_80px_28px] gap-2 items-center px-2 py-1.5">
+                          <select value={item.productId} onChange={e => updateItem(idx, "productId", e.target.value)} className="px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
+                            <option value="">{t("invoices.custom_item")}</option>
+                            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({currencySymbol}{p.price})</option>)}
+                          </select>
+                          <input placeholder={t("field.description")} required value={item.description} onChange={e => updateItem(idx, "description", e.target.value)} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" />
+                          <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+                          <input type="number" step="0.01" min="0" value={item.unitPrice} onChange={e => updateItem(idx, "unitPrice", parseFloat(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+                          <span className="text-sm text-right font-medium text-text-primary">{currencySymbol}{(item.quantity * item.unitPrice).toFixed(2)}</span>
+                          <button type="button" onClick={() => removeItem(idx)} className={`text-text-muted hover:text-danger p-1 ${items.length <= 1 ? "invisible" : ""}`}><Trash2 size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <button type="button" onClick={addItem} className="mt-3 flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover font-medium">
                   <Plus size={16} /> {t("invoices.add_item")}
                 </button>
               </div>
 
-              <div className="text-right space-y-1 text-sm border-t border-dark-border pt-3">
-                <div className="text-text-secondary">{t("invoices.subtotal")}: <span className="font-medium text-text-primary">${subtotal.toFixed(2)}</span></div>
-                <div className="text-text-secondary">{t("invoices.tax")} ({form.taxRate}%): <span className="font-medium text-text-primary">${tax.toFixed(2)}</span></div>
-                <div className="text-lg font-bold text-text-primary">{t("field.total")}: ${(subtotal + tax).toFixed(2)}</div>
+              <div className="bg-dark-bg/40 rounded-xl border border-dark-border/50 p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between text-text-secondary">
+                  <span>{t("invoices.subtotal")}</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-text-secondary">
+                  <span>{t("invoices.tax")} ({form.taxRate}%)</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{tax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t border-dark-border pt-1.5">
+                  <span className="font-semibold text-text-primary">{t("field.total")}</span>
+                  <span className="text-base font-bold text-accent">{currencySymbol}{(subtotal + tax).toFixed(2)}</span>
+                </div>
               </div>
 
               <div>
@@ -483,8 +527,8 @@ export default function InvoicesPage() {
       )}
 
       {/* Invoice List */}
-      <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <table className="w-full">
+      <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead className="bg-dark-bg/50">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("invoices.number")}</th>
@@ -536,7 +580,7 @@ export default function InvoicesPage() {
                     </select>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right space-x-1">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openViewInvoice(inv)} className="text-text-muted hover:text-accent p-1" title="View"><Eye size={16} /></button>
                   <button onClick={() => exportPDF(inv, inv.language || "fr")} className="text-text-muted hover:text-success p-1" title="Download PDF"><Download size={16} /></button>
                   {canEdit && <button onClick={() => handleDelete(inv.id)} className="text-text-muted hover:text-danger p-1" title="Delete"><Trash2 size={16} /></button>}

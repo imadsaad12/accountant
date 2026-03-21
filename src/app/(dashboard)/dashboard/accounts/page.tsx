@@ -103,14 +103,14 @@ export default function AccountsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary flex items-center gap-2">
               <BookOpen size={22} className="text-accent" /> {t("accounts.title")}
             </h1>
             <p className="text-sm text-text-muted mt-0.5">{t("accounts.subtitle")}</p>
           </div>
           {canEdit && (
-            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-              <Plus size={18} /> {t("accounts.add")}
+            <button onClick={openAdd} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+              <Plus size={16} /> {t("accounts.add")}
             </button>
           )}
         </div>
@@ -132,15 +132,15 @@ export default function AccountsPage() {
 
         {/* Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-text-primary">{editId ? t("accounts.edit") : t("accounts.add")}</h2>
                 <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
               </div>
               {error && <div className="mb-3 p-3 bg-danger/10 border border-danger/20 text-danger text-sm rounded-lg">{error}</div>}
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">{t("accounts.code")} *</label>
                     <input required value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="e.g. 1000" />
@@ -179,12 +179,12 @@ export default function AccountsPage() {
         ) : (
           <div className="space-y-4">
             {ACCOUNT_TYPES.filter(type => (filterType ? type === filterType : true) && grouped[type]?.length).map(type => (
-              <div key={type} className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+              <div key={type} className="bg-dark-card border border-dark-border rounded-xl overflow-x-auto">
                 <div className={`px-4 py-2 border-b border-dark-border flex items-center gap-2`}>
                   <span className={`text-xs px-2 py-0.5 rounded border font-semibold uppercase ${TYPE_COLORS[type]}`}>{t(`accounts.type.${type}`)}</span>
                   <span className="text-xs text-text-muted">{grouped[type].length} accounts</span>
                 </div>
-                <table className="w-full">
+                <table className="w-full min-w-[480px]">
                   <thead className="bg-dark-bg/30">
                     <tr>
                       <th className="text-left px-4 py-2 text-xs font-medium text-text-muted">{t("accounts.code")}</th>

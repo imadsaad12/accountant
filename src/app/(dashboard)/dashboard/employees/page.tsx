@@ -143,18 +143,18 @@ export default function EmployeesPage() {
   return (
     <PermissionGuard feature="employees">
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">{t("employees.title")}</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("employees.title")}</h1>
         {canEdit && (
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-            <Plus size={18} /> {t("employees.add")}
+          <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+            <Plus size={16} /> {t("employees.add")}
           </button>
         )}
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex gap-3 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="relative w-full">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             value={search}
@@ -163,29 +163,31 @@ export default function EmployeesPage() {
             className="w-full pl-9 pr-3 py-2 bg-dark-card border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-accent focus:border-accent"
           />
         </div>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
-          <option value="">{t("common.all_statuses")}</option>
-          <option value="active">{t("status.active")}</option>
-          <option value="inactive">{t("status.inactive")}</option>
-          <option value="on_leave">{t("status.on_leave")}</option>
-        </select>
-        {departments.length > 0 && (
-          <select value={filterDept} onChange={e => setFilterDept(e.target.value)} className="px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
-            <option value="">{t("common.all_departments")}</option>
-            {departments.map(d => <option key={d} value={d}>{d}</option>)}
+        <div className="flex flex-wrap gap-2">
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+            <option value="">{t("common.all_statuses")}</option>
+            <option value="active">{t("status.active")}</option>
+            <option value="inactive">{t("status.inactive")}</option>
+            <option value="on_leave">{t("status.on_leave")}</option>
           </select>
-        )}
+          {departments.length > 0 && (
+            <select value={filterDept} onChange={e => setFilterDept(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+              <option value="">{t("common.all_departments")}</option>
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-text-primary">{editing ? t("employees.edit") : t("employees.add")}</h2>
               <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.first_name")} *</label>
                   <input required value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -195,7 +197,7 @@ export default function EmployeesPage() {
                   <input required value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.email")}</label>
                   <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -205,7 +207,7 @@ export default function EmployeesPage() {
                   <PhoneInput value={form.phone} onChange={v => setForm({ ...form, phone: v })} className="w-full" defaultCountry={orgSettings.defaultPhoneCountry} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.position")} *</label>
                   <input required value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -215,7 +217,7 @@ export default function EmployeesPage() {
                   <input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.salary")} *</label>
                   <input required type="number" step="0.01" min="0" value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -225,7 +227,7 @@ export default function EmployeesPage() {
                   <input disabled value={orgSettings.defaultCurrency} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-muted rounded-lg cursor-not-allowed opacity-60" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.hire_date")}</label>
                   <input type="date" value={form.hireDate} onChange={e => setForm({ ...form, hireDate: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
@@ -256,8 +258,8 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-        <table className="w-full">
+      <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-dark-bg/50">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("name")}>

@@ -248,26 +248,26 @@ export default function TeamPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">{t("team.title")}</h1>
-          <p className="text-text-muted text-sm mt-1">{t("team.subtitle")}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("team.title")}</h1>
+          <p className="text-text-muted text-xs sm:text-sm mt-0.5 sm:mt-1">{t("team.subtitle")}</p>
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors"
         >
           <Plus size={16} /> {t("team.add")}
         </button>
       </div>
 
-      <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+      <div className="bg-dark-card border border-dark-border rounded-xl overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-text-muted">{t("common.loading")}</div>
         ) : users.length === 0 ? (
           <div className="p-8 text-center text-text-muted">{t("team.empty")}</div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-dark-border bg-dark-input/50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">{t("team.full_name")}</th>
@@ -334,7 +334,7 @@ export default function TeamPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-dark-border">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-dark-border">
               <h2 className="text-lg font-semibold text-text-primary">
                 {editing ? t("team.edit") : t("team.add")}
               </h2>
@@ -343,7 +343,7 @@ export default function TeamPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4">
               {error && (
                 <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-3 rounded-lg text-sm">{error}</div>
               )}
@@ -453,7 +453,7 @@ export default function TeamPage() {
       {/* Delete confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-sm">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-text-primary mb-2">{t("team.remove")}</h3>
             <p className="text-text-muted text-sm mb-5">{t("team.remove_confirm")}</p>
             <div className="flex gap-3">

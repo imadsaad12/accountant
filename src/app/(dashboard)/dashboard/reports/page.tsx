@@ -165,39 +165,45 @@ export default function ReportsPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">{t("reports.title")}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("reports.title")}</h1>
           <p className="text-sm text-text-muted mt-0.5">{t("reports.subtitle")}</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-dark-bg/50 p-1 rounded-xl border border-dark-border w-fit">
-          {tabs.map(tab => (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setReport(null); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? "bg-accent text-white" : "text-text-muted hover:text-text-primary"}`}>
-              <tab.icon size={15} /> {tab.label}
-            </button>
-          ))}
+        <div className="overflow-x-auto">
+          <div className="flex gap-1 bg-dark-bg/50 p-1 rounded-xl border border-dark-border w-fit min-w-max">
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => { setActiveTab(tab.id); setReport(null); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id ? "bg-accent text-white" : "text-text-muted hover:text-text-primary"}`}>
+                <tab.icon size={15} /> {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-muted">{t("reports.from")}</span>
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-text-muted whitespace-nowrap">{t("reports.from")}</span>
+              <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-text-muted whitespace-nowrap">{t("reports.to")}</span>
+              <input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-muted">{t("reports.to")}</span>
-            <input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className="px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-          </div>
-          <button onClick={generate} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60">
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <BarChart2 size={15} />}
-            {t("reports.generate")}
-          </button>
-          {report && !loading && (
-            <button onClick={exportPDF} className="flex items-center gap-2 px-4 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm font-medium hover:bg-dark-card-hover">
-              <Download size={15} /> Export PDF
+          <div className="flex gap-2">
+            <button onClick={generate} disabled={loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60">
+              {loading ? <Loader2 size={15} className="animate-spin" /> : <BarChart2 size={15} />}
+              {t("reports.generate")}
             </button>
-          )}
+            {report && !loading && (
+              <button onClick={exportPDF} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm font-medium hover:bg-dark-card-hover">
+                <Download size={15} /> Export PDF
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Report Output */}
@@ -219,32 +225,32 @@ export default function ReportsPage() {
           return (
             <div className="space-y-4">
               {/* Summary KPIs */}
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
                   <div className="text-text-muted text-xs mb-1">{t("reports.revenue")}</div>
-                  <div className="text-xl font-bold text-emerald-400">{fmt(pl.revenue)}</div>
+                  <div className="text-base sm:text-xl font-bold text-emerald-400">{fmt(pl.revenue)}</div>
                   <div className="text-xs text-text-muted mt-0.5">{pl.invoiceCount} invoices</div>
                 </div>
-                <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+                <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
                   <div className="text-text-muted text-xs mb-1">{t("reports.gross_profit")}</div>
-                  <div className="text-xl font-bold text-blue-400">{fmt(pl.grossProfit)}</div>
+                  <div className="text-base sm:text-xl font-bold text-blue-400">{fmt(pl.grossProfit)}</div>
                   <div className="text-xs text-text-muted mt-0.5">{pct(pl.grossProfit, pl.revenue)} margin</div>
                 </div>
-                <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+                <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
                   <div className="text-text-muted text-xs mb-1">{t("reports.operating_expenses")}</div>
-                  <div className="text-xl font-bold text-orange-400">{fmt(pl.totalExpenses)}</div>
+                  <div className="text-base sm:text-xl font-bold text-orange-400">{fmt(pl.totalExpenses)}</div>
                 </div>
-                <div className={`rounded-xl p-4 border ${isProfit ? "bg-emerald-500/5 border-emerald-500/20" : "bg-red-500/5 border-red-500/20"}`}>
+                <div className={`rounded-xl p-3 sm:p-4 border ${isProfit ? "bg-emerald-500/5 border-emerald-500/20" : "bg-red-500/5 border-red-500/20"}`}>
                   <div className="text-text-muted text-xs mb-1">{t("reports.net_profit")}</div>
-                  <div className={`text-xl font-bold flex items-center gap-1 ${isProfit ? "text-emerald-400" : "text-red-400"}`}>
-                    {isProfit ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                  <div className={`text-base sm:text-xl font-bold flex items-center gap-1 ${isProfit ? "text-emerald-400" : "text-red-400"}`}>
+                    {isProfit ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                     {fmt(Math.abs(pl.netProfit))}
                   </div>
                   <div className="text-xs text-text-muted mt-0.5">{pct(pl.netProfit, pl.revenue)} net margin</div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Income Section */}
                 <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
@@ -313,7 +319,7 @@ export default function ReportsPage() {
         {!loading && report?.type === "bs" && (() => {
           const bs = report as BSReport;
           return (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Assets */}
               <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
@@ -398,11 +404,11 @@ export default function ReportsPage() {
           return (
             <div className="space-y-4">
               {/* Bucket Summary */}
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {bucketLabels.map(b => (
-                  <div key={b.key} className="bg-dark-card border border-dark-border rounded-xl p-4">
+                  <div key={b.key} className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
                     <div className="text-text-muted text-xs mb-1">{b.label}</div>
-                    <div className={`text-lg font-bold ${b.color}`}>{fmt(aging.buckets[b.key as keyof typeof aging.buckets])}</div>
+                    <div className={`text-base sm:text-lg font-bold ${b.color}`}>{fmt(aging.buckets[b.key as keyof typeof aging.buckets])}</div>
                     <div className="text-xs text-text-muted">{pct(aging.buckets[b.key as keyof typeof aging.buckets], total)}</div>
                   </div>
                 ))}
@@ -413,7 +419,8 @@ export default function ReportsPage() {
                   <h3 className="text-sm font-semibold text-text-primary">{t("aging.title")}</h3>
                   <span className="text-xs text-text-muted">Total AR: <strong className="text-text-primary">{fmt(total)}</strong></span>
                 </div>
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
                   <thead className="bg-dark-bg/50">
                     <tr>
                       <th className="text-left px-4 py-2 text-xs text-text-muted">Invoice #</th>
@@ -446,6 +453,7 @@ export default function ReportsPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           );

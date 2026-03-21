@@ -1,0 +1,605 @@
+"use client";
+
+import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
+import {
+  BarChart3, FileText, Package, TrendingUp,
+  Bot, Shield, Globe, ChevronRight, ArrowRight,
+  Receipt, UserCog, Activity, Zap, CheckCircle, X, TriangleAlert, Menu,
+} from "lucide-react";
+
+// ─── Intersection observer fade-in ───────────────────────────────────────────
+function useFadeIn(threshold = 0.12) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); io.disconnect(); } },
+      { threshold }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function Lightbox({ images, startIndex, onClose }: {
+  images: { src: string; alt: string }[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [active, setActive] = useState(startIndex);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    // Blur the page content directly
+    const root = document.getElementById("landing-root");
+    if (root) {
+      root.style.transition = "filter 250ms ease";
+      root.style.filter = "blur(8px)";
+    }
+
+    // Lock scroll without layout shift
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeRef.current();
+      if (e.key === "ArrowRight") setActive(i => (i + 1) % images.length);
+      if (e.key === "ArrowLeft")  setActive(i => (i - 1 + images.length) % images.length);
+    };
+    document.addEventListener("keydown", onKey);
+
+    return () => {
+      // Unblur page
+      if (root) root.style.filter = "";
+
+      // Restore scroll position
+      const y = parseInt(document.body.style.top || "0") * -1;
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, y);
+
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [images.length]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
+      style={{ animation: "lbOverlay 250ms ease forwards" }}
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        className="absolute top-5 right-5 z-10 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+        onClick={onClose}
+      >
+        <X size={18} className="text-white" />
+      </button>
+
+      {/* Image + dots */}
+      <div
+        className="flex flex-col items-center gap-5 px-4"
+        style={{ animation: "lbContent 280ms ease forwards" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={active}
+          src={images[active].src}
+          alt={images[active].alt}
+          className="rounded-xl border border-white/10 shadow-2xl object-contain"
+          style={{
+            maxWidth: "min(85vw, 1100px)",
+            maxHeight: "75vh",
+            display: "block",
+            animation: "lbImg 200ms ease forwards",
+          }}
+        />
+
+        {/* Dots */}
+        {images.length > 1 && (
+          <div className="flex gap-2.5">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                className={`rounded-full transition-all duration-300 ${i === active ? "bg-white w-5 h-2.5" : "bg-white/35 hover:bg-white/60 w-2.5 h-2.5"}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes lbOverlay  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes lbContent  { from { opacity: 0; transform: scale(0.93) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes lbImg      { from { opacity: 0; } to { opacity: 1; } }
+      `}</style>
+    </div>,
+    document.body
+  );
+}
+
+// ─── Dot Carousel ────────────────────────────────────────────────────────────
+function Carousel({ images }: { images: { src: string; alt: string }[] }) {
+  const [active, setActive] = useState(0);
+  const [lightbox, setLightbox] = useState<number | null>(null);
+
+  const next = useCallback(() => setActive(i => (i + 1) % images.length), [images.length]);
+
+  useEffect(() => {
+    if (lightbox !== null) return; // pause auto-cycle while lightbox is open
+    const t = setInterval(next, 3500);
+    return () => clearInterval(t);
+  }, [next, lightbox]);
+
+  return (
+    <>
+      <div
+        className="group relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/60 transition-all duration-500 ease-out cursor-zoom-in hover:shadow-indigo-500/20 hover:shadow-2xl hover:border-indigo-500/30"
+        onClick={() => setLightbox(active)}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-10 pointer-events-none" />
+        {/* Image stack — all absolute, cross-fade via opacity + scale */}
+        <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+          {images.map((img, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={img.src}
+              src={img.src}
+              alt={img.alt}
+              className="absolute inset-0 w-full h-full object-contain"
+              style={{
+                opacity: i === active ? 1 : 0,
+                transition: "opacity 700ms ease-in-out",
+              }}
+            />
+          ))}
+        </div>
+        {/* Dots */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={e => { e.stopPropagation(); setActive(i); }}
+              className={`rounded-full transition-all duration-300 ${i === active ? "bg-white w-4 h-2" : "bg-white/40 hover:bg-white/70 w-2 h-2"}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {lightbox !== null && (
+        <Lightbox images={images} startIndex={lightbox} onClose={() => setLightbox(null)} />
+      )}
+    </>
+  );
+}
+
+// ─── Single screenshot ────────────────────────────────────────────────────────
+function Screenshot({ src, alt }: { src: string; alt: string }) {
+  const [lightbox, setLightbox] = useState(false);
+
+  return (
+    <>
+      <div
+        className="group relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/60 transition-all duration-500 ease-out cursor-zoom-in hover:shadow-indigo-500/20 hover:shadow-2xl hover:border-indigo-500/30"
+        onClick={() => setLightbox(true)}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent z-10 pointer-events-none" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-auto"
+        />
+      </div>
+
+      {lightbox && (
+        <Lightbox images={[{ src, alt }]} startIndex={0} onClose={() => setLightbox(false)} />
+      )}
+    </>
+  );
+}
+
+// ─── Feature card ────────────────────────────────────────────────────────────
+function FeatureCard({ icon: Icon, title, desc, color }: { icon: React.ElementType; title: string; desc: string; color: string }) {
+  return (
+    <div className="group p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-indigo-500/40 hover:bg-white/[0.06] transition-all duration-300">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${color}`}>
+        <Icon size={20} className="text-white" />
+      </div>
+      <h3 className="text-white font-semibold mb-2">{title}</h3>
+      <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+    </div>
+  );
+}
+
+// ─── Showcase section (text + single or carousel) ─────────────────────────────
+function ShowcaseSection({
+  badge, title, subtitle, description, images, reverse = false,
+}: {
+  badge: string; title: string; subtitle: string; description: string;
+  images: { src: string; alt: string }[];
+  reverse?: boolean;
+}) {
+  const { ref, visible } = useFadeIn();
+  return (
+    <div
+      ref={ref}
+      className={`flex flex-col ${reverse ? "lg:flex-row-reverse" : "lg:flex-row"} gap-12 lg:gap-20 items-center transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+    >
+      <div className="flex-1 space-y-6">
+        <span className="inline-block text-xs font-semibold tracking-widest text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full">
+          {badge}
+        </span>
+        <h2 className="text-3xl lg:text-4xl font-bold text-white leading-tight">{title}</h2>
+        <p className="text-lg text-indigo-300 font-medium">{subtitle}</p>
+        <p className="text-slate-400 leading-relaxed">{description}</p>
+      </div>
+      <div className="flex-1 w-full">
+        {images.length > 1
+          ? <Carousel images={images} />
+          : <Screenshot src={images[0].src} alt={images[0].alt} />
+        }
+      </div>
+    </div>
+  );
+}
+
+// ─── Language section ─────────────────────────────────────────────────────────
+function LanguageSection() {
+  const { ref, visible } = useFadeIn();
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+      <div ref={ref} className={`rounded-3xl bg-gradient-to-br from-indigo-600/20 via-purple-600/10 to-transparent border border-indigo-500/20 p-6 sm:p-12 text-center transition-all duration-700 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+        <Globe size={36} className="text-indigo-400 mx-auto mb-6" />
+        <h2 className="text-3xl font-bold text-white mb-4">Works in 3 languages</h2>
+        <p className="text-slate-400 text-lg max-w-xl mx-auto mb-8">
+          Switch between English, French, and Arabic per user. The AI assistant auto-detects your language and responds naturally.
+        </p>
+        <div className="flex justify-center gap-6 flex-wrap">
+          {["🇬🇧 English", "🇫🇷 Français", "🇱🇧 العربية"].map((lang) => (
+            <span key={lang} className="px-4 py-2 bg-white/[0.06] border border-white/10 rounded-lg text-slate-300 text-sm font-medium">{lang}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+export default function LandingPage() {
+  const [scrollY, setScrollY] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const heroFade     = useFadeIn(0.05);
+  const featuresFade = useFadeIn();
+  const statsFade    = useFadeIn();
+  const pricingFade  = useFadeIn();
+
+  // Image map — matching exact filenames in public/screenshots/
+  const S = (name: string) => `/screenshots/${encodeURIComponent(name)}`;
+
+  return (
+    <div id="landing-root" className="min-h-screen bg-[#080b12] text-white overflow-x-hidden">
+
+      {/* Navbar */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrollY > 20 || mobileMenuOpen ? "bg-[#080b12]/95 backdrop-blur-xl border-b border-white/[0.06]" : ""}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
+              <BarChart3 size={16} className="text-white" />
+            </div>
+            <span className="font-bold text-lg text-white">Accountant</span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
+            <a href="#features" onClick={e => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-white transition-colors cursor-pointer">Features</a>
+            <a href="#showcase" onClick={e => { e.preventDefault(); document.getElementById("showcase")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-white transition-colors cursor-pointer">See it in action</a>
+            <a href="#pricing"  onClick={e => { e.preventDefault(); document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-white transition-colors cursor-pointer">Pricing</a>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/login" className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors px-3 py-2">Sign In</Link>
+            <Link href="/register" className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap">
+              Free Trial
+            </Link>
+            <button
+              className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              onClick={() => setMobileMenuOpen(o => !o)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-white/[0.06] bg-[#080b12]/95 backdrop-blur-xl">
+            <div className="px-4 py-3 space-y-1">
+              {[
+                { label: "Features",        id: "features"  },
+                { label: "See it in action", id: "showcase"  },
+                { label: "Pricing",          id: "pricing"   },
+              ].map(({ label, id }) => (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  onClick={e => {
+                    e.preventDefault();
+                    setMobileMenuOpen(false);
+                    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="block px-3 py-3 text-slate-300 hover:text-white hover:bg-white/[0.06] rounded-lg text-sm font-medium transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
+              <div className="pt-2 border-t border-white/[0.06]">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-3 text-slate-400 hover:text-white text-sm transition-colors"
+                >
+                  Sign In
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero */}
+      <section className="relative pt-24 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px]" />
+          <div className="absolute top-40 left-1/4 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px]" />
+          <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-cyan-600/10 rounded-full blur-[100px]" />
+        </div>
+
+        <div ref={heroFade.ref} className={`relative max-w-5xl mx-auto text-center space-y-8 transition-all duration-1000 ${heroFade.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm px-4 py-1.5 rounded-full">
+            <Zap size={13} className="text-indigo-400" />
+            AI-Powered Business Management
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight tracking-tight">
+            Run your business
+            <br />
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              with clarity
+            </span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Invoices, expenses, inventory, payroll, and AI-powered insights — all in one platform.
+            Built for SMBs. Works in English, French, and Arabic.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/register" className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3.5 rounded-xl font-semibold text-base transition-all duration-200 shadow-lg shadow-indigo-600/30 hover:-translate-y-0.5">
+              Start 15-day free trial
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          <p className="text-slate-500 text-sm">No credit card required · Cancel anytime</p>
+        </div>
+
+        {/* Hero carousel — Dashboard1 + Dashboard2 */}
+        <div className="relative max-w-6xl mx-auto mt-16">
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-[#080b12] z-10 pointer-events-none" />
+          <div
+            className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/80 transition-shadow duration-500 hover:shadow-indigo-500/10 hover:border-indigo-500/20"
+            style={{ transform: `perspective(1200px) rotateX(${Math.min(scrollY * 0.015, 6)}deg)`, transition: "transform 0.1s ease-out, box-shadow 0.5s ease, border-color 0.5s ease" }}
+          >
+            <Carousel images={[
+              { src: S("Dashboard1.png"), alt: "Dashboard overview" },
+              { src: S("Dashboard2.png"), alt: "Dashboard charts" },
+            ]} />
+          </div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <div ref={statsFade.ref} className={`max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-16 transition-all duration-700 ${statsFade.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center border-y border-white/[0.06] py-10">
+          {[
+            { value: "15 min", label: "Setup time" },
+            { value: "3",      label: "Languages supported" },
+            { value: "99.9%",  label: "Uptime" },
+            { value: "100%",   label: "Data accuracy" },
+          ].map(s => (
+            <div key={s.label}>
+              <div className="text-3xl font-bold text-white mb-1">{s.value}</div>
+              <div className="text-slate-500 text-sm">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Features */}
+      <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div ref={featuresFade.ref} className={`text-center mb-16 transition-all duration-700 ${featuresFade.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          <p className="text-indigo-400 text-sm font-semibold tracking-widest uppercase mb-4">Everything you need</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">One platform, zero spreadsheets</h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">Replace 6 different tools with one connected system that keeps every number consistent.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <FeatureCard icon={FileText}   title="Smart Invoicing"   color="bg-indigo-500/20"  desc="Live preview, payment tracking, and auto status from Sent → Partially Paid → Paid." />
+          <FeatureCard icon={TrendingUp} title="Financial Reports" color="bg-emerald-500/20" desc="P&L and receivables aging from live data. Export to PDF in one click." />
+          <FeatureCard icon={Bot}        title="AI Assistant"      color="bg-purple-500/20"  desc="Ask questions in English, French, or Arabic. Your AI knows your business." />
+          <FeatureCard icon={Package}    title="Stock & Inventory" color="bg-amber-500/20"   desc="Low-stock alerts, auto-decrement on invoice, cost vs price margin tracking." />
+          <FeatureCard icon={Receipt}    title="Expense Tracking"  color="bg-red-500/20"     desc="Categorized expenses feed directly into P&L and net earnings." />
+          <FeatureCard icon={UserCog}    title="Employee Payroll"  color="bg-pink-500/20"    desc="Salary records that flow into financial calculations automatically." />
+          <FeatureCard icon={Shield}     title="Role Permissions"  color="bg-cyan-500/20"    desc="Per-feature view/edit permissions enforced at the API level." />
+          <FeatureCard icon={Activity}   title="Activity Log"      color="bg-orange-500/20"  desc="Full audit trail — who did what, when, across every module." />
+        </div>
+      </section>
+
+      {/* Showcase */}
+      <section id="showcase" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-16 md:space-y-32">
+        <div className="text-center">
+          <p className="text-indigo-400 text-sm font-semibold tracking-widest uppercase mb-4">See it in action</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">Built for how you actually work</h2>
+        </div>
+
+        <ShowcaseSection
+          badge="Invoicing"
+          title="Full invoice lifecycle in one place"
+          subtitle="From draft to paid — automatically."
+          description="Create invoices with a live preview, add line items, apply tax rates, and record multiple payments. Status transitions from Sent → Partially Paid → Paid automatically as payments come in."
+          images={[
+            { src: S("Invoices1.png"), alt: "Invoice list" },
+            { src: S("Invoices2.png"), alt: "Invoice detail" },
+          ]}
+        />
+
+        <ShowcaseSection
+          badge="AI Assistant"
+          title="Ask your AI anything about your business"
+          subtitle="English, French, Arabic — it understands all three."
+          description="Your AI assistant has full context of your live business data. Ask about revenue, overdue clients, or instruct it to create records. Every action requires your confirmation before executing."
+          images={[{ src: S("Ai assistance.png"), alt: "AI Assistant" }]}
+          reverse
+        />
+
+        <ShowcaseSection
+          badge="Financial Reports"
+          title="Profit & Loss in seconds, not hours"
+          subtitle="Real numbers, not estimates."
+          description="Select a date range and generate a complete P&L report — revenue, COGS, operating expenses, and net profit — all from live data. Export to PDF with one click."
+          images={[{ src: S("Reports.png"), alt: "Financial Reports" }]}
+        />
+
+        <ShowcaseSection
+          badge="Expenses"
+          title="Every expense tracked, categorized, reported"
+          subtitle="No more spreadsheet gymnastics."
+          description="Log expenses with categories like rent, salaries, software, and marketing. Every entry feeds directly into net earnings on the dashboard and your P&L report."
+          images={[{ src: S("Expenses.png"), alt: "Expenses" }]}
+          reverse
+        />
+
+        <ShowcaseSection
+          badge="Clients & Stock"
+          title="Everything about your clients and inventory"
+          subtitle="Connected, searchable, always accurate."
+          description="Manage your client directory with invoice history per client. Track product stock levels with low-stock alerts and automatic deduction when invoices are created."
+          images={[
+            { src: S("clients.png"), alt: "Clients" },
+            { src: S("Stock.png"),   alt: "Stock" },
+          ]}
+        />
+
+        <ShowcaseSection
+          badge="Team & Tax"
+          title="Control access and stay compliant"
+          subtitle="Permissions and tax visibility in one place."
+          description="Set granular view/edit permissions per feature for each team member. Monitor tax collected vs pending across all invoices — broken down by invoice, rate, and status."
+          images={[
+            { src: S("Team.png"), alt: "Team management" },
+            { src: S("Tax.png"),  alt: "Tax overview" },
+          ]}
+          reverse
+        />
+
+        <ShowcaseSection
+          badge="Employees & Activity"
+          title="Your team and a full audit trail"
+          subtitle="Know who did what, and manage payroll in one place."
+          description="Store employee records with salary data that feeds into expense calculations. Every action across the platform is logged with user, timestamp, and description."
+          images={[
+            { src: S("Employee.png"),     alt: "Employees" },
+            { src: S("Activity Log.png"), alt: "Activity Log" },
+          ]}
+        />
+      </section>
+
+      <LanguageSection />
+
+      {/* Pricing */}
+      <section id="pricing" className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div ref={pricingFade.ref} className={`transition-all duration-700 ${pricingFade.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          <div className="text-center mb-16">
+            <p className="text-indigo-400 text-sm font-semibold tracking-widest uppercase mb-4">Pricing</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent pricing</h2>
+            <p className="text-slate-400">Start free for 15 days. No credit card required.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            {[
+              { name: "Trial", price: "Free", duration: "15 days", highlight: false, color: "border-white/10",      features: [{ t: "All features included", w: false }, { t: "Up to 2 users", w: true }, { t: "50,000 AI tokens", w: true }, { t: "15 days validity", w: true }],                                    cta: "Start free trial", href: "/register" },
+              { name: "Pro",   price: "$49",  duration: "/month",   highlight: true,  color: "border-indigo-500/50", features: [{ t: "All features included", w: false }, { t: "Unlimited users", w: false }, { t: "500,000 AI tokens", w: false }, { t: "Priority support", w: false }],                                       cta: "Get started",      href: "/register" },
+            ].map(plan => (
+              <div key={plan.name} className={`relative rounded-2xl border ${plan.color} p-8 ${plan.highlight ? "bg-indigo-600/10" : "bg-white/[0.02]"}`}>
+                {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>}
+                <div className="mb-6">
+                  <p className="text-slate-400 text-sm mb-1">{plan.name}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white">{plan.price}</span>
+                    <span className="text-slate-400">{plan.duration}</span>
+                  </div>
+                </div>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map(f => (
+                    <li key={f.t} className="flex items-center gap-2 text-sm">
+                      {f.w
+                        ? <TriangleAlert size={14} className="text-amber-400 shrink-0" />
+                        : <CheckCircle  size={14} className="text-indigo-400 shrink-0" />}
+                      <span className={f.w ? "text-amber-200/80" : "text-slate-300"}>{f.t}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href={plan.href} className={`block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors ${plan.highlight ? "bg-indigo-600 hover:bg-indigo-500 text-white" : "border border-white/10 hover:border-white/20 text-slate-300 hover:text-white"}`}>
+                  {plan.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20 text-center">
+        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Ready to take control of your finances?</h2>
+        <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
+          Join businesses that use Accountant to manage invoices, track expenses, and get AI-powered insights — in minutes.
+        </p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-xl shadow-indigo-600/30 hover:-translate-y-0.5">
+          Start your free trial <ChevronRight size={18} />
+        </Link>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/[0.06] max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-indigo-500 rounded-lg flex items-center justify-center">
+              <BarChart3 size={14} className="text-white" />
+            </div>
+            <span className="font-bold text-white">Accountant</span>
+          </div>
+          <p className="text-slate-500 text-sm">© 2026 Accountant. All rights reserved.</p>
+          <div className="flex gap-6 text-sm text-slate-500">
+            <a href="#" className="hover:text-white transition-colors">Privacy</a>
+            <a href="#" className="hover:text-white transition-colors">Terms</a>
+            <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

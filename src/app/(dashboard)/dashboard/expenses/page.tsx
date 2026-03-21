@@ -142,27 +142,27 @@ export default function ExpensesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">{t("expenses.title")}</h1>
-            <p className="text-sm text-text-muted mt-0.5">{t("expenses.subtitle")}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("expenses.title")}</h1>
+            <p className="text-xs sm:text-sm text-text-muted mt-0.5">{t("expenses.subtitle")}</p>
           </div>
           {canEdit && (
-            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-              <Plus size={18} /> {t("expenses.add")}
+            <button onClick={openAdd} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+              <Plus size={16} /> {t("expenses.add")}
             </button>
           )}
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-dark-card border border-dark-border rounded-xl p-4">
-            <div className="flex items-center gap-2 text-text-muted text-xs mb-1"><TrendingDown size={14} /> {t("expenses.total")}</div>
-            <div className="text-2xl font-bold text-danger">{currencySymbol}{totalAmount.toFixed(2)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><TrendingDown size={13} /> {t("expenses.total")}</div>
+            <div className="text-lg sm:text-2xl font-bold text-danger">{currencySymbol}{totalAmount.toFixed(2)}</div>
           </div>
-          <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="text-text-muted text-xs mb-1">{t("expenses.this_month")}</div>
-            <div className="text-2xl font-bold text-text-primary">{currencySymbol}{thisMonth.toFixed(2)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{thisMonth.toFixed(2)}</div>
           </div>
-          <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+          <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="text-text-muted text-xs mb-2">{t("expenses.by_category")}</div>
             <div className="space-y-1">
               {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([cat, amt]) => (
@@ -176,13 +176,13 @@ export default function ExpensesPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-3 flex-wrap">
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
+        <div className="flex flex-wrap gap-2 items-center">
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
             <option value="">{t("common.all_categories")}</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{t(`expenses.cat.${c}`)}</option>)}
           </select>
-          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} placeholder="From" className="px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} placeholder="To" className="px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
           <button onClick={loadData} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover">{t("common.search")}</button>
           {(filterCategory || filterFrom || filterTo) && (
             <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); setTimeout(loadData, 0); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
@@ -193,14 +193,14 @@ export default function ExpensesPage() {
 
         {/* Add/Edit Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-dark-card border border-dark-border rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-text-primary">{editId ? t("expenses.edit") : t("expenses.add")}</h2>
                 <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.date")} *</label>
                     <input type="date" required value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
@@ -214,7 +214,7 @@ export default function ExpensesPage() {
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.description")} *</label>
                   <input required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" placeholder="e.g. Monthly rent payment" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">{t("expenses.category")} *</label>
                     <select required value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
@@ -250,11 +250,11 @@ export default function ExpensesPage() {
         )}
 
         {/* Table */}
-        <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
+        <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center h-32"><div className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent" /></div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[560px]">
               <thead className="bg-dark-bg/50">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.date")}</th>
