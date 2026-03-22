@@ -14,11 +14,8 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
   const category = searchParams.get("category");
 
-  // Exclude auto-generated salary rows (reference = employee id, category = salaries)
-  // These are replaced by dynamic computation below
   const where: Record<string, unknown> = {
     organizationId: session.organizationId,
-    NOT: { AND: [{ category: "salaries" }, { reference: { not: null } }] },
   };
   if (from || to) {
     where.date = {};
