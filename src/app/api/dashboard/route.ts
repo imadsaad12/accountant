@@ -12,18 +12,15 @@ export async function GET() {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [clientCount, productCount, employeeCount, invoices, paidInvoiceItems, lowStockProducts, recentInvoices, allPayments, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
+  const [clientCount, productCount, employeeCount, invoices, lowStockProducts, recentInvoices, allPayments, allExpenses, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
     prisma.client.count({ where: { organizationId: orgId } }),
     prisma.product.count({ where: { organizationId: orgId } }),
     prisma.employee.count({ where: { organizationId: orgId } }),
-    prisma.invoice.findMany({ where: { organizationId: orgId }, select: { subtotal: true, total: true, status: true, id: true } }),
-    prisma.invoiceItem.findMany({
-      where: { invoice: { organizationId: orgId, status: "paid" } },
-      select: { quantity: true, unitPrice: true, product: { select: { cost: true } } },
-    }),
-    prisma.product.findMany({ where: { organizationId: orgId, quantity: { lte: 5 } }, select: { id: true, name: true, quantity: true, minStock: true } }),
+    prisma.invoice.findMany({ where: { organizationId: orgId }, select: { total: true, status: true, id: true } }),
+    prisma.$queryRaw<{ id: string; name: string; quantity: number; minStock: number }[]>`SELECT id, name, quantity, "minStock" FROM "Product" WHERE "organizationId" = ${orgId} AND quantity <= "minStock"`,
     prisma.invoice.findMany({ where: { organizationId: orgId }, take: 5, orderBy: { createdAt: "desc" }, include: { client: true } }),
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
+    prisma.expense.findMany({ where: { organizationId: orgId }, select: { amount: true } }),
     prisma.client.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
     prisma.invoice.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
   ]);
@@ -34,7 +31,7 @@ export async function GET() {
     paymentsByInvoice[p.invoiceId] = (paymentsByInvoice[p.invoiceId] ?? 0) + p.amount;
   }
 
-  // grossEarning = all cash actually received (payments on any invoice)
+  // grossEarning = all cash actually received (sum of all payments)
   const grossEarning = allPayments.reduce((sum, p) => sum + p.amount, 0);
 
   // pendingAmount = remaining balance on unpaid invoices (total − paid so far)
@@ -45,8 +42,9 @@ export async function GET() {
       return sum + Math.max(0, i.total - paid);
     }, 0);
 
-  const cogs = paidInvoiceItems.reduce((sum, item) => sum + (item.product?.cost ?? 0) * item.quantity, 0);
-  const netEarning = grossEarning - cogs;
+  // netEarning = gross (cash received) − all recorded expenses
+  const totalExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netEarning = grossEarning - totalExpenses;
 
   return NextResponse.json({
     clientCount,
