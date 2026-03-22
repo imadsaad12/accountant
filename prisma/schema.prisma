@@ -20,17 +20,18 @@ model Organization {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  users          User[]
-  clients        Client[]
-  categories     Category[]
-  products       Product[]
-  employees      Employee[]
-  invoices       Invoice[]
-  auditLogs      AuditLog[]
-  payments       Payment[]
-  expenses       Expense[]
-  accounts       Account[]
-  journalEntries JournalEntry[]
+  users           User[]
+  clients         Client[]
+  categories      Category[]
+  products        Product[]
+  employees       Employee[]
+  invoices        Invoice[]
+  auditLogs       AuditLog[]
+  payments        Payment[]
+  expenses        Expense[]
+  accounts        Account[]
+  journalEntries  JournalEntry[]
+  salaryAdvances  SalaryAdvance[]
 }
 
 model User {
@@ -106,7 +107,7 @@ model Product {
 }
 
 model Employee {
-  id             String       @id @default(cuid())
+  id             String          @id @default(cuid())
   firstName      String
   lastName       String
   email          String?
@@ -114,17 +115,35 @@ model Employee {
   position       String
   department     String?
   salary         Float
-  salaryPeriod   String       @default("month")   // day | week | month
-  currency       String       @default("USD")
-  hireDate       DateTime     @default(now())
-  status         String       @default("active")
-  address        String?      @db.Text
-  notes          String?      @db.Text
+  salaryPeriod   String          @default("month")   // day | week | month
+  currency       String          @default("USD")
+  hireDate       DateTime        @default(now())
+  status         String          @default("active")
+  address        String?         @db.Text
+  notes          String?         @db.Text
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  salaryAdvances SalaryAdvance[]
+
+  @@index([organizationId])
+}
+
+model SalaryAdvance {
+  id             String       @id @default(cuid())
+  employeeId     String
+  employee       Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  amount         Float
+  date           DateTime
+  status         String       @default("pending")   // pending | returned
+  note           String?      @db.Text
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  @@index([employeeId])
   @@index([organizationId])
 }
 

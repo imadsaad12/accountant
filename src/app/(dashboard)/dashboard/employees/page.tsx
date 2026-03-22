@@ -22,6 +22,7 @@ interface Employee {
   status: string;
   address: string | null;
   notes: string | null;
+  outstandingAdvance: number;
 }
 
 type SortField = "name" | "position" | "department" | "salary" | "hireDate" | "";
@@ -299,13 +300,14 @@ export default function EmployeesPage() {
               <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase cursor-pointer select-none" onClick={() => toggleSort("salary")}>
                 <span className="inline-flex items-center gap-1 justify-end">{t("employees.salary")} <SortIcon field="salary" /></span>
               </th>
+              <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("employees.outstanding_advance")}</th>
               <th className="text-center px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("field.status")}</th>
               {canEdit && <th className="text-right px-4 py-3 text-xs font-medium text-text-muted uppercase">{t("common.actions")}</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-dark-border/50">
             {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted">{search || filterStatus || filterDept ? t("common.no_results") : t("employees.empty")}</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-text-muted">{search || filterStatus || filterDept ? t("common.no_results") : t("employees.empty")}</td></tr>
             ) : filtered.map(emp => (
               <tr key={emp.id} className="hover:bg-dark-card-hover">
                 <td className="px-4 py-3 text-sm font-medium text-text-primary">{emp.firstName} {emp.lastName}</td>
@@ -315,6 +317,12 @@ export default function EmployeesPage() {
                 <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">
                   {emp.salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span>
                   <span className="text-text-muted font-normal text-xs ml-1">/{emp.salaryPeriod || "month"}</span>
+                </td>
+                <td className="px-4 py-3 text-sm text-right font-medium">
+                  {emp.outstandingAdvance > 0
+                    ? <span className="text-amber-400">{emp.outstandingAdvance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    : <span className="text-text-muted">—</span>
+                  }
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${

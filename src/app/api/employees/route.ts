@@ -9,11 +9,22 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "employees")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
-  const employees = await prisma.employee.findMany({
-    where: { organizationId: session.organizationId },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(employees);
+  const [employees, advances] = await Promise.all([
+    prisma.employee.findMany({
+      where: { organizationId: session.organizationId },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.salaryAdvance.groupBy({
+      by: ["employeeId"],
+      where: { organizationId: session.organizationId, status: "pending" },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const advanceMap = new Map(advances.map(a => [a.employeeId, a._sum.amount ?? 0]));
+  const result = employees.map(emp => ({ ...emp, outstandingAdvance: advanceMap.get(emp.id) ?? 0 }));
+
+  return NextResponse.json(result);
 }
 
 export async function POST(req: NextRequest) {
