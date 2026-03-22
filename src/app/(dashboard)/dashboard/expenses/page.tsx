@@ -161,10 +161,12 @@ export default function ExpensesPage() {
     });
   }, [expenses, sortField, sortDir]);
 
-  // Stat cards always reflect global totals (not affected by active filters)
-  const totalAmount = allExpenses.reduce((s, e) => s + e.amount, 0);
+  // Stat cards reflect filtered results when a filter is active, otherwise all-time
+  const hasFilter = !!(filterCategory || filterFrom || filterTo);
+  const statSource = hasFilter ? expenses : allExpenses;
+  const totalAmount = statSource.reduce((s, e) => s + e.amount, 0);
   const byCategory: Record<string, number> = {};
-  for (const exp of allExpenses) {
+  for (const exp of statSource) {
     byCategory[exp.category] = (byCategory[exp.category] ?? 0) + exp.amount;
   }
 
