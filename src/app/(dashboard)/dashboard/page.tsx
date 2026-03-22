@@ -32,6 +32,14 @@ const STATUS_COLORS: Record<string, string> = {
 
 const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const fmtCompact = (n: number) => {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
+  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
+  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
+  return fmtAmt(n);
+};
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const { orgSettings } = useOrgSettings();
@@ -70,12 +78,12 @@ export default function DashboardPage() {
   }
 
   const stats = [
-    { label: t("dashboard.gross"), value: `${sym}${fmtAmt(data.grossEarning)}`, icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
-    { label: t("dashboard.net"), value: `${sym}${fmtAmt(data.netEarning)}`, icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5", iconBg: "bg-teal-500/20", iconColor: "text-teal-400", trend: null, up: true },
-    { label: t("dashboard.pending"), value: `${sym}${fmtAmt(data.pendingAmount)}`, icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5", iconBg: "bg-amber-500/20", iconColor: "text-amber-400", trend: null, up: false },
-    { label: t("dashboard.clients"), value: data.clientCount, icon: Users, gradient: "from-blue-500/20 to-blue-600/5", iconBg: "bg-blue-500/20", iconColor: "text-blue-400", trend: data.newClientsThisMonth > 0 ? `+${data.newClientsThisMonth} this month` : null, up: true },
-    { label: t("dashboard.employees"), value: data.employeeCount, icon: UserCog, gradient: "from-pink-500/20 to-pink-600/5", iconBg: "bg-pink-500/20", iconColor: "text-pink-400", trend: null, up: true },
-    { label: t("dashboard.invoices"), value: data.invoiceCount, icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5", iconBg: "bg-cyan-500/20", iconColor: "text-cyan-400", trend: data.newInvoicesThisMonth > 0 ? `+${data.newInvoicesThisMonth} this month` : null, up: true },
+    { label: t("dashboard.gross"),     value: `${sym}${fmtCompact(data.grossEarning)}`,   tooltip: `${sym}${fmtAmt(data.grossEarning)}`,   icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
+    { label: t("dashboard.net"),       value: `${sym}${fmtCompact(data.netEarning)}`,     tooltip: `${sym}${fmtAmt(data.netEarning)}`,     icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5",    iconBg: "bg-teal-500/20",    iconColor: "text-teal-400",    trend: null, up: true },
+    { label: t("dashboard.pending"),   value: `${sym}${fmtCompact(data.pendingAmount)}`,  tooltip: `${sym}${fmtAmt(data.pendingAmount)}`,  icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5",  iconBg: "bg-amber-500/20",   iconColor: "text-amber-400",   trend: null, up: false },
+    { label: t("dashboard.clients"),   value: data.clientCount,   tooltip: data.clientCount.toString(),   icon: Users,    gradient: "from-blue-500/20 to-blue-600/5",  iconBg: "bg-blue-500/20",  iconColor: "text-blue-400",  trend: data.newClientsThisMonth  > 0 ? `+${data.newClientsThisMonth} this month`  : null, up: true },
+    { label: t("dashboard.employees"), value: data.employeeCount, tooltip: data.employeeCount.toString(), icon: UserCog,  gradient: "from-pink-500/20 to-pink-600/5",  iconBg: "bg-pink-500/20",  iconColor: "text-pink-400",  trend: null, up: true },
+    { label: t("dashboard.invoices"),  value: data.invoiceCount,  tooltip: data.invoiceCount.toString(),  icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5",  iconBg: "bg-cyan-500/20",  iconColor: "text-cyan-400",  trend: data.newInvoicesThisMonth > 0 ? `+${data.newInvoicesThisMonth} this month` : null, up: true },
   ];
 
   // Build chart data from invoices
@@ -126,7 +134,12 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-8">
         {stats.map((stat) => (
-          <div key={stat.label} className={`bg-gradient-to-br ${stat.gradient} bg-dark-card rounded-xl p-3 sm:p-5 border border-dark-border hover:border-dark-border/80 group`}>
+          <div key={stat.label} className={`relative bg-gradient-to-br ${stat.gradient} bg-dark-card rounded-xl p-3 sm:p-5 border border-dark-border hover:border-dark-border/80 group`}>
+            {/* Hover tooltip showing full number */}
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+              {stat.tooltip}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+            </div>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[11px] sm:text-sm text-text-muted font-medium truncate">{stat.label}</p>
