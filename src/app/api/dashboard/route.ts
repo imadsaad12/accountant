@@ -17,13 +17,16 @@ export async function GET() {
     prisma.product.count({ where: { organizationId: orgId } }),
     prisma.employee.count({ where: { organizationId: orgId } }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, select: { total: true, status: true, id: true } }),
-    prisma.$queryRaw<{ id: string; name: string; quantity: number; minStock: number }[]>`SELECT id, name, quantity, "minStock" FROM "Product" WHERE "organizationId" = ${orgId} AND quantity <= "minStock"`,
+    prisma.product.findMany({ where: { organizationId: orgId }, select: { id: true, name: true, quantity: true, minStock: true } }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, take: 5, orderBy: { createdAt: "desc" }, include: { client: true } }),
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
     prisma.expense.findMany({ where: { organizationId: orgId }, select: { amount: true } }),
     prisma.client.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
     prisma.invoice.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
   ]);
+
+  // Filter low stock: products where quantity <= minStock
+  const lowStock = lowStockProducts.filter(p => p.quantity <= (p.minStock ?? 0));
 
   // Build a map of invoiceId → total payments received
   const paymentsByInvoice: Record<string, number> = {};
@@ -55,7 +58,7 @@ export async function GET() {
     grossEarning,
     netEarning,
     pendingAmount,
-    lowStockProducts,
+    lowStockProducts: lowStock,
     recentInvoices,
     newClientsThisMonth,
     newInvoicesThisMonth,
