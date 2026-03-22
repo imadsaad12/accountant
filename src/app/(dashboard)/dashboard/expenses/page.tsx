@@ -64,6 +64,7 @@ export default function ExpensesPage() {
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [lastMonthExpenses, setLastMonthExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -83,12 +84,21 @@ export default function ExpensesPage() {
     if (filterCategory) params.set("category", filterCategory);
     if (filterFrom) params.set("from", filterFrom);
     if (filterTo) params.set("to", filterTo);
-    const [filteredRes, allRes] = await Promise.all([
+    // Compute last month date range for the stat card
+    const now = new Date();
+    const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const lmFrom = lmStart.toISOString().split("T")[0];
+    const lmTo = lmEnd.toISOString().split("T")[0];
+    const lmParams = new URLSearchParams({ from: lmFrom, to: lmTo });
+    const [filteredRes, allRes, lmRes] = await Promise.all([
       fetch(`/api/expenses?${params}`),
       fetch("/api/expenses"),
+      fetch(`/api/expenses?${lmParams}`),
     ]);
     setExpenses(filteredRes.ok ? await filteredRes.json() : []);
     setAllExpenses(allRes.ok ? await allRes.json() : []);
+    setLastMonthExpenses(lmRes.ok ? await lmRes.json() : []);
     setLoading(false);
   }, [filterCategory, filterFrom, filterTo]);
 
@@ -170,17 +180,13 @@ export default function ExpensesPage() {
     byCategory[exp.category] = (byCategory[exp.category] ?? 0) + exp.amount;
   }
 
-  // Last month (always global, not filtered)
+  // Last month stat card values (computed from API fetch)
   const now = new Date();
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthStart = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth(), 1);
-  const lastMonthEnd = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth() + 1, 0);
-  const lastMonthTotal = allExpenses.filter(e => {
-    const d = new Date(e.date);
-    return d >= lastMonthStart && d <= lastMonthEnd;
-  }).reduce((s, e) => s + e.amount, 0);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastMonthTotal = lastMonthExpenses.reduce((s, e) => s + e.amount, 0);
   const lastMonthName = lastMonthDate.toLocaleDateString("en-GB", { month: "short" });
-  const lastMonthStartStr = lastMonthStart.toLocaleDateString("en-GB");
+  const lastMonthStartStr = lastMonthDate.toLocaleDateString("en-GB");
   const lastMonthEndStr = lastMonthEnd.toLocaleDateString("en-GB");
 
   return (
