@@ -170,12 +170,18 @@ export default function ExpensesPage() {
     byCategory[exp.category] = (byCategory[exp.category] ?? 0) + exp.amount;
   }
 
-  // This month (always global, not filtered)
+  // Last month (always global, not filtered)
   const now = new Date();
-  const thisMonth = allExpenses.filter(e => {
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthStart = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth(), 1);
+  const lastMonthEnd = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth() + 1, 0);
+  const lastMonthTotal = allExpenses.filter(e => {
     const d = new Date(e.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return d >= lastMonthStart && d <= lastMonthEnd;
   }).reduce((s, e) => s + e.amount, 0);
+  const lastMonthName = lastMonthDate.toLocaleDateString("en-GB", { month: "short" });
+  const lastMonthStartStr = lastMonthStart.toLocaleDateString("en-GB");
+  const lastMonthEndStr = lastMonthEnd.toLocaleDateString("en-GB");
 
   return (
     <PermissionGuard feature="expenses">
@@ -200,8 +206,9 @@ export default function ExpensesPage() {
             <div className="text-lg sm:text-2xl font-bold text-danger">{currencySymbol}{totalAmount.toFixed(2)}</div>
           </div>
           <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
-            <div className="text-text-muted text-xs mb-1">{t("expenses.this_month")}</div>
-            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{thisMonth.toFixed(2)}</div>
+            <div className="text-text-muted text-xs mb-0.5">{t("expenses.last_month")} – {lastMonthName}</div>
+            <div className="text-[10px] text-text-muted mb-1">({lastMonthStartStr} – {lastMonthEndStr})</div>
+            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{lastMonthTotal.toFixed(2)}</div>
           </div>
           <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="text-text-muted text-xs mb-2">{t("expenses.by_category")}</div>

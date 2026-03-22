@@ -322,6 +322,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "expenses.cat.other": "Other",
     "expenses.total": "Total Expenses",
     "expenses.this_month": "This Month",
+    "expenses.last_month": "Last Month",
     "expenses.by_category": "By Category",
 
     // Chart of Accounts
@@ -660,6 +661,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "expenses.cat.other": "Autre",
     "expenses.total": "Total des dépenses",
     "expenses.this_month": "Ce mois-ci",
+    "expenses.last_month": "Mois dernier",
     "expenses.by_category": "Par catégorie",
     "accounts.title": "Plan comptable",
     "accounts.subtitle": "Gérez votre structure de comptes",
@@ -992,6 +994,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "expenses.cat.other": "أخرى",
     "expenses.total": "إجمالي المصروفات",
     "expenses.this_month": "هذا الشهر",
+    "expenses.last_month": "الشهر الماضي",
     "expenses.by_category": "حسب الفئة",
     "accounts.title": "دليل الحسابات",
     "accounts.subtitle": "إدارة هيكل حساباتك",
