@@ -220,7 +220,7 @@ export default function InvoicesPage() {
       if (!res.ok) throw new Error("Failed to fetch invoice");
       const fullInvoice = await res.json();
       const pdfT = pdfTranslations[lang] || pdfTranslations.en;
-      const sym = currencySymbol(orgSettings.defaultCurrency);
+      const sym = currencySymbol;
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       doc.setFontSize(24); doc.setTextColor(37, 99, 235); doc.text(fullInvoice.orgName || pdfT.invoice, 20, 30);
