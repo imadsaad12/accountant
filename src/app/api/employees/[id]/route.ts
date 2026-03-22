@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     await prisma.expense.create({
       data: {
-        date: monthStart,
+        date: now,
         amount: monthlyAmount,
         description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
         category: "salaries",

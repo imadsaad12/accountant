@@ -36,12 +36,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Auto-create salary expense for the current month (monthly equivalent)
-  const now = new Date();
+  // Auto-create salary expense dated today (the day the employee was added)
   const periodLabel = salaryPeriod === "day" ? `${salaryRate}/day × 30 days` : salaryPeriod === "week" ? `${salaryRate}/week × 4 weeks` : null;
   await prisma.expense.create({
     data: {
-      date: new Date(now.getFullYear(), now.getMonth(), 1),
+      date: new Date(),
       amount: monthlyAmount,
       description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
       category: "salaries",
