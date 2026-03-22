@@ -22,23 +22,28 @@ export async function POST(req: NextRequest) {
   if (!canEdit(session.permissions, "employees")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const data = await req.json();
+  const salaryRate = parseFloat(data.salary);
+  const salaryPeriod: string = data.salaryPeriod || "month";
+  const monthlyAmount = salaryPeriod === "day" ? salaryRate * 30 : salaryPeriod === "week" ? salaryRate * 4 : salaryRate;
+
   const employee = await prisma.employee.create({
     data: {
       ...data,
-      salary: parseFloat(data.salary),
+      salary: salaryRate,
+      salaryPeriod,
       hireDate: data.hireDate ? new Date(data.hireDate) : new Date(),
       organizationId: session.organizationId,
     },
   });
 
-  // Auto-create salary expense for the current month
+  // Auto-create salary expense for the current month (monthly equivalent)
   const now = new Date();
-  const monthLabel = now.toLocaleString("en", { month: "long", year: "numeric" });
+  const periodLabel = salaryPeriod === "day" ? `${salaryRate}/day × 30 days` : salaryPeriod === "week" ? `${salaryRate}/week × 4 weeks` : null;
   await prisma.expense.create({
     data: {
       date: new Date(now.getFullYear(), now.getMonth(), 1),
-      amount: parseFloat(data.salary),
-      description: `Salary — ${employee.firstName} ${employee.lastName}`,
+      amount: monthlyAmount,
+      description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
       category: "salaries",
       recurrence: "monthly",
       vendor: `${employee.firstName} ${employee.lastName}`,

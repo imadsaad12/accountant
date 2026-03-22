@@ -16,6 +16,7 @@ interface Employee {
   position: string;
   department: string | null;
   salary: number;
+  salaryPeriod: string;
   currency: string;
   hireDate: string;
   status: string;
@@ -37,7 +38,13 @@ const CURRENCIES = [
   { code: "NGN", name: "Naira (Nigeria)" },
 ];
 
-const emptyForm = { firstName: "", lastName: "", email: "", phone: "", position: "", department: "", salary: "", currency: "USD", hireDate: "", status: "active", address: "", notes: "" };
+const SALARY_PERIODS = [
+  { value: "day", label: "Per Day" },
+  { value: "week", label: "Per Week" },
+  { value: "month", label: "Per Month" },
+];
+
+const emptyForm = { firstName: "", lastName: "", email: "", phone: "", position: "", department: "", salary: "", salaryPeriod: "month", currency: "USD", hireDate: "", status: "active", address: "", notes: "" };
 
 export default function EmployeesPage() {
   const { canEditFeature } = usePermissions();
@@ -79,6 +86,7 @@ export default function EmployeesPage() {
       position: emp.position,
       department: emp.department || "",
       salary: String(emp.salary),
+      salaryPeriod: emp.salaryPeriod || "month",
       currency: orgSettings.defaultCurrency,
       hireDate: emp.hireDate ? emp.hireDate.split("T")[0] : "",
       status: emp.status,
@@ -218,10 +226,16 @@ export default function EmployeesPage() {
                   <input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.salary")} *</label>
                   <input required type="number" step="0.01" min="0" value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Paid Every</label>
+                  <select value={form.salaryPeriod} onChange={e => setForm({ ...form, salaryPeriod: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
+                    {SALARY_PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.currency")}</label>
@@ -289,7 +303,10 @@ export default function EmployeesPage() {
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.position}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.department || "-"}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.email || "-"}</td>
-                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">{emp.salary.toLocaleString()} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span></td>
+                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">
+                  {emp.salary.toLocaleString()} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span>
+                  <span className="text-text-muted font-normal text-xs ml-1">/{emp.salaryPeriod || "month"}</span>
+                </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                     emp.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :

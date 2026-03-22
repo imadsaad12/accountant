@@ -114,6 +114,7 @@ model Employee {
   position       String
   department     String?
   salary         Float
+  salaryPeriod   String       @default("month")   // day | week | month
   currency       String       @default("USD")
   hireDate       DateTime     @default(now())
   status         String       @default("active")

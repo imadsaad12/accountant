@@ -26,22 +26,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const data = await req.json();
   const newSalary = data.salary ? parseFloat(data.salary) : undefined;
+  const newPeriod: string = data.salaryPeriod || existing.salaryPeriod || "month";
   const employee = await prisma.employee.update({
     where: { id },
     data: {
       ...data,
       salary: newSalary,
+      salaryPeriod: newPeriod,
       hireDate: data.hireDate ? new Date(data.hireDate) : undefined,
     },
   });
 
-  // If salary changed, record a corrected salary expense for the current month
-  if (newSalary && newSalary !== existing.salary) {
+  // Recalculate if salary or pay period changed
+  const salaryChanged = newSalary !== undefined && newSalary !== existing.salary;
+  const periodChanged = newPeriod !== (existing.salaryPeriod || "month");
+  if (salaryChanged || periodChanged) {
+    const effectiveSalary = newSalary ?? existing.salary;
+    const monthlyAmount = newPeriod === "day" ? effectiveSalary * 30 : newPeriod === "week" ? effectiveSalary * 4 : effectiveSalary;
+    const periodLabel = newPeriod === "day" ? `${effectiveSalary}/day × 30 days` : newPeriod === "week" ? `${effectiveSalary}/week × 4 weeks` : null;
     const now = new Date();
-    const monthLabel = now.toLocaleString("en", { month: "long", year: "numeric" });
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Remove any existing auto-salary expense for this employee this month
     await prisma.expense.deleteMany({
       where: {
         organizationId: session.organizationId,
@@ -54,8 +59,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await prisma.expense.create({
       data: {
         date: monthStart,
-        amount: newSalary,
-        description: `Salary — ${employee.firstName} ${employee.lastName}`,
+        amount: monthlyAmount,
+        description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
         category: "salaries",
         recurrence: "monthly",
         vendor: `${employee.firstName} ${employee.lastName}`,
