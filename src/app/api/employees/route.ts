@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Auto-create salary expense dated on the employee's hire date
+  // Auto-create salary expense dated today so it appears in today's filter
   const periodLabel = salaryPeriod === "day" ? `${salaryRate}/day × 30 days` : salaryPeriod === "week" ? `${salaryRate}/week × 4 weeks` : null;
   await prisma.expense.create({
     data: {
-      date: data.hireDate ? new Date(data.hireDate) : new Date(),
+      date: new Date(),
       amount: monthlyAmount,
       description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
       category: "salaries",

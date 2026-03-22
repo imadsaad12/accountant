@@ -310,7 +310,7 @@ export default function ExpensesPage() {
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">{t("expenses.empty")}</td></tr>
                 ) : sortedExpenses.map(exp => (
                   <tr key={exp.id} className="hover:bg-dark-card-hover">
-                    <td className="px-4 py-3 text-sm text-text-secondary">{new Date(exp.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{new Date(exp.date).toLocaleDateString("en-GB")}</td>
                     <td className="px-4 py-3 text-sm text-text-primary font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         {exp.description}

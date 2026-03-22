@@ -103,7 +103,7 @@ export default function TaxPage() {
                     <td className="px-4 py-3 text-sm font-medium text-text-primary">{inv.number}</td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
                     <td className="px-4 py-3 text-sm text-text-muted">
-                      {new Date(inv.date).toLocaleDateString()}
+                      {new Date(inv.date).toLocaleDateString("en-GB")}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[inv.status] ?? "bg-dark-input text-text-muted"}`}>

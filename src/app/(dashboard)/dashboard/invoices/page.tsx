@@ -224,8 +224,8 @@ export default function InvoicesPage() {
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
       let y = 45;
       doc.setFont("helvetica", "bold"); doc.text(`${pdfT.invoiceNumber}: ${fullInvoice.number}`, 20, y); y += 6;
-      doc.setFont("helvetica", "normal"); doc.text(`${pdfT.date}: ${new Date(fullInvoice.date).toLocaleDateString()}`, 20, y); y += 6;
-      if (fullInvoice.dueDate) { doc.text(`${pdfT.dueDate}: ${new Date(fullInvoice.dueDate).toLocaleDateString()}`, 20, y); y += 6; }
+      doc.setFont("helvetica", "normal"); doc.text(`${pdfT.date}: ${new Date(fullInvoice.date).toLocaleDateString("en-GB")}`, 20, y); y += 6;
+      if (fullInvoice.dueDate) { doc.text(`${pdfT.dueDate}: ${new Date(fullInvoice.dueDate).toLocaleDateString("en-GB")}`, 20, y); y += 6; }
       doc.text(`${pdfT.status}: ${fullInvoice.status.toUpperCase()}`, 20, y);
       y = 45;
       doc.setFont("helvetica", "bold"); doc.text(pdfT.billTo, pageWidth - 20, y, { align: "right" }); y += 6;
@@ -328,11 +328,11 @@ export default function InvoicesPage() {
                 </div>
                 <div>
                   <p className="text-xs text-text-muted mb-0.5">{t("field.date")}</p>
-                  <p className="text-sm text-text-primary">{new Date(viewInvoice.date).toLocaleDateString()}</p>
+                  <p className="text-sm text-text-primary">{new Date(viewInvoice.date).toLocaleDateString("en-GB")}</p>
                 </div>
                 <div>
                   <p className="text-xs text-text-muted mb-0.5">{t("invoices.due_date")}</p>
-                  <p className="text-sm text-text-primary">{viewInvoice.dueDate ? new Date(viewInvoice.dueDate).toLocaleDateString() : "-"}</p>
+                  <p className="text-sm text-text-primary">{viewInvoice.dueDate ? new Date(viewInvoice.dueDate).toLocaleDateString("en-GB") : "-"}</p>
                 </div>
               </div>
 
@@ -458,7 +458,7 @@ export default function InvoicesPage() {
                       <div key={p.id} className="flex items-center justify-between bg-dark-bg/50 border border-dark-border rounded-lg px-3 py-2 text-sm">
                         <div className="flex items-center gap-3">
                           <span className="font-semibold text-text-primary">${p.amount.toFixed(2)}</span>
-                          <span className="text-text-muted text-xs">{new Date(p.date).toLocaleDateString()}</span>
+                          <span className="text-text-muted text-xs">{new Date(p.date).toLocaleDateString("en-GB")}</span>
                           <span className="text-xs px-2 py-0.5 rounded bg-accent/10 text-accent font-medium">{t(`payments.method.${p.method}`)}</span>
                           {p.reference && <span className="text-text-muted text-xs">#{p.reference}</span>}
                         </div>
@@ -618,10 +618,10 @@ export default function InvoicesPage() {
               <tr key={inv.id} className="hover:bg-dark-card-hover">
                 <td className="px-4 py-3 text-sm font-mono font-medium text-text-primary">{inv.number}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
-                <td className="px-4 py-3 text-sm text-text-secondary">{new Date(inv.date).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-sm text-text-secondary">{new Date(inv.date).toLocaleDateString("en-GB")}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">
                   <div className="flex items-center gap-1.5">
-                    {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "-"}
+                    {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "-"}
                     {agingBadge(inv)}
                   </div>
                 </td>

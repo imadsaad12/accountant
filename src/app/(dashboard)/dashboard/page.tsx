@@ -327,7 +327,7 @@ export default function DashboardPage() {
                 <tr key={inv.id} className="hover:bg-dark-card-hover">
                   <td className="px-5 py-3.5 text-sm font-mono font-medium text-accent">{inv.number}</td>
                   <td className="px-5 py-3.5 text-sm text-text-secondary">{inv.client.name}</td>
-                  <td className="px-5 py-3.5 text-sm text-text-muted">{new Date(inv.date).toLocaleDateString()}</td>
+                  <td className="px-5 py-3.5 text-sm text-text-muted">{new Date(inv.date).toLocaleDateString("en-GB")}</td>
                   <td className="px-5 py-3.5 text-sm text-text-primary text-right font-medium">{sym}{inv.total.toLocaleString()}</td>
                   <td className="px-5 py-3.5 text-center">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${

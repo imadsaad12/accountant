@@ -76,7 +76,7 @@ export default function ReportsPage() {
     if (!report) return;
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const now = new Date().toLocaleDateString();
+    const now = new Date().toLocaleDateString("en-GB");
 
     // Header
     doc.setFontSize(18); doc.setTextColor(37, 99, 235);
@@ -84,7 +84,7 @@ export default function ReportsPage() {
     doc.setFontSize(9); doc.setTextColor(120, 120, 120);
     if (report.type === "pl") {
       const pl = report as PLReport;
-      doc.text(`Period: ${new Date(pl.period.from).toLocaleDateString()} – ${new Date(pl.period.to).toLocaleDateString()}`, 14, 28);
+      doc.text(`Period: ${new Date(pl.period.from).toLocaleDateString("en-GB")} – ${new Date(pl.period.to).toLocaleDateString("en-GB")}`, 14, 28);
     }
     doc.text(`Generated: ${now}`, pageWidth - 14, 28, { align: "right" });
 
