@@ -12,11 +12,15 @@ export async function GET() {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [clientCount, productCount, employeeCount, invoices, lowStockProducts, recentInvoices, allPayments, allExpenses, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
+  const [clientCount, productCount, employeeCount, invoices, paidInvoiceItems, lowStockProducts, recentInvoices, allPayments, allExpenses, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
     prisma.client.count({ where: { organizationId: orgId } }),
     prisma.product.count({ where: { organizationId: orgId } }),
     prisma.employee.count({ where: { organizationId: orgId } }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, select: { total: true, status: true, id: true } }),
+    prisma.invoiceItem.findMany({
+      where: { invoice: { organizationId: orgId, status: "paid" } },
+      select: { quantity: true, product: { select: { cost: true } } },
+    }),
     prisma.product.findMany({ where: { organizationId: orgId }, select: { id: true, name: true, quantity: true, minStock: true } }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, take: 5, orderBy: { createdAt: "desc" }, include: { client: true } }),
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
@@ -52,8 +56,10 @@ export async function GET() {
       return sum + Math.max(0, i.total - paid);
     }, 0);
 
-  // netEarning = gross − all recorded expenses (everything in the expenses page)
-  const netEarning = grossEarning - allExpenses.reduce((sum, e) => sum + e.amount, 0);
+  // netEarning = gross − COGS − all recorded expenses
+  const cogs = paidInvoiceItems.reduce((sum, item) => sum + (item.product?.cost ?? 0) * item.quantity, 0);
+  const totalExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const netEarning = grossEarning - cogs - totalExpenses;
 
   return NextResponse.json({
     clientCount,
