@@ -27,6 +27,7 @@ export const COUNTRIES: Country[] = [
   { name: "Chile", iso: "CL", dialCode: "+56", placeholder: "9 6123 4567" },
   { name: "China", iso: "CN", dialCode: "+86", placeholder: "131 2345 6789" },
   { name: "Colombia", iso: "CO", dialCode: "+57", placeholder: "321 123 4567" },
+  { name: "Côte d'Ivoire", iso: "CI", dialCode: "+225", placeholder: "07 12 34 56 78" },
   { name: "Croatia", iso: "HR", dialCode: "+385", placeholder: "91 234 5678" },
   { name: "Cyprus", iso: "CY", dialCode: "+357", placeholder: "96 123456" },
   { name: "Czech Republic", iso: "CZ", dialCode: "+420", placeholder: "601 123 456" },
