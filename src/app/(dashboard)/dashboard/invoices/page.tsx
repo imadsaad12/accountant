@@ -220,12 +220,12 @@ export default function InvoicesPage() {
       if (!res.ok) throw new Error("Failed to fetch invoice");
       const fullInvoice = await res.json();
       const pdfT = pdfTranslations[lang] || pdfTranslations.en;
+      const sym = currencySymbol(orgSettings.defaultCurrency);
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-      doc.setFontSize(24); doc.setTextColor(37, 99, 235); doc.text(pdfT.invoice, 20, 30);
+      doc.setFontSize(24); doc.setTextColor(37, 99, 235); doc.text(fullInvoice.orgName || pdfT.invoice, 20, 30);
       doc.setFontSize(10); doc.setTextColor(100, 100, 100); doc.setFont("helvetica", "normal");
-      doc.text("Cashent", pageWidth - 20, 20, { align: "right" });
-      doc.text("Business Management System", pageWidth - 20, 25, { align: "right" });
+      doc.text(fullInvoice.orgName || "", pageWidth - 20, 20, { align: "right" });
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
       let y = 45;
       doc.setFont("helvetica", "bold"); doc.text(`${pdfT.invoiceNumber}: ${fullInvoice.number}`, 20, y); y += 6;
@@ -236,24 +236,24 @@ export default function InvoicesPage() {
       doc.setFont("helvetica", "bold"); doc.text(pdfT.billTo, pageWidth - 20, y, { align: "right" }); y += 6;
       doc.setFont("helvetica", "normal"); doc.text(fullInvoice.client?.name || "N/A", pageWidth - 20, y, { align: "right" });
       const tableHead = [[pdfT.description, pdfT.quantity, pdfT.unitPrice, pdfT.total]];
-      const tableBody = (fullInvoice.items || []).map((item: { description: string; quantity: number; unitPrice: number; total: number }) => [item.description, String(item.quantity), `$${fmtAmt(Number(item.unitPrice))}`, `$${fmtAmt(Number(item.total))}`]);
+      const tableBody = (fullInvoice.items || []).map((item: { description: string; quantity: number; unitPrice: number; total: number }) => [item.description, String(item.quantity), `${sym}${fmtAmt(Number(item.unitPrice))}`, `${sym}${fmtAmt(Number(item.total))}`]);
       autoTable(doc, { startY: 85, head: tableHead, body: tableBody, theme: "striped", headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 10, fontStyle: "bold" }, bodyStyles: { fontSize: 9 }, columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: 25, halign: "center" }, 2: { cellWidth: 30, halign: "right" }, 3: { cellWidth: 30, halign: "right" } }, margin: { left: 20, right: 20 } });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
       let pdfTotalsY = finalY;
-      doc.text(`${pdfT.subtotal}: $${fmtAmt(Number(fullInvoice.subtotal))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      doc.text(`${pdfT.subtotal}: ${sym}${fmtAmt(Number(fullInvoice.subtotal))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       pdfTotalsY += 7;
       if (fullInvoice.discount > 0) {
         doc.setTextColor(34, 197, 94);
-        doc.text(`Discount (${fullInvoice.discount}%): -$${fmtAmt(Number(fullInvoice.subtotal) * fullInvoice.discount / 100)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+        doc.text(`Discount (${fullInvoice.discount}%): -${sym}${fmtAmt(Number(fullInvoice.subtotal) * fullInvoice.discount / 100)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
         doc.setTextColor(60, 60, 60);
         pdfTotalsY += 7;
       }
-      doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): $${fmtAmt(Number(fullInvoice.tax))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): ${sym}${fmtAmt(Number(fullInvoice.tax))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       pdfTotalsY += 11;
       doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
-      doc.text(`${pdfT.grandTotal}: $${fmtAmt(Number(fullInvoice.total))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      doc.text(`${pdfT.grandTotal}: ${sym}${fmtAmt(Number(fullInvoice.total))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       if (fullInvoice.notes) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100); doc.text(`${pdfT.notes}: ${fullInvoice.notes}`, 20, pdfTotalsY + 18); }
       doc.setFontSize(9); doc.setTextColor(150, 150, 150); doc.text(pdfT.thankYou, pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
       doc.save(`${fullInvoice.number}-${lang}.pdf`);

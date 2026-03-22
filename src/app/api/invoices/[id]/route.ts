@@ -12,12 +12,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!canView(session.permissions, "invoices")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const invoice = await prisma.invoice.findFirst({
-    where: { id, organizationId: session.organizationId },
-    include: { client: true, items: { include: { product: true } } },
-  });
+  const [invoice, org] = await Promise.all([
+    prisma.invoice.findFirst({
+      where: { id, organizationId: session.organizationId },
+      include: { client: true, items: { include: { product: true } } },
+    }),
+    prisma.organization.findUnique({ where: { id: session.organizationId }, select: { name: true } }),
+  ]);
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(invoice);
+  return NextResponse.json({ ...invoice, orgName: org?.name ?? "" });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
