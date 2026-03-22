@@ -88,8 +88,9 @@ export default function ExpensesPage() {
     const now = new Date();
     const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    const lmFrom = lmStart.toISOString().split("T")[0];
-    const lmTo = lmEnd.toISOString().split("T")[0];
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const lmFrom = `${lmStart.getFullYear()}-${pad(lmStart.getMonth() + 1)}-${pad(lmStart.getDate())}`;
+    const lmTo = `${lmEnd.getFullYear()}-${pad(lmEnd.getMonth() + 1)}-${pad(lmEnd.getDate())}`;
     const lmParams = new URLSearchParams({ from: lmFrom, to: lmTo });
     const [filteredRes, allRes, lmRes] = await Promise.all([
       fetch(`/api/expenses?${params}`),
