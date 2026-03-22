@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
   const data = await req.json();
   const salaryRate = parseFloat(data.salary);
   const salaryPeriod: string = data.salaryPeriod || "month";
-  const monthlyAmount = salaryPeriod === "day" ? salaryRate * 30 : salaryPeriod === "week" ? salaryRate * 4 : salaryRate;
 
   const employee = await prisma.employee.create({
     data: {
@@ -32,21 +31,6 @@ export async function POST(req: NextRequest) {
       salary: salaryRate,
       salaryPeriod,
       hireDate: data.hireDate ? new Date(data.hireDate) : new Date(),
-      organizationId: session.organizationId,
-    },
-  });
-
-  // Auto-create salary expense dated today so it appears in today's filter
-  const periodLabel = salaryPeriod === "day" ? `${salaryRate}/day × 30 days` : salaryPeriod === "week" ? `${salaryRate}/week × 4 weeks` : null;
-  await prisma.expense.create({
-    data: {
-      date: new Date(),
-      amount: monthlyAmount,
-      description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
-      category: "salaries",
-      recurrence: salaryPeriod === "month" ? "monthly" : salaryPeriod === "week" ? "weekly" : "none",
-      vendor: `${employee.firstName} ${employee.lastName}`,
-      reference: employee.id,
       organizationId: session.organizationId,
     },
   });

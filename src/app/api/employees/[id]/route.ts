@@ -37,39 +37,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 
-  // Recalculate if salary or pay period changed
-  const salaryChanged = newSalary !== undefined && newSalary !== existing.salary;
-  const periodChanged = newPeriod !== (existing.salaryPeriod || "month");
-  if (salaryChanged || periodChanged) {
-    const effectiveSalary = newSalary ?? existing.salary;
-    const monthlyAmount = newPeriod === "day" ? effectiveSalary * 30 : newPeriod === "week" ? effectiveSalary * 4 : effectiveSalary;
-    const periodLabel = newPeriod === "day" ? `${effectiveSalary}/day × 30 days` : newPeriod === "week" ? `${effectiveSalary}/week × 4 weeks` : null;
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    await prisma.expense.deleteMany({
-      where: {
-        organizationId: session.organizationId,
-        category: "salaries",
-        reference: id,
-        date: { gte: monthStart },
-      },
-    });
-
-    await prisma.expense.create({
-      data: {
-        date: now,
-        amount: monthlyAmount,
-        description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
-        category: "salaries",
-        recurrence: newPeriod === "month" ? "monthly" : newPeriod === "week" ? "weekly" : "none",
-        vendor: `${employee.firstName} ${employee.lastName}`,
-        reference: id,
-        organizationId: session.organizationId,
-      },
-    });
-  }
-
   await logAudit({ session, action: "update", entity: "employee", entityId: employee.id, description: `Updated employee "${employee.firstName} ${employee.lastName}"` });
   return NextResponse.json(employee);
 }
@@ -83,6 +50,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const employee = await prisma.employee.findFirst({ where: { id, organizationId: session.organizationId } });
   if (!employee) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  await prisma.expense.deleteMany({ where: { organizationId: session.organizationId, category: "salaries", reference: id } });
   await prisma.employee.delete({ where: { id } });
   await logAudit({ session, action: "delete", entity: "employee", entityId: id, description: `Deleted employee "${employee.firstName} ${employee.lastName}"` });
   return NextResponse.json({ success: true });

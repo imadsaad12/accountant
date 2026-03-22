@@ -14,7 +14,12 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
   const category = searchParams.get("category");
 
-  const where: Record<string, unknown> = { organizationId: session.organizationId };
+  // Exclude auto-generated salary rows (reference = employee id, category = salaries)
+  // These are replaced by dynamic computation below
+  const where: Record<string, unknown> = {
+    organizationId: session.organizationId,
+    NOT: { AND: [{ category: "salaries" }, { reference: { not: null } }] },
+  };
   if (from || to) {
     where.date = {};
     if (from) (where.date as Record<string, unknown>).gte = new Date(from + "T00:00:00.000Z");
@@ -22,12 +27,71 @@ export async function GET(req: NextRequest) {
   }
   if (category) where.category = category;
 
-  const expenses = await prisma.expense.findMany({
+  const storedExpenses = await prisma.expense.findMany({
     where,
     orderBy: { date: "desc" },
     include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } } },
   });
-  return NextResponse.json(expenses);
+
+  // Dynamically compute salary rows when a date range is provided
+  const salaryRows: typeof storedExpenses = [];
+  if (from && to && (!category || category === "salaries")) {
+    const fromDate = new Date(from + "T00:00:00.000Z");
+    const toDate = new Date(to + "T23:59:59.999Z");
+
+    const employees = await prisma.employee.findMany({
+      where: {
+        organizationId: session.organizationId,
+        hireDate: { lte: toDate },
+      },
+    });
+
+    for (const emp of employees) {
+      const hireDate = new Date(emp.hireDate);
+      const effectiveFrom = hireDate > fromDate ? hireDate : fromDate;
+      const days = Math.floor((toDate.getTime() - effectiveFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (days <= 0) continue;
+
+      const rate = Number(emp.salary);
+      const period = emp.salaryPeriod || "month";
+      let amount = 0;
+      let description = "";
+
+      if (period === "day") {
+        amount = parseFloat((rate * days).toFixed(2));
+        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/day × ${days} days)`;
+      } else if (period === "week") {
+        const weeks = parseFloat((days / 7).toFixed(2));
+        amount = parseFloat((rate * weeks).toFixed(2));
+        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/week × ${weeks} weeks)`;
+      } else {
+        const months = parseFloat((days / 30).toFixed(2));
+        amount = parseFloat((rate * months).toFixed(2));
+        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/month × ${months} months)`;
+      }
+
+      salaryRows.push({
+        id: `salary-${emp.id}`,
+        date: effectiveFrom,
+        amount,
+        description,
+        category: "salaries",
+        recurrence: "none",
+        vendor: `${emp.firstName} ${emp.lastName}`,
+        reference: emp.id,
+        note: null,
+        accountId: null,
+        organizationId: session.organizationId,
+        createdById: null,
+        createdAt: effectiveFrom,
+        updatedAt: effectiveFrom,
+        createdBy: null,
+        account: null,
+      });
+    }
+  }
+
+  return NextResponse.json([...salaryRows, ...storedExpenses]);
 }
 
 export async function POST(req: NextRequest) {
