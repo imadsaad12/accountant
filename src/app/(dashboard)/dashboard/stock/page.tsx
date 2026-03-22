@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, currencySymbol } from "@/components/OrgSettingsProvider";
 import { useTranslation } from "@/components/LanguageProvider";
@@ -72,6 +72,7 @@ export default function StockPage() {
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -118,19 +119,24 @@ export default function StockPage() {
       setFormError(t("stock.price_greater_than_cost"));
       return;
     }
-    const payload = {
-      ...form,
-      price,
-      cost,
-      quantity: parseInt(form.quantity) || 0,
-      minStock: parseInt(form.minStock) || 0,
-      categoryId: form.categoryId || null,
-    };
-    const url = editing ? `/api/products/${editing.id}` : "/api/products";
-    const method = editing ? "PUT" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setShowForm(false);
-    loadData();
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        price,
+        cost,
+        quantity: parseInt(form.quantity) || 0,
+        minStock: parseInt(form.minStock) || 0,
+        categoryId: form.categoryId || null,
+      };
+      const url = editing ? `/api/products/${editing.id}` : "/api/products";
+      const method = editing ? "PUT" : "POST";
+      await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      setShowForm(false);
+      loadData();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -240,7 +246,10 @@ export default function StockPage() {
               <input required value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder={t("stock.category_placeholder")} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowCategoryForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">{t("stock.add_category")}</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {t("stock.add_category")}
+                </button>
               </div>
             </form>
           </div>
@@ -331,7 +340,10 @@ export default function StockPage() {
               )}
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">{editing ? t("common.save") : t("stock.add")}</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {editing ? t("common.save") : t("stock.add")}
+                </button>
               </div>
             </form>
           </div>

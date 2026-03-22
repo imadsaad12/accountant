@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       amount: monthlyAmount,
       description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
       category: "salaries",
-      recurrence: "monthly",
+      recurrence: salaryPeriod === "month" ? "monthly" : salaryPeriod === "week" ? "weekly" : "none",
       vendor: `${employee.firstName} ${employee.lastName}`,
       reference: employee.id,
       organizationId: session.organizationId,

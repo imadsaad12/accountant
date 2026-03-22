@@ -96,6 +96,7 @@ export default function InvoicesPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: new Date().toISOString().split("T")[0], method: "cash", reference: "", note: "" });
   const [savingPayment, setSavingPayment] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -175,16 +176,21 @@ export default function InvoicesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
-      ...form,
-      taxRate: parseFloat(form.taxRate),
-      discount: parseFloat(form.discount) || 0,
-      items: items.map(item => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, productId: item.productId || undefined })),
-    };
-    await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setShowForm(false);
-    setItems([{ ...emptyItem }]);
-    loadData();
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        taxRate: parseFloat(form.taxRate),
+        discount: parseFloat(form.discount) || 0,
+        items: items.map(item => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, productId: item.productId || undefined })),
+      };
+      await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      setShowForm(false);
+      setItems([{ ...emptyItem }]);
+      loadData();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function updateStatus(id: string, status: string) {
@@ -581,7 +587,10 @@ export default function InvoicesPage() {
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">{t("invoices.add")}</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {t("invoices.add")}
+                </button>
               </div>
             </form>
           </div>

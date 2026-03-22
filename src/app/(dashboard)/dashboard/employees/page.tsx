@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -61,6 +61,7 @@ export default function EmployeesPage() {
   const [filterDept, setFilterDept] = useState("");
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadEmployees(); }, []);
 
@@ -99,11 +100,16 @@ export default function EmployeesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const url = editing ? `/api/employees/${editing.id}` : "/api/employees";
-    const method = editing ? "PUT" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    setShowForm(false);
-    loadEmployees();
+    setSaving(true);
+    try {
+      const url = editing ? `/api/employees/${editing.id}` : "/api/employees";
+      const method = editing ? "PUT" : "POST";
+      await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      setShowForm(false);
+      loadEmployees();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -266,7 +272,10 @@ export default function EmployeesPage() {
               </div>
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">{editing ? t("common.save") : t("employees.add")}</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {editing ? t("common.save") : t("employees.add")}
+                </button>
               </div>
             </form>
           </div>

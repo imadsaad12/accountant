@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -40,6 +40,7 @@ export default function ClientsPage() {
   const [filterCity, setFilterCity] = useState("");
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadClients(); }, []);
 
@@ -75,16 +76,21 @@ export default function ClientsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    const url = editing ? `/api/clients/${editing.id}` : "/api/clients";
-    const method = editing ? "PUT" : "POST";
-    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (!res.ok) {
-      const data = await res.json();
-      setFormError(data.error || t("common.error"));
-      return;
+    setSaving(true);
+    try {
+      const url = editing ? `/api/clients/${editing.id}` : "/api/clients";
+      const method = editing ? "PUT" : "POST";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const data = await res.json();
+        setFormError(data.error || t("common.error"));
+        return;
+      }
+      setShowForm(false);
+      loadClients();
+    } finally {
+      setSaving(false);
     }
-    setShowForm(false);
-    loadClients();
   }
 
   async function handleDelete(id: string) {
@@ -211,7 +217,10 @@ export default function ClientsPage() {
               )}
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">{editing ? t("common.save") : t("clients.add")}</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {editing ? t("common.save") : t("clients.add")}
+                </button>
               </div>
             </form>
           </div>

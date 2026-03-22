@@ -62,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         amount: monthlyAmount,
         description: `Salary — ${employee.firstName} ${employee.lastName}${periodLabel ? ` (${periodLabel})` : ""}`,
         category: "salaries",
-        recurrence: "monthly",
+        recurrence: newPeriod === "month" ? "monthly" : newPeriod === "week" ? "weekly" : "none",
         vendor: `${employee.firstName} ${employee.lastName}`,
         reference: id,
         organizationId: session.organizationId,

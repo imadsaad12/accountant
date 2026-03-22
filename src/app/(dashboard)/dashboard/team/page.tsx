@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Pencil, Trash2, Shield, X, Check, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, X, Check, ChevronDown, ChevronUp, UserCheck, Loader2 } from "lucide-react";
 import { ALL_FEATURES, FEATURE_LABELS, DEFAULT_EMPLOYEE_PERMISSIONS, type Permissions, type Feature } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
 
@@ -469,9 +469,10 @@ export default function TeamPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
                 >
-                  {saving ? t("common.loading") : editing ? t("common.save") : t("team.add")}
+                  {saving && <Loader2 size={14} className="animate-spin" />}
+                  {editing ? t("common.save") : t("team.add")}
                 </button>
               </div>
             </form>
