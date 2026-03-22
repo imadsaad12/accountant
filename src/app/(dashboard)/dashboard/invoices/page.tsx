@@ -75,6 +75,14 @@ function agingBadge(inv: Invoice) {
 
 const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const fmtCompact = (n: number) => {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
+  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
+  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
+  return fmtAmt(n);
+};
+
 export default function InvoicesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("invoices");
@@ -309,6 +317,41 @@ export default function InvoicesPage() {
           </button>
         )}
       </div>
+
+      {/* Stats */}
+      {invoices.length > 0 && (() => {
+        const totalValue   = invoices.reduce((s, i) => s + i.total, 0);
+        const paidValue    = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+        const pendingValue = invoices.filter(i => i.status === "sent" || i.status === "overdue" || i.status === "partially_paid").reduce((s, i) => s + i.total, 0);
+        return (
+          <div className="grid grid-cols-3 gap-3 mb-4 sm:mb-6">
+            <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                {currencySymbol}{fmtAmt(totalValue)}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+              </div>
+              <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("field.total")}</p>
+              <p className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{fmtCompact(totalValue)}</p>
+            </div>
+            <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                {currencySymbol}{fmtAmt(paidValue)}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+              </div>
+              <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("status.paid")}</p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-400">{currencySymbol}{fmtCompact(paidValue)}</p>
+            </div>
+            <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                {currencySymbol}{fmtAmt(pendingValue)}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+              </div>
+              <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("dashboard.pending")}</p>
+              <p className="text-lg sm:text-2xl font-bold text-amber-400">{currencySymbol}{fmtCompact(pendingValue)}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* View Invoice Modal */}
       {viewInvoice && (

@@ -29,6 +29,14 @@ function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtCompact(n: number) {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
+  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
+  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
+  return fmt(n);
+}
+
 export default function TaxPage() {
   const { orgSettings } = useOrgSettings();
   const sym = currencySymbol(orgSettings.defaultCurrency);
@@ -60,14 +68,22 @@ export default function TaxPage() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+              {sym}{fmt(paidTax)}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+            </div>
             <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("tax.collected")}</p>
-            <p className="text-lg sm:text-2xl font-bold text-green-400">{sym}{fmt(paidTax)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-400">{sym}{fmtCompact(paidTax)}</p>
             <p className="text-xs text-text-muted mt-1">{t("tax.collected_hint")}</p>
           </div>
-          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+              {sym}{fmt(pendingTax)}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+            </div>
             <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("tax.pending")}</p>
-            <p className="text-lg sm:text-2xl font-bold text-yellow-400">{sym}{fmt(pendingTax)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-yellow-400">{sym}{fmtCompact(pendingTax)}</p>
             <p className="text-xs text-text-muted mt-1">{t("tax.pending_hint")}</p>
           </div>
           <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">

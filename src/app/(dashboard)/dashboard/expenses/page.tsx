@@ -58,6 +58,14 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const fmtCompact = (n: number) => {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
+  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
+  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
+  return fmtAmt(n);
+};
+
 export default function ExpensesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("expenses");
@@ -215,22 +223,30 @@ export default function ExpensesPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+              {currencySymbol}{fmtAmt(totalAmount)}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+            </div>
             <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><TrendingDown size={13} /> {t("expenses.total")}</div>
-            <div className="text-lg sm:text-2xl font-bold text-danger">{currencySymbol}{fmtAmt(totalAmount)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-danger">{currencySymbol}{fmtCompact(totalAmount)}</div>
           </div>
-          <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+              {currencySymbol}{fmtAmt(lastMonthTotal)}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+            </div>
             <div className="text-text-muted text-xs mb-0.5">{t("expenses.last_month")} – {lastMonthName}</div>
             <div className="text-[10px] text-text-muted mb-1">({lastMonthStartStr} – {lastMonthEndStr})</div>
-            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{fmtAmt(lastMonthTotal)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{fmtCompact(lastMonthTotal)}</div>
           </div>
           <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="text-text-muted text-xs mb-2">{t("expenses.by_category")}</div>
             <div className="space-y-1">
               {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([cat, amt]) => (
-                <div key={cat} className="flex items-center justify-between text-xs">
+                <div key={cat} className="relative flex items-center justify-between text-xs group">
                   <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.other}`}>{t(`expenses.cat.${cat}`)}</span>
-                  <span className="text-text-secondary font-medium">{currencySymbol}{fmtAmt(amt)}</span>
+                  <span className="relative text-text-secondary font-medium" title={`${currencySymbol}${fmtAmt(amt)}`}>{currencySymbol}{fmtCompact(amt)}</span>
                 </div>
               ))}
             </div>
