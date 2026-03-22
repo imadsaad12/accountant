@@ -66,7 +66,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         vendor: `${employee.firstName} ${employee.lastName}`,
         reference: id,
         organizationId: session.organizationId,
-        createdById: session.userId,
       },
     });
   }

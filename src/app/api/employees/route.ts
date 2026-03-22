@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
       vendor: `${employee.firstName} ${employee.lastName}`,
       reference: employee.id,
       organizationId: session.organizationId,
-      createdById: session.userId,
     },
   });
 
