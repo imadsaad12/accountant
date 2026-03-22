@@ -74,8 +74,10 @@ export default function ExpensesPage() {
   const [sortField, setSortField] = useState<ExpSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
+  const [dateRangeError, setDateRangeError] = useState(false);
 
   const loadData = useCallback(async () => {
+    if (filterFrom && filterTo && filterFrom > filterTo) return;
     setLoading(true);
     const params = new URLSearchParams();
     if (filterCategory) params.set("category", filterCategory);
@@ -218,13 +220,37 @@ export default function ExpensesPage() {
             <option value="">{t("common.all_categories")}</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{t(`expenses.cat.${c}`)}</option>)}
           </select>
-          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-          <button onClick={loadData} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover">{t("common.search")}</button>
+          <input
+            type="date"
+            value={filterFrom}
+            max={filterTo || undefined}
+            onChange={e => { setFilterFrom(e.target.value); setDateRangeError(false); }}
+            className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
+          />
+          <input
+            type="date"
+            value={filterTo}
+            min={filterFrom || undefined}
+            onChange={e => { setFilterTo(e.target.value); setDateRangeError(false); }}
+            className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
+          />
+          <button
+            onClick={() => {
+              if (filterFrom && filterTo && filterFrom > filterTo) { setDateRangeError(true); return; }
+              setDateRangeError(false);
+              loadData();
+            }}
+            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover"
+          >
+            {t("common.search")}
+          </button>
           {(filterCategory || filterFrom || filterTo) && (
-            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
+            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); setDateRangeError(false); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
               {t("common.clear")}
             </button>
+          )}
+          {dateRangeError && (
+            <p className="w-full text-xs text-red-400">{t("expenses.date_range_error")}</p>
           )}
         </div>
 
