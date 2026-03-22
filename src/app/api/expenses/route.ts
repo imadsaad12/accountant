@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
   const where: Record<string, unknown> = { organizationId: session.organizationId };
   if (from || to) {
     where.date = {};
-    if (from) (where.date as Record<string, unknown>).gte = new Date(from);
-    if (to) (where.date as Record<string, unknown>).lte = new Date(to);
+    if (from) (where.date as Record<string, unknown>).gte = new Date(from + "T00:00:00.000Z");
+    if (to) (where.date as Record<string, unknown>).lte = new Date(to + "T23:59:59.999Z");
   }
   if (category) where.category = category;
 

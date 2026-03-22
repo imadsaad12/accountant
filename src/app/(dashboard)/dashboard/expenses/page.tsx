@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
@@ -74,9 +74,7 @@ export default function ExpensesPage() {
   const [sortField, setSortField] = useState<ExpSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  useEffect(() => { loadData(); }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (filterCategory) params.set("category", filterCategory);
@@ -89,7 +87,9 @@ export default function ExpensesPage() {
     setExpenses(filteredRes.ok ? await filteredRes.json() : []);
     setAllExpenses(allRes.ok ? await allRes.json() : []);
     setLoading(false);
-  }
+  }, [filterCategory, filterFrom, filterTo]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   function openAdd() {
     setEditId(null);
@@ -214,10 +214,9 @@ export default function ExpensesPage() {
           </select>
           <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
           <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-          <button onClick={loadData} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover">{t("common.search")}</button>
           {(filterCategory || filterFrom || filterTo) && (
-            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); setTimeout(loadData, 0); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
-              Clear
+            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
+              {t("common.clear")}
             </button>
           )}
         </div>
