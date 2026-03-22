@@ -20,6 +20,8 @@ interface Product {
   name: string;
   price: number;
   quantity: number;
+  type: string;
+  components: { componentId: string; quantity: number; component: { id: string; name: string; quantity: number } }[];
 }
 
 interface InvoiceItem {
@@ -41,6 +43,12 @@ interface Payment {
   note: string | null;
 }
 
+interface InvoiceFee {
+  id?: string;
+  label: string;
+  amount: number;
+}
+
 interface Invoice {
   id: string;
   number: string;
@@ -57,12 +65,14 @@ interface Invoice {
   client: Client;
   clientId: string;
   items: InvoiceItem[];
+  fees: InvoiceFee[];
 }
 
 type InvSortField = "number" | "client" | "date" | "dueDate" | "total" | "status" | "";
 type SortDir = "asc" | "desc";
 
 const emptyItem = { description: "", quantity: 1, unitPrice: 0, total: 0, productId: "" };
+const emptyFee = { label: "", amount: 0 };
 const PAYMENT_METHODS = ["cash", "bank_transfer", "check", "card"];
 
 function agingBadge(inv: Invoice) {
@@ -99,6 +109,7 @@ export default function InvoicesPage() {
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
   const [items, setItems] = useState<typeof emptyItem[]>([{ ...emptyItem }]);
+  const [fees, setFees] = useState<InvoiceFee[]>([]);
 
   // Payment state
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -194,10 +205,12 @@ export default function InvoicesPage() {
         taxRate: parseFloat(form.taxRate),
         discount: parseFloat(form.discount) || 0,
         items: items.map(item => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, productId: item.productId || undefined })),
+        fees: fees.filter(f => f.label.trim() && f.amount > 0),
       };
       await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       setShowForm(false);
       setItems([{ ...emptyItem }]);
+      setFees([]);
       loadData();
     } finally {
       setSaving(false);
@@ -259,7 +272,15 @@ export default function InvoicesPage() {
         pdfTotalsY += 7;
       }
       doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): ${sym}${fmtAmt(Number(fullInvoice.tax))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
-      pdfTotalsY += 11;
+      pdfTotalsY += 7;
+      if (Array.isArray(fullInvoice.fees)) {
+        for (const fee of fullInvoice.fees as { label: string; amount: number }[]) {
+          doc.setTextColor(60, 60, 60);
+          doc.text(`${fee.label}: ${sym}${fmtAmt(Number(fee.amount))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+          pdfTotalsY += 7;
+        }
+      }
+      pdfTotalsY += 4;
       doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
       doc.text(`${pdfT.grandTotal}: ${sym}${fmtAmt(Number(fullInvoice.total))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       if (fullInvoice.notes) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100); doc.text(`${pdfT.notes}: ${fullInvoice.notes}`, 20, pdfTotalsY + 18); }
@@ -303,6 +324,7 @@ export default function InvoicesPage() {
   const discountAmount = subtotal * (discountPct / 100);
   const afterDiscount = subtotal - discountAmount;
   const tax = afterDiscount * (parseFloat(form.taxRate) / 100);
+  const feesTotal = fees.reduce((s, f) => s + (f.amount || 0), 0);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent"></div></div>;
 
@@ -312,7 +334,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> {t("invoices.add")}
           </button>
         )}
@@ -424,6 +446,12 @@ export default function InvoicesPage() {
                   <span>{t("invoices.tax")} ({viewInvoice.taxRate}%)</span>
                   <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(viewInvoice.tax)}</span>
                 </div>
+                {(viewInvoice.fees || []).map((fee, idx) => (
+                  <div key={idx} className="flex justify-between text-text-secondary">
+                    <span>{fee.label}</span>
+                    <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(fee.amount)}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between border-t border-dark-border pt-1.5">
                   <span className="font-semibold text-text-primary">{t("field.total")}</span>
                   <span className="text-base font-bold text-accent">{currencySymbol}{fmtAmt(viewInvoice.total)}</span>
@@ -591,7 +619,29 @@ export default function InvoicesPage() {
                         <div key={idx} className="grid grid-cols-[150px_1fr_68px_90px_80px_28px] gap-2 items-center px-2 py-1.5">
                           <select value={item.productId} onChange={e => updateItem(idx, "productId", e.target.value)} className="px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
                             <option value="">{t("invoices.custom_item")}</option>
-                            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({currencySymbol}{p.price})</option>)}
+                            {products.map(p => {
+                              if (p.type === "composite" && p.components.length) {
+                                const canMake = Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)));
+                                const missing = canMake === 0
+                                  ? p.components.filter(c => c.component.quantity < c.quantity).map(c => c.component.name).join(", ")
+                                  : null;
+                                return (
+                                  <option key={p.id} value={p.id} disabled={canMake === 0}>
+                                    {canMake === 0
+                                      ? `⚠ ${p.name} — no stock (missing: ${missing})`
+                                      : `${p.name} — ${currencySymbol}${p.price} (can make ${canMake})`}
+                                  </option>
+                                );
+                              }
+                              const avail = p.quantity;
+                              return (
+                                <option key={p.id} value={p.id} disabled={avail === 0}>
+                                  {avail === 0
+                                    ? `⚠ ${p.name} — out of stock`
+                                    : `${p.name} — ${currencySymbol}${p.price} (${avail} avail.)`}
+                                </option>
+                              );
+                            })}
                           </select>
                           <input placeholder={t("field.description")} required value={item.description} onChange={e => updateItem(idx, "description", e.target.value)} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" />
                           <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
@@ -606,6 +656,40 @@ export default function InvoicesPage() {
                 <button type="button" onClick={addItem} className="mt-3 flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover font-medium">
                   <Plus size={16} /> {t("invoices.add_item")}
                 </button>
+              </div>
+
+              {/* Fees */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-text-secondary">Additional Fees</label>
+                  <button type="button" onClick={() => setFees([...fees, { ...emptyFee }])} className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover font-medium">
+                    <Plus size={13} /> Add Fee
+                  </button>
+                </div>
+                {fees.length > 0 && (
+                  <div className="space-y-2">
+                    {fees.map((fee, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. Delivery fee"
+                          value={fee.label}
+                          onChange={e => { const f = [...fees]; f[idx] = { ...f[idx], label: e.target.value }; setFees(f); }}
+                          className="flex-1 px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm"
+                        />
+                        <input
+                          type="number" step="0.01" min="0"
+                          value={fee.amount}
+                          onChange={e => { const f = [...fees]; f[idx] = { ...f[idx], amount: parseFloat(e.target.value) || 0 }; setFees(f); }}
+                          onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                          className="w-28 px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
+                          placeholder="0.00"
+                        />
+                        <button type="button" onClick={() => setFees(fees.filter((_, i) => i !== idx))} className="text-text-muted hover:text-danger p-1"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="bg-dark-bg/40 rounded-xl border border-dark-border/50 p-3 space-y-1.5 text-sm">
@@ -623,9 +707,15 @@ export default function InvoicesPage() {
                   <span>{t("invoices.tax")} ({form.taxRate}%)</span>
                   <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(tax)}</span>
                 </div>
+                {fees.filter(f => f.label && f.amount > 0).map((fee, idx) => (
+                  <div key={idx} className="flex justify-between text-text-secondary">
+                    <span>{fee.label}</span>
+                    <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(fee.amount)}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between border-t border-dark-border pt-1.5">
                   <span className="font-semibold text-text-primary">{t("field.total")}</span>
-                  <span className="text-base font-bold text-accent">{currencySymbol}{fmtAmt(afterDiscount + tax)}</span>
+                  <span className="text-base font-bold text-accent">{currencySymbol}{fmtAmt(afterDiscount + tax + feesTotal)}</span>
                 </div>
               </div>
 

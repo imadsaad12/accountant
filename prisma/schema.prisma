@@ -85,25 +85,41 @@ model Category {
 }
 
 model Product {
-  id             String        @id @default(cuid())
+  id             String             @id @default(cuid())
   name           String
   sku            String
-  description    String?       @db.Text
+  description    String?            @db.Text
   price          Float
-  cost           Float         @default(0)
-  quantity       Int           @default(0)
-  minStock       Int           @default(5)
-  unit           String        @default("piece")
+  cost           Float              @default(0)
+  quantity       Float              @default(0)
+  minStock       Int                @default(5)
+  unit           String             @default("piece")
+  type           String             @default("simple")   // simple | composite
   categoryId     String?
-  category       Category?     @relation(fields: [categoryId], references: [id])
+  category       Category?          @relation(fields: [categoryId], references: [id])
   organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
   invoiceItems   InvoiceItem[]
+  components     ProductComponent[] @relation("CompositeProduct")
+  usedIn         ProductComponent[] @relation("ComponentProduct")
 
   @@unique([sku, organizationId])
   @@index([organizationId])
+}
+
+model ProductComponent {
+  id          String  @id @default(cuid())
+  compositeId String
+  composite   Product @relation("CompositeProduct", fields: [compositeId], references: [id], onDelete: Cascade)
+  componentId String
+  component   Product @relation("ComponentProduct", fields: [componentId], references: [id])
+  quantity    Float
+
+  @@unique([compositeId, componentId])
+  @@index([compositeId])
+  @@index([componentId])
 }
 
 model Employee {
@@ -167,6 +183,7 @@ model Invoice {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   items          InvoiceItem[]
+  fees           InvoiceFee[]
   payments       Payment[]
 
   @@unique([number, organizationId])
@@ -272,7 +289,18 @@ model InvoiceItem {
   description String
   quantity    Int
   unitPrice   Float
+  unitCost    Float  @default(0)
   total       Float
+}
+
+model InvoiceFee {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  label     String
+  amount    Float
+
+  @@index([invoiceId])
 }
 
 model AuditLog {

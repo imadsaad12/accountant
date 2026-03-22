@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [invoice, org] = await Promise.all([
     prisma.invoice.findFirst({
       where: { id, organizationId: session.organizationId },
-      include: { client: true, items: { include: { product: true } } },
+      include: { client: true, items: { include: { product: true } }, fees: true },
     }),
     prisma.organization.findUnique({ where: { id: session.organizationId }, select: { name: true } }),
   ]);
@@ -33,10 +33,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const data = await req.json();
-  const { items, ...invoiceData } = data;
+  const { items, fees, ...invoiceData } = data;
 
   if (items) {
     await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
+    await prisma.invoiceFee.deleteMany({ where: { invoiceId: id } });
 
     const subtotal = items.reduce((sum: number, item: { quantity: number; unitPrice: number }) => sum + item.quantity * item.unitPrice, 0);
     const taxRate = invoiceData.taxRate != null ? invoiceData.taxRate : 19;
@@ -44,7 +45,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const discountAmount = subtotal * (discount / 100);
     const afterDiscount = subtotal - discountAmount;
     const tax = afterDiscount * (taxRate / 100);
-    const total = afterDiscount + tax;
+    const feesTotal = Array.isArray(fees) ? fees.reduce((s: number, f: { amount: number }) => s + (f.amount || 0), 0) : 0;
+    const total = afterDiscount + tax + feesTotal;
 
     const invoice = await prisma.invoice.update({
       where: { id },
@@ -66,8 +68,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             productId: item.productId || null,
           })),
         },
+        fees: Array.isArray(fees) && fees.length > 0 ? {
+          create: fees.map((f: { label: string; amount: number }) => ({ label: f.label, amount: f.amount })),
+        } : undefined,
       },
-      include: { client: true, items: { include: { product: true } } },
+      include: { client: true, items: { include: { product: true } }, fees: true },
     });
     await logAudit({ session, action: "update", entity: "invoice", entityId: invoice.id, description: `Updated invoice ${invoice.number}` });
     return NextResponse.json(invoice);
@@ -76,7 +81,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const invoice = await prisma.invoice.update({
     where: { id },
     data: invoiceData,
-    include: { client: true, items: { include: { product: true } } },
+    include: { client: true, items: { include: { product: true } }, fees: true },
   });
 
   // BUG-001 fix: when status changes to "paid", auto-create a full payment if none covers the total

@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const invoices = await prisma.invoice.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { client: true, items: { include: { product: true } } },
+    include: { client: true, items: { include: { product: true } }, fees: true },
   });
   return NextResponse.json(invoices);
 }
@@ -38,11 +38,10 @@ export async function POST(req: NextRequest) {
   if (!canEdit(session.permissions, "invoices")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const data = await req.json();
-  const { items, ...invoiceData } = data;
+  const { items, fees, ...invoiceData } = data;
 
   const org = await prisma.organization.findUnique({ where: { id: session.organizationId }, select: { name: true } });
   const prefix = (org?.name ?? "INV").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
-  // Use MAX sequence to avoid unique-constraint collisions when invoices have been deleted
   const lastInvoice = await prisma.invoice.findFirst({
     where: { organizationId: session.organizationId, number: { startsWith: prefix } },
     orderBy: { number: "desc" },
@@ -62,7 +61,42 @@ export async function POST(req: NextRequest) {
   const discountAmount = subtotal * (discount / 100);
   const afterDiscount = subtotal - discountAmount;
   const tax = afterDiscount * (taxRate / 100);
-  const total = afterDiscount + tax;
+  const feesTotal = Array.isArray(fees) ? fees.reduce((s: number, f: { amount: number }) => s + (f.amount || 0), 0) : 0;
+  const total = afterDiscount + tax + feesTotal;
+
+  // Pre-validate all stock before creating the invoice
+  // Also snapshot product costs now so COGS in reports uses historical cost
+  const costSnapshot = new Map<string, number>();
+  for (const item of items) {
+    if (!item.productId) continue;
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId },
+      include: {
+        components: {
+          include: { component: { select: { id: true, name: true, quantity: true } } },
+        },
+      },
+    });
+    if (!product) continue;
+    costSnapshot.set(item.productId, product.cost);
+
+    if (product.type === "composite") {
+      for (const comp of product.components) {
+        const needed = comp.quantity * item.quantity;
+        if (comp.component.quantity < needed) {
+          return NextResponse.json({
+            error: `Insufficient stock for component "${comp.component.name}" (needed for "${product.name}"). Available: ${comp.component.quantity}, needed: ${needed}.`,
+          }, { status: 400 });
+        }
+      }
+    } else {
+      if (item.quantity > product.quantity) {
+        return NextResponse.json({
+          error: `Insufficient stock for "${product.name}". Available: ${product.quantity}, requested: ${item.quantity}.`,
+        }, { status: 400 });
+      }
+    }
+  }
 
   const invoice = await prisma.invoice.create({
     data: {
@@ -81,21 +115,35 @@ export async function POST(req: NextRequest) {
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          unitCost: item.productId ? (costSnapshot.get(item.productId) ?? 0) : 0,
           total: item.quantity * item.unitPrice,
           productId: item.productId || null,
         })),
       },
+      fees: Array.isArray(fees) && fees.length > 0 ? {
+        create: fees.map((f: { label: string; amount: number }) => ({ label: f.label, amount: f.amount })),
+      } : undefined,
     },
-    include: { client: true, items: { include: { product: true } } },
+    include: { client: true, items: { include: { product: true } }, fees: true },
   });
 
+  // Deduct stock after successful invoice creation
   for (const item of items) {
-    if (item.productId) {
-      const product = await prisma.product.findUnique({ where: { id: item.productId }, select: { quantity: true, name: true } });
-      if (product && item.quantity > product.quantity) {
-        await prisma.invoice.delete({ where: { id: invoice.id } });
-        return NextResponse.json({ error: `Insufficient stock for "${product.name}". Available: ${product.quantity}, requested: ${item.quantity}.` }, { status: 400 });
+    if (!item.productId) continue;
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId },
+      include: { components: true },
+    });
+    if (!product) continue;
+
+    if (product.type === "composite") {
+      for (const comp of product.components) {
+        await prisma.product.update({
+          where: { id: comp.componentId },
+          data: { quantity: { decrement: comp.quantity * item.quantity } },
+        });
       }
+    } else {
       await prisma.product.update({
         where: { id: item.productId },
         data: { quantity: { decrement: item.quantity } },

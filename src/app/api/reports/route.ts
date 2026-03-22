@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
           status: { in: ["paid", "partially_paid"] },
           date: { gte: fromDate, lte: toDate },
         },
-        include: { items: { include: { product: true } }, payments: true },
+        include: { items: true, payments: true },
       }),
       // Fetch all expenses that started on or before the end of the period
       prisma.expense.findMany({
@@ -75,11 +75,11 @@ export async function GET(req: NextRequest) {
         taxCollected += (totalPaid / inv.total) * inv.tax;
       }
 
-      // COGS: prorate product costs by the paid fraction
+      // COGS: prorate product costs by the paid fraction (use unitCost snapshot from invoice time)
       const paidRatio = inv.total > 0 ? Math.min(totalPaid / inv.total, 1) : 0;
       for (const item of inv.items) {
-        if (item.product) {
-          cogs += item.product.cost * item.quantity * paidRatio;
+        if (item.unitCost > 0) {
+          cogs += item.unitCost * item.quantity * paidRatio;
         }
       }
     }

@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, organizationId: session.organizationId },
-    include: { client: true, items: { include: { product: true } } },
+    include: { client: true, items: { include: { product: true } }, fees: true },
   });
 
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
@@ -168,7 +168,13 @@ export async function POST(req: NextRequest) {
     totalsY += 7;
   }
   doc.text(`${lang.tax} (${invoice.taxRate}%): $${invoice.tax.toFixed(2)}`, totalsX, totalsY, { align: totalsAlign });
-  totalsY += 11;
+  totalsY += 7;
+  for (const fee of invoice.fees) {
+    doc.setTextColor(60, 60, 60);
+    doc.text(`${fee.label}: $${fee.amount.toFixed(2)}`, totalsX, totalsY, { align: totalsAlign });
+    totalsY += 7;
+  }
+  totalsY += 4;
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");

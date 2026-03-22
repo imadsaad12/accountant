@@ -10,7 +10,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!canView(session.permissions, "products")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const product = await prisma.product.findFirst({ where: { id, organizationId: session.organizationId }, include: { category: true } });
+  const product = await prisma.product.findFirst({
+    where: { id, organizationId: session.organizationId },
+    include: {
+      category: true,
+      components: {
+        include: { component: { select: { id: true, name: true, quantity: true, unit: true, cost: true } } },
+      },
+    },
+  });
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(product);
 }
@@ -25,7 +33,36 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const data = await req.json();
-  const product = await prisma.product.update({ where: { id }, data });
+  const { components, ...productData } = data;
+  const isComposite = existing.type === "composite";
+
+  const product = await prisma.product.update({
+    where: { id },
+    data: {
+      name: productData.name,
+      description: productData.description || null,
+      price: parseFloat(productData.price),
+      cost: parseFloat(productData.cost) || 0,
+      quantity: isComposite ? 0 : (parseFloat(productData.quantity) || 0),
+      minStock: parseInt(productData.minStock) || 0,
+      unit: productData.unit || existing.unit,
+      categoryId: productData.categoryId || null,
+    },
+  });
+
+  if (isComposite) {
+    await prisma.productComponent.deleteMany({ where: { compositeId: id } });
+    if (Array.isArray(components) && components.length > 0) {
+      await prisma.productComponent.createMany({
+        data: components.map((c: { componentId: string; quantity: number }) => ({
+          compositeId: id,
+          componentId: c.componentId,
+          quantity: parseFloat(String(c.quantity)),
+        })),
+      });
+    }
+  }
+
   await logAudit({ session, action: "update", entity: "product", entityId: product.id, description: `Updated product "${product.name}"` });
   return NextResponse.json(product);
 }
@@ -36,11 +73,20 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!canEdit(session.permissions, "products")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const product = await prisma.product.findFirst({ where: { id, organizationId: session.organizationId }, include: { _count: { select: { invoiceItems: true } } } });
+  const product = await prisma.product.findFirst({
+    where: { id, organizationId: session.organizationId },
+    include: {
+      _count: { select: { invoiceItems: true } },
+      usedIn: true,
+    },
+  });
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (product._count.invoiceItems > 0)
     return NextResponse.json({ error: `Cannot delete "${product.name}" — it is referenced in ${product._count.invoiceItems} invoice(s).` }, { status: 409 });
+
+  if (product.usedIn.length > 0)
+    return NextResponse.json({ error: `Cannot delete "${product.name}" — it is used as a component in ${product.usedIn.length} composite product(s).` }, { status: 409 });
 
   await prisma.product.delete({ where: { id } });
   await logAudit({ session, action: "delete", entity: "product", entityId: id, description: `Deleted product "${product.name}"` });
