@@ -157,6 +157,12 @@ export default function ExpensesPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // Reset to page 1 when data or sort changes
+  useEffect(() => { setPage(1); }, [expenses, sortField, sortDir]);
+
   const sortedExpenses = useMemo(() => {
     if (!sortField) return expenses;
     return [...expenses].sort((a, b) => {
@@ -351,7 +357,7 @@ export default function ExpensesPage() {
               <tbody className="divide-y divide-dark-border/50">
                 {sortedExpenses.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">{t("expenses.empty")}</td></tr>
-                ) : sortedExpenses.map(exp => (
+                ) : sortedExpenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(exp => (
                   <tr key={exp.id} className="hover:bg-dark-card-hover">
                     <td className="px-4 py-3 text-sm text-text-secondary">{new Date(exp.date).toLocaleDateString("en-GB")}</td>
                     <td className="px-4 py-3 text-sm text-text-primary font-medium">
@@ -386,6 +392,22 @@ export default function ExpensesPage() {
             </table>
           )}
         </div>
+        {sortedExpenses.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between px-2 py-3">
+            <span className="text-xs text-text-muted">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedExpenses.length)} {t("common.of")} {sortedExpenses.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">
+                {t("common.prev")}
+              </button>
+              <span className="px-3 py-1.5 text-xs text-text-muted">{page} / {Math.ceil(sortedExpenses.length / PAGE_SIZE)}</span>
+              <button onClick={() => setPage(p => Math.min(Math.ceil(sortedExpenses.length / PAGE_SIZE), p + 1))} disabled={page * PAGE_SIZE >= sortedExpenses.length} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">
+                {t("common.next")}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </PermissionGuard>
   );
