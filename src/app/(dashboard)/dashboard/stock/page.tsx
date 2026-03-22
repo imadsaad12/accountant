@@ -51,6 +51,8 @@ function generateSKU(categoryName: string, existingProducts: { sku: string }[]):
   return `${prefix}-${String(next).padStart(3, "0")}`;
 }
 
+const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function StockPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("products");
@@ -383,7 +385,7 @@ export default function StockPage() {
                 </td>
                 <td className="px-4 py-3 text-sm text-text-secondary font-mono">{product.sku}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{product.category?.name || "-"}</td>
-                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">{currSym}{product.price.toFixed(2)}</td>
+                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">{currSym}{fmtAmt(product.price)}</td>
                 <td className="px-4 py-3 text-right">
                   <span className={`inline-flex items-center gap-1 text-sm font-medium ${product.quantity <= product.minStock ? "text-danger" : "text-success"}`}>
                     {product.quantity <= product.minStock && <AlertTriangle size={14} />}

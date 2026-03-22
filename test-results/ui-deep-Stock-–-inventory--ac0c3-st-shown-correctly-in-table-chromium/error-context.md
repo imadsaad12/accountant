@@ -1,0 +1,468 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - generic [ref=e10]:
+            - heading "Accountant" [level=1] [ref=e11]
+            - paragraph [ref=e12]: Admin User
+        - button [ref=e13]:
+          - img [ref=e14]
+      - navigation [ref=e16]:
+        - link "Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e18]
+          - generic [ref=e23]: Dashboard
+        - link "Clients" [ref=e24] [cursor=pointer]:
+          - /url: /dashboard/clients
+          - img [ref=e25]
+          - generic [ref=e30]: Clients
+        - link "Stock" [ref=e31] [cursor=pointer]:
+          - /url: /dashboard/stock
+          - img [ref=e32]
+          - generic [ref=e36]: Stock
+        - link "Employees" [ref=e37] [cursor=pointer]:
+          - /url: /dashboard/employees
+          - img [ref=e38]
+          - generic [ref=e50]: Employees
+        - link "Invoices" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/invoices
+          - img [ref=e52]
+          - generic [ref=e55]: Invoices
+        - link "Expenses" [ref=e56] [cursor=pointer]:
+          - /url: /dashboard/expenses
+          - img [ref=e57]
+          - generic [ref=e60]: Expenses
+        - link "Reports" [ref=e61] [cursor=pointer]:
+          - /url: /dashboard/reports
+          - img [ref=e62]
+          - generic [ref=e63]: Reports
+        - link "AI Assistant" [ref=e64] [cursor=pointer]:
+          - /url: /dashboard/ai-assistant
+          - img [ref=e65]
+          - generic [ref=e68]: AI Assistant
+        - link "Activity Log" [ref=e69] [cursor=pointer]:
+          - /url: /dashboard/activity-log
+          - img [ref=e70]
+          - generic [ref=e73]: Activity Log
+        - link "Tax" [ref=e74] [cursor=pointer]:
+          - /url: /dashboard/tax
+          - img [ref=e75]
+          - generic [ref=e78]: Tax
+        - link "Team" [ref=e79] [cursor=pointer]:
+          - /url: /dashboard/team
+          - img [ref=e80]
+          - generic [ref=e84]: Team
+        - link "Settings" [ref=e85] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e86]
+          - generic [ref=e89]: Settings
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - generic [ref=e93]: A
+          - generic [ref=e94]:
+            - paragraph [ref=e95]: Admin User
+            - paragraph [ref=e96]: admin@accountant.com
+        - button "Logout" [ref=e97]:
+          - img [ref=e98]
+          - generic [ref=e101]: Logout
+    - main [ref=e102]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - heading "Stock" [level=1] [ref=e106]
+          - generic [ref=e107]:
+            - button "Add Category" [ref=e108]:
+              - img [ref=e109]
+              - text: Add Category
+            - button "Add Product" [ref=e110]:
+              - img [ref=e111]
+              - text: Add Product
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - img [ref=e114]
+            - textbox "Search" [ref=e117]
+          - combobox [ref=e118]:
+            - option "All categories" [selected]
+            - option "AnotherCat1773859530679"
+            - option "AnotherCat1773860697632"
+            - option "AnotherCat1773861785492"
+            - option "AnotherCat1773861994113"
+            - option "AnotherCat1773865914467"
+            - option "AnotherCat1773928163591"
+            - option "AnotherCat1773929178944"
+            - option "AnotherCat1773932023488"
+            - option "Clothing & Apparel"
+            - option "Electronics"
+            - option "Finished Goods"
+            - option "Food & Beverages"
+            - option "Furniture"
+            - option "Office Supplies"
+            - option "Packaging"
+            - option "Raw Materials"
+            - option "Services"
+            - option "Software"
+            - option "TestCat1773859530679"
+            - option "TestCat1773860697632"
+            - option "TestCat1773861785492"
+            - option "TestCat1773861994113"
+            - option "TestCat1773865914467"
+            - option "TestCat1773928163591"
+            - option "TestCat1773929178944"
+            - option "TestCat1773932023488"
+            - option "Tools & Equipment"
+          - combobox [ref=e119]:
+            - option "All Stock" [selected]
+            - option "Low Stock Only"
+            - option "In Stock Only"
+        - table [ref=e121]:
+          - rowgroup [ref=e122]:
+            - row "Product SKU Category Price In Stock Actions" [ref=e123]:
+              - columnheader "Product" [ref=e124] [cursor=pointer]:
+                - generic [ref=e125]:
+                  - text: Product
+                  - img [ref=e126]
+              - columnheader "SKU" [ref=e128] [cursor=pointer]:
+                - generic [ref=e129]:
+                  - text: SKU
+                  - img [ref=e130]
+              - columnheader "Category" [ref=e132] [cursor=pointer]:
+                - generic [ref=e133]:
+                  - text: Category
+                  - img [ref=e134]
+              - columnheader "Price" [ref=e136] [cursor=pointer]:
+                - generic [ref=e137]:
+                  - text: Price
+                  - img [ref=e138]
+              - columnheader "In Stock" [ref=e140] [cursor=pointer]:
+                - generic [ref=e141]:
+                  - text: In Stock
+                  - img [ref=e142]
+              - columnheader "Actions" [ref=e144]
+          - rowgroup [ref=e145]:
+            - row "A4 Paper (Box) Premium A4 copy paper, 5000 sheets OFF-001 Office Supplies $45.99 3 box" [ref=e146]:
+              - cell "A4 Paper (Box) Premium A4 copy paper, 5000 sheets" [ref=e147]:
+                - generic [ref=e148]: A4 Paper (Box)
+                - generic [ref=e149]: Premium A4 copy paper, 5000 sheets
+              - cell "OFF-001" [ref=e150]
+              - cell "Office Supplies" [ref=e151]
+              - cell "$45.99" [ref=e152]
+              - cell "3 box" [ref=e153]:
+                - generic [ref=e154]:
+                  - img [ref=e155]
+                  - text: 3 box
+              - cell [ref=e157]:
+                - button [ref=e158]:
+                  - img [ref=e159]
+                - button [ref=e162]:
+                  - img [ref=e163]
+            - row "Adobe Creative Cloud Annual all-apps license SOFT-002 Software $659.88 25 piece" [ref=e166]:
+              - cell "Adobe Creative Cloud Annual all-apps license" [ref=e167]:
+                - generic [ref=e168]: Adobe Creative Cloud
+                - generic [ref=e169]: Annual all-apps license
+              - cell "SOFT-002" [ref=e170]
+              - cell "Software" [ref=e171]
+              - cell "$659.88" [ref=e172]
+              - cell "25 piece" [ref=e173]:
+                - generic [ref=e174]: 25 piece
+              - cell [ref=e175]:
+                - button [ref=e176]:
+                  - img [ref=e177]
+                - button [ref=e180]:
+                  - img [ref=e181]
+            - row "Dell Monitor 27\" Dell UltraSharp 27 4K USB-C Monitor ELEC-002 Electronics $549.99 22 piece" [ref=e184]:
+              - cell "Dell Monitor 27\" Dell UltraSharp 27 4K USB-C Monitor" [ref=e185]:
+                - generic [ref=e186]: Dell Monitor 27"
+                - generic [ref=e187]: Dell UltraSharp 27 4K USB-C Monitor
+              - cell "ELEC-002" [ref=e188]
+              - cell "Electronics" [ref=e189]
+              - cell "$549.99" [ref=e190]
+              - cell "22 piece" [ref=e191]:
+                - generic [ref=e192]: 22 piece
+              - cell [ref=e193]:
+                - button [ref=e194]:
+                  - img [ref=e195]
+                - button [ref=e198]:
+                  - img [ref=e199]
+            - row "Ergonomic Chair Herman Miller Aeron chair FURN-002 Furniture $1395.00 8 piece" [ref=e202]:
+              - cell "Ergonomic Chair Herman Miller Aeron chair" [ref=e203]:
+                - generic [ref=e204]: Ergonomic Chair
+                - generic [ref=e205]: Herman Miller Aeron chair
+              - cell "FURN-002" [ref=e206]
+              - cell "Furniture" [ref=e207]
+              - cell "$1395.00" [ref=e208]
+              - cell "8 piece" [ref=e209]:
+                - generic [ref=e210]: 8 piece
+              - cell [ref=e211]:
+                - button [ref=e212]:
+                  - img [ref=e213]
+                - button [ref=e216]:
+                  - img [ref=e217]
+            - row "Executive Desk L-shaped executive desk, walnut finish FURN-001 Furniture $899.99 4 piece" [ref=e220]:
+              - cell "Executive Desk L-shaped executive desk, walnut finish" [ref=e221]:
+                - generic [ref=e222]: Executive Desk
+                - generic [ref=e223]: L-shaped executive desk, walnut finish
+              - cell "FURN-001" [ref=e224]
+              - cell "Furniture" [ref=e225]
+              - cell "$899.99" [ref=e226]
+              - cell "4 piece" [ref=e227]:
+                - generic [ref=e228]: 4 piece
+              - cell [ref=e229]:
+                - button [ref=e230]:
+                  - img [ref=e231]
+                - button [ref=e234]:
+                  - img [ref=e235]
+            - row "Filing Cabinet 4-drawer vertical filing cabinet, steel FURN-003 Furniture $299.99 12 piece" [ref=e238]:
+              - cell "Filing Cabinet 4-drawer vertical filing cabinet, steel" [ref=e239]:
+                - generic [ref=e240]: Filing Cabinet
+                - generic [ref=e241]: 4-drawer vertical filing cabinet, steel
+              - cell "FURN-003" [ref=e242]
+              - cell "Furniture" [ref=e243]
+              - cell "$299.99" [ref=e244]
+              - cell "12 piece" [ref=e245]:
+                - generic [ref=e246]: 12 piece
+              - cell [ref=e247]:
+                - button [ref=e248]:
+                  - img [ref=e249]
+                - button [ref=e252]:
+                  - img [ref=e253]
+            - row "Ink Cartridge Set HP 63XL Black & Color combo pack OFF-002 Office Supplies $65.99 18 piece" [ref=e256]:
+              - cell "Ink Cartridge Set HP 63XL Black & Color combo pack" [ref=e257]:
+                - generic [ref=e258]: Ink Cartridge Set
+                - generic [ref=e259]: HP 63XL Black & Color combo pack
+              - cell "OFF-002" [ref=e260]
+              - cell "Office Supplies" [ref=e261]
+              - cell "$65.99" [ref=e262]
+              - cell "18 piece" [ref=e263]:
+                - generic [ref=e264]: 18 piece
+              - cell [ref=e265]:
+                - button [ref=e266]:
+                  - img [ref=e267]
+                - button [ref=e270]:
+                  - img [ref=e271]
+            - row "IT Consultation Hourly IT consultation service SERV-001 Services $150.00 999 piece" [ref=e274]:
+              - cell "IT Consultation Hourly IT consultation service" [ref=e275]:
+                - generic [ref=e276]: IT Consultation
+                - generic [ref=e277]: Hourly IT consultation service
+              - cell "SERV-001" [ref=e278]
+              - cell "Services" [ref=e279]
+              - cell "$150.00" [ref=e280]
+              - cell "999 piece" [ref=e281]:
+                - generic [ref=e282]: 999 piece
+              - cell [ref=e283]:
+                - button [ref=e284]:
+                  - img [ref=e285]
+                - button [ref=e288]:
+                  - img [ref=e289]
+            - row "Logitech MX Master 3S Wireless mouse with ergonomic design ELEC-003 Electronics $99.99 45 piece" [ref=e292]:
+              - cell "Logitech MX Master 3S Wireless mouse with ergonomic design" [ref=e293]:
+                - generic [ref=e294]: Logitech MX Master 3S
+                - generic [ref=e295]: Wireless mouse with ergonomic design
+              - cell "ELEC-003" [ref=e296]
+              - cell "Electronics" [ref=e297]
+              - cell "$99.99" [ref=e298]
+              - cell "45 piece" [ref=e299]:
+                - generic [ref=e300]: 45 piece
+              - cell [ref=e301]:
+                - button [ref=e302]:
+                  - img [ref=e303]
+                - button [ref=e306]:
+                  - img [ref=e307]
+            - row "MacBook Pro 16\" Apple MacBook Pro 16-inch M3 Pro ELEC-001 Electronics $2499.99 15 piece" [ref=e310]:
+              - cell "MacBook Pro 16\" Apple MacBook Pro 16-inch M3 Pro" [ref=e311]:
+                - generic [ref=e312]: MacBook Pro 16"
+                - generic [ref=e313]: Apple MacBook Pro 16-inch M3 Pro
+              - cell "ELEC-001" [ref=e314]
+              - cell "Electronics" [ref=e315]
+              - cell "$2499.99" [ref=e316]
+              - cell "15 piece" [ref=e317]:
+                - generic [ref=e318]: 15 piece
+              - cell [ref=e319]:
+                - button [ref=e320]:
+                  - img [ref=e321]
+                - button [ref=e324]:
+                  - img [ref=e325]
+            - row "Mechanical Keyboard Keychron K2 Pro Wireless Mechanical ELEC-004 Electronics $89.99 30 piece" [ref=e328]:
+              - cell "Mechanical Keyboard Keychron K2 Pro Wireless Mechanical" [ref=e329]:
+                - generic [ref=e330]: Mechanical Keyboard
+                - generic [ref=e331]: Keychron K2 Pro Wireless Mechanical
+              - cell "ELEC-004" [ref=e332]
+              - cell "Electronics" [ref=e333]
+              - cell "$89.99" [ref=e334]
+              - cell "30 piece" [ref=e335]:
+                - generic [ref=e336]: 30 piece
+              - cell [ref=e337]:
+                - button [ref=e338]:
+                  - img [ref=e339]
+                - button [ref=e342]:
+                  - img [ref=e343]
+            - row "Microsoft 365 License Annual business subscription per user SOFT-001 Software $264.00 100 piece" [ref=e346]:
+              - cell "Microsoft 365 License Annual business subscription per user" [ref=e347]:
+                - generic [ref=e348]: Microsoft 365 License
+                - generic [ref=e349]: Annual business subscription per user
+              - cell "SOFT-001" [ref=e350]
+              - cell "Software" [ref=e351]
+              - cell "$264.00" [ref=e352]
+              - cell "100 piece" [ref=e353]:
+                - generic [ref=e354]: 100 piece
+              - cell [ref=e355]:
+                - button [ref=e356]:
+                  - img [ref=e357]
+                - button [ref=e360]:
+                  - img [ref=e361]
+            - row "Product 1773859530679 - $100.00 0 piece" [ref=e364]:
+              - cell "Product 1773859530679" [ref=e365]:
+                - generic [ref=e366]: Product 1773859530679
+              - cell [ref=e367]
+              - cell "-" [ref=e368]
+              - cell "$100.00" [ref=e369]
+              - cell "0 piece" [ref=e370]:
+                - generic [ref=e371]:
+                  - img [ref=e372]
+                  - text: 0 piece
+              - cell [ref=e374]:
+                - button [ref=e375]:
+                  - img [ref=e376]
+                - button [ref=e379]:
+                  - img [ref=e380]
+            - row "Product 1773861785492 ANOT-001 AnotherCat1773859530679 $100.00 0 piece" [ref=e383]:
+              - cell "Product 1773861785492" [ref=e384]:
+                - generic [ref=e385]: Product 1773861785492
+              - cell "ANOT-001" [ref=e386]
+              - cell "AnotherCat1773859530679" [ref=e387]
+              - cell "$100.00" [ref=e388]
+              - cell "0 piece" [ref=e389]:
+                - generic [ref=e390]:
+                  - img [ref=e391]
+                  - text: 0 piece
+              - cell [ref=e393]:
+                - button [ref=e394]:
+                  - img [ref=e395]
+                - button [ref=e398]:
+                  - img [ref=e399]
+            - row "Product 1773861994113 ANOT-002 AnotherCat1773859530679 $100.00 0 piece" [ref=e402]:
+              - cell "Product 1773861994113" [ref=e403]:
+                - generic [ref=e404]: Product 1773861994113
+              - cell "ANOT-002" [ref=e405]
+              - cell "AnotherCat1773859530679" [ref=e406]
+              - cell "$100.00" [ref=e407]
+              - cell "0 piece" [ref=e408]:
+                - generic [ref=e409]:
+                  - img [ref=e410]
+                  - text: 0 piece
+              - cell [ref=e412]:
+                - button [ref=e413]:
+                  - img [ref=e414]
+                - button [ref=e417]:
+                  - img [ref=e418]
+            - row "Product 1773865914467 ANOT-003 AnotherCat1773859530679 $100.00 0 piece" [ref=e421]:
+              - cell "Product 1773865914467" [ref=e422]:
+                - generic [ref=e423]: Product 1773865914467
+              - cell "ANOT-003" [ref=e424]
+              - cell "AnotherCat1773859530679" [ref=e425]
+              - cell "$100.00" [ref=e426]
+              - cell "0 piece" [ref=e427]:
+                - generic [ref=e428]:
+                  - img [ref=e429]
+                  - text: 0 piece
+              - cell [ref=e431]:
+                - button [ref=e432]:
+                  - img [ref=e433]
+                - button [ref=e436]:
+                  - img [ref=e437]
+            - row "Product 1773928163591 ANOT-004 AnotherCat1773859530679 $100.00 0 piece" [ref=e440]:
+              - cell "Product 1773928163591" [ref=e441]:
+                - generic [ref=e442]: Product 1773928163591
+              - cell "ANOT-004" [ref=e443]
+              - cell "AnotherCat1773859530679" [ref=e444]
+              - cell "$100.00" [ref=e445]
+              - cell "0 piece" [ref=e446]:
+                - generic [ref=e447]:
+                  - img [ref=e448]
+                  - text: 0 piece
+              - cell [ref=e450]:
+                - button [ref=e451]:
+                  - img [ref=e452]
+                - button [ref=e455]:
+                  - img [ref=e456]
+            - row "Product 1773929178944 ANOT-005 AnotherCat1773859530679 $100.00 0 piece" [ref=e459]:
+              - cell "Product 1773929178944" [ref=e460]:
+                - generic [ref=e461]: Product 1773929178944
+              - cell "ANOT-005" [ref=e462]
+              - cell "AnotherCat1773859530679" [ref=e463]
+              - cell "$100.00" [ref=e464]
+              - cell "0 piece" [ref=e465]:
+                - generic [ref=e466]:
+                  - img [ref=e467]
+                  - text: 0 piece
+              - cell [ref=e469]:
+                - button [ref=e470]:
+                  - img [ref=e471]
+                - button [ref=e474]:
+                  - img [ref=e475]
+            - row "Product 1773932023488 ANOT-006 AnotherCat1773859530679 $100.00 0 piece" [ref=e478]:
+              - cell "Product 1773932023488" [ref=e479]:
+                - generic [ref=e480]: Product 1773932023488
+              - cell "ANOT-006" [ref=e481]
+              - cell "AnotherCat1773859530679" [ref=e482]
+              - cell "$100.00" [ref=e483]
+              - cell "0 piece" [ref=e484]:
+                - generic [ref=e485]:
+                  - img [ref=e486]
+                  - text: 0 piece
+              - cell [ref=e488]:
+                - button [ref=e489]:
+                  - img [ref=e490]
+                - button [ref=e493]:
+                  - img [ref=e494]
+            - row "USB-C Hub Anker 7-in-1 USB-C Hub ELEC-005 Electronics $35.99 2 piece" [ref=e497]:
+              - cell "USB-C Hub Anker 7-in-1 USB-C Hub" [ref=e498]:
+                - generic [ref=e499]: USB-C Hub
+                - generic [ref=e500]: Anker 7-in-1 USB-C Hub
+              - cell "ELEC-005" [ref=e501]
+              - cell "Electronics" [ref=e502]
+              - cell "$35.99" [ref=e503]
+              - cell "2 piece" [ref=e504]:
+                - generic [ref=e505]:
+                  - img [ref=e506]
+                  - text: 2 piece
+              - cell [ref=e508]:
+                - button [ref=e509]:
+                  - img [ref=e510]
+                - button [ref=e513]:
+                  - img [ref=e514]
+            - row "Web Development Custom web development per hour SERV-002 Services $120.00 999 piece" [ref=e517]:
+              - cell "Web Development Custom web development per hour" [ref=e518]:
+                - generic [ref=e519]: Web Development
+                - generic [ref=e520]: Custom web development per hour
+              - cell "SERV-002" [ref=e521]
+              - cell "Services" [ref=e522]
+              - cell "$120.00" [ref=e523]
+              - cell "999 piece" [ref=e524]:
+                - generic [ref=e525]: 999 piece
+              - cell [ref=e526]:
+                - button [ref=e527]:
+                  - img [ref=e528]
+                - button [ref=e531]:
+                  - img [ref=e532]
+            - row "Whiteboard Markers Expo dry erase markers, 12 pack OFF-003 Office Supplies $14.99 50 box" [ref=e535]:
+              - cell "Whiteboard Markers Expo dry erase markers, 12 pack" [ref=e536]:
+                - generic [ref=e537]: Whiteboard Markers
+                - generic [ref=e538]: Expo dry erase markers, 12 pack
+              - cell "OFF-003" [ref=e539]
+              - cell "Office Supplies" [ref=e540]
+              - cell "$14.99" [ref=e541]
+              - cell "50 box" [ref=e542]:
+                - generic [ref=e543]: 50 box
+              - cell [ref=e544]:
+                - button [ref=e545]:
+                  - img [ref=e546]
+                - button [ref=e549]:
+                  - img [ref=e550]
+  - button "Open Next.js Dev Tools" [ref=e558] [cursor=pointer]:
+    - img [ref=e559]
+  - alert [ref=e562]
+```

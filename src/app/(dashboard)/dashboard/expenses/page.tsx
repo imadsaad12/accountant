@@ -56,6 +56,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: "bg-slate-500/10 text-slate-400 border-slate-500/20",
 };
 
+const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function ExpensesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("expenses");
@@ -77,13 +79,12 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [dateRangeError, setDateRangeError] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (filterFrom && filterTo && filterFrom > filterTo) return;
+  const loadData = useCallback(async (cat = "", from = "", to = "") => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (filterCategory) params.set("category", filterCategory);
-    if (filterFrom) params.set("from", filterFrom);
-    if (filterTo) params.set("to", filterTo);
+    if (cat) params.set("category", cat);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
     // Compute last month date range for the stat card
     const now = new Date();
     const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -101,7 +102,7 @@ export default function ExpensesPage() {
     setAllExpenses(allRes.ok ? await allRes.json() : []);
     setLastMonthExpenses(lmRes.ok ? await lmRes.json() : []);
     setLoading(false);
-  }, [filterCategory, filterFrom, filterTo]);
+  }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -134,7 +135,7 @@ export default function ExpensesPage() {
       const url = editId ? `/api/expenses/${editId}` : "/api/expenses";
       await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
       setShowForm(false);
-      loadData();
+      loadData(filterCategory, filterFrom, filterTo);
     } finally {
       setSaving(false);
     }
@@ -143,7 +144,7 @@ export default function ExpensesPage() {
   async function handleDelete(id: string) {
     if (!confirm(t("expenses.delete_confirm"))) return;
     await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    loadData();
+    loadData(filterCategory, filterFrom, filterTo);
   }
 
   function toggleSort(field: ExpSortField) {
@@ -210,12 +211,12 @@ export default function ExpensesPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><TrendingDown size={13} /> {t("expenses.total")}</div>
-            <div className="text-lg sm:text-2xl font-bold text-danger">{currencySymbol}{totalAmount.toFixed(2)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-danger">{currencySymbol}{fmtAmt(totalAmount)}</div>
           </div>
           <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="text-text-muted text-xs mb-0.5">{t("expenses.last_month")} – {lastMonthName}</div>
             <div className="text-[10px] text-text-muted mb-1">({lastMonthStartStr} – {lastMonthEndStr})</div>
-            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{lastMonthTotal.toFixed(2)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{fmtAmt(lastMonthTotal)}</div>
           </div>
           <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
             <div className="text-text-muted text-xs mb-2">{t("expenses.by_category")}</div>
@@ -223,7 +224,7 @@ export default function ExpensesPage() {
               {Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([cat, amt]) => (
                 <div key={cat} className="flex items-center justify-between text-xs">
                   <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.other}`}>{t(`expenses.cat.${cat}`)}</span>
-                  <span className="text-text-secondary font-medium">{currencySymbol}{amt.toFixed(2)}</span>
+                  <span className="text-text-secondary font-medium">{currencySymbol}{fmtAmt(amt)}</span>
                 </div>
               ))}
             </div>
@@ -254,14 +255,14 @@ export default function ExpensesPage() {
             onClick={() => {
               if (filterFrom && filterTo && filterFrom > filterTo) { setDateRangeError(true); return; }
               setDateRangeError(false);
-              loadData();
+              loadData(filterCategory, filterFrom, filterTo);
             }}
             className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover"
           >
             {t("common.search")}
           </button>
           {(filterCategory || filterFrom || filterTo) && (
-            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); setDateRangeError(false); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
+            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); setDateRangeError(false); loadData(); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
               {t("common.clear")}
             </button>
           )}
@@ -370,7 +371,7 @@ export default function ExpensesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{exp.vendor || "-"}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-danger text-right">{currencySymbol}{exp.amount.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-danger text-right">{currencySymbol}{fmtAmt(exp.amount)}</td>
                     <td className="px-4 py-3 text-right space-x-1">
                       {canEdit && (
                         <>

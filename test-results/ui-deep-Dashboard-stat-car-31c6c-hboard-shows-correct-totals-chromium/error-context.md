@@ -1,0 +1,263 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - img [ref=e7]
+          - generic [ref=e10]:
+            - heading "Accountant" [level=1] [ref=e11]
+            - paragraph [ref=e12]: Admin User
+        - button [ref=e13]:
+          - img [ref=e14]
+      - navigation [ref=e16]:
+        - link "Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e18]
+          - generic [ref=e23]: Dashboard
+        - link "Clients" [ref=e24] [cursor=pointer]:
+          - /url: /dashboard/clients
+          - img [ref=e25]
+          - generic [ref=e30]: Clients
+        - link "Stock" [ref=e31] [cursor=pointer]:
+          - /url: /dashboard/stock
+          - img [ref=e32]
+          - generic [ref=e36]: Stock
+        - link "Employees" [ref=e37] [cursor=pointer]:
+          - /url: /dashboard/employees
+          - img [ref=e38]
+          - generic [ref=e50]: Employees
+        - link "Invoices" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/invoices
+          - img [ref=e52]
+          - generic [ref=e55]: Invoices
+        - link "Expenses" [ref=e56] [cursor=pointer]:
+          - /url: /dashboard/expenses
+          - img [ref=e57]
+          - generic [ref=e60]: Expenses
+        - link "Reports" [ref=e61] [cursor=pointer]:
+          - /url: /dashboard/reports
+          - img [ref=e62]
+          - generic [ref=e63]: Reports
+        - link "AI Assistant" [ref=e64] [cursor=pointer]:
+          - /url: /dashboard/ai-assistant
+          - img [ref=e65]
+          - generic [ref=e68]: AI Assistant
+        - link "Activity Log" [ref=e69] [cursor=pointer]:
+          - /url: /dashboard/activity-log
+          - img [ref=e70]
+          - generic [ref=e73]: Activity Log
+        - link "Tax" [ref=e74] [cursor=pointer]:
+          - /url: /dashboard/tax
+          - img [ref=e75]
+          - generic [ref=e78]: Tax
+        - link "Team" [ref=e79] [cursor=pointer]:
+          - /url: /dashboard/team
+          - img [ref=e80]
+          - generic [ref=e84]: Team
+        - link "Settings" [ref=e85] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e86]
+          - generic [ref=e89]: Settings
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - generic [ref=e93]: A
+          - generic [ref=e94]:
+            - paragraph [ref=e95]: Admin User
+            - paragraph [ref=e96]: admin@accountant.com
+        - button "Logout" [ref=e97]:
+          - img [ref=e98]
+          - generic [ref=e101]: Logout
+    - main [ref=e102]:
+      - generic [ref=e104]:
+        - generic [ref=e105]:
+          - heading "Dashboard" [level=1] [ref=e106]
+          - paragraph [ref=e107]: Overview of your business performance
+        - generic [ref=e108]:
+          - generic [ref=e110]:
+            - generic [ref=e111]:
+              - paragraph [ref=e112]: Gross Earning
+              - paragraph [ref=e113]: $500
+            - img [ref=e115]
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - paragraph [ref=e120]: Net Earning
+              - paragraph [ref=e121]: $500
+            - img [ref=e123]
+          - generic [ref=e127]:
+            - generic [ref=e128]:
+              - paragraph [ref=e129]: Pending
+              - paragraph [ref=e130]: $29,718
+            - img [ref=e132]
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - paragraph [ref=e138]: Clients
+              - paragraph [ref=e139]: "44"
+              - generic [ref=e140]:
+                - img [ref=e141]
+                - generic [ref=e144]: "+3"
+                - generic [ref=e145]: vs last month
+            - img [ref=e147]
+          - generic [ref=e153]:
+            - generic [ref=e154]:
+              - paragraph [ref=e155]: Employees
+              - paragraph [ref=e156]: "46"
+            - img [ref=e158]
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - paragraph [ref=e173]: Invoices
+              - paragraph [ref=e174]: "194"
+              - generic [ref=e175]:
+                - img [ref=e176]
+                - generic [ref=e179]: "+5"
+                - generic [ref=e180]: vs last month
+            - img [ref=e182]
+        - generic [ref=e185]:
+          - generic [ref=e186]:
+            - generic [ref=e187]:
+              - generic [ref=e188]:
+                - heading "Revenue Trend" [level=2] [ref=e189]
+                - paragraph [ref=e190]: Daily revenue trend
+              - generic [ref=e191]: $500 gross
+            - application [ref=e194]:
+              - generic [ref=e202]:
+                - generic [ref=e205]: Mar 20
+                - generic [ref=e206]:
+                  - generic [ref=e208]: $0
+                  - generic [ref=e210]: $700
+                  - generic [ref=e212]: $1400
+                  - generic [ref=e214]: $2100
+                  - generic [ref=e216]: $2800
+          - generic [ref=e217]:
+            - generic [ref=e218]:
+              - heading "Invoice Breakdown" [level=2] [ref=e219]
+              - paragraph [ref=e220]: Distribution by status
+            - application [ref=e223]
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - generic [ref=e236]: Draft
+                - generic [ref=e237]: (3)
+              - generic [ref=e238]:
+                - generic [ref=e240]: Sent
+                - generic [ref=e241]: (2)
+        - generic [ref=e242]:
+          - generic [ref=e243]:
+            - generic [ref=e244]:
+              - heading "Monthly Invoices" [level=2] [ref=e245]
+              - paragraph [ref=e246]: Latest invoice totals
+            - application [ref=e249]:
+              - generic [ref=e273]:
+                - generic [ref=e274]:
+                  - generic [ref=e276]: DEMO-COMPANY-00225
+                  - generic [ref=e278]: DEMO-COMPANY-00222
+                - generic [ref=e279]:
+                  - generic [ref=e281]: $0
+                  - generic [ref=e283]: $200
+                  - generic [ref=e285]: $400
+                  - generic [ref=e287]: $600
+                  - generic [ref=e289]: $800
+          - generic [ref=e290]:
+            - generic [ref=e291]:
+              - img [ref=e292]
+              - heading "Low Stock Alerts" [level=2] [ref=e294]
+            - generic [ref=e295]:
+              - generic [ref=e296]:
+                - generic [ref=e297]:
+                  - paragraph [ref=e298]: Executive Desk
+                  - paragraph [ref=e299]: "Min Stock: 2"
+                - generic [ref=e303]: "4"
+              - generic [ref=e304]:
+                - generic [ref=e305]:
+                  - paragraph [ref=e306]: A4 Paper (Box)
+                  - paragraph [ref=e307]: "Min Stock: 10"
+                - generic [ref=e311]: "3"
+              - generic [ref=e312]:
+                - generic [ref=e313]:
+                  - paragraph [ref=e314]: USB-C Hub
+                  - paragraph [ref=e315]: "Min Stock: 10"
+                - generic [ref=e319]: "2"
+              - generic [ref=e320]:
+                - generic [ref=e321]:
+                  - paragraph [ref=e322]: Product 1773859530679
+                  - paragraph [ref=e323]: "Min Stock: 5"
+                - generic [ref=e326]: "0"
+              - generic [ref=e327]:
+                - generic [ref=e328]:
+                  - paragraph [ref=e329]: Product 1773861785492
+                  - paragraph [ref=e330]: "Min Stock: 5"
+                - generic [ref=e333]: "0"
+              - generic [ref=e334]:
+                - generic [ref=e335]:
+                  - paragraph [ref=e336]: Product 1773861994113
+                  - paragraph [ref=e337]: "Min Stock: 5"
+                - generic [ref=e340]: "0"
+              - generic [ref=e341]:
+                - generic [ref=e342]:
+                  - paragraph [ref=e343]: Product 1773865914467
+                  - paragraph [ref=e344]: "Min Stock: 5"
+                - generic [ref=e347]: "0"
+              - generic [ref=e348]:
+                - generic [ref=e349]:
+                  - paragraph [ref=e350]: Product 1773928163591
+                  - paragraph [ref=e351]: "Min Stock: 5"
+                - generic [ref=e354]: "0"
+              - generic [ref=e355]:
+                - generic [ref=e356]:
+                  - paragraph [ref=e357]: Product 1773929178944
+                  - paragraph [ref=e358]: "Min Stock: 5"
+                - generic [ref=e361]: "0"
+              - generic [ref=e362]:
+                - generic [ref=e363]:
+                  - paragraph [ref=e364]: Product 1773932023488
+                  - paragraph [ref=e365]: "Min Stock: 5"
+                - generic [ref=e368]: "0"
+        - generic [ref=e369]:
+          - generic [ref=e370]:
+            - heading "Recent Invoices" [level=2] [ref=e371]
+            - paragraph [ref=e372]: Your latest billing activity
+          - table [ref=e373]:
+            - rowgroup [ref=e374]:
+              - row "Invoice Client Date Total Status" [ref=e375]:
+                - columnheader "Invoice" [ref=e376]
+                - columnheader "Client" [ref=e377]
+                - columnheader "Date" [ref=e378]
+                - columnheader "Total" [ref=e379]
+                - columnheader "Status" [ref=e380]
+            - rowgroup [ref=e381]:
+              - row "DEMO-COMPANY-00227 Client A 1773931852332 3/20/2026 $100 Draft" [ref=e382]:
+                - cell "DEMO-COMPANY-00227" [ref=e383]
+                - cell "Client A 1773931852332" [ref=e384]
+                - cell "3/20/2026" [ref=e385]
+                - cell "$100" [ref=e386]
+                - cell "Draft" [ref=e387]
+              - row "DEMO-COMPANY-00225 Client A 1773931852332 3/20/2026 $600 Draft" [ref=e388]:
+                - cell "DEMO-COMPANY-00225" [ref=e389]
+                - cell "Client A 1773931852332" [ref=e390]
+                - cell "3/20/2026" [ref=e391]
+                - cell "$600" [ref=e392]
+                - cell "Draft" [ref=e393]
+              - row "DEMO-COMPANY-00224 Client A 1773931852332 3/20/2026 $600 Sent" [ref=e394]:
+                - cell "DEMO-COMPANY-00224" [ref=e395]
+                - cell "Client A 1773931852332" [ref=e396]
+                - cell "3/20/2026" [ref=e397]
+                - cell "$600" [ref=e398]
+                - cell "Sent" [ref=e399]
+              - row "DEMO-COMPANY-00223 Client A 1773931852332 3/20/2026 $600 Draft" [ref=e400]:
+                - cell "DEMO-COMPANY-00223" [ref=e401]
+                - cell "Client A 1773931852332" [ref=e402]
+                - cell "3/20/2026" [ref=e403]
+                - cell "$600" [ref=e404]
+                - cell "Draft" [ref=e405]
+              - row "DEMO-COMPANY-00222 Client A 1773931852332 3/20/2026 $800 Sent" [ref=e406]:
+                - cell "DEMO-COMPANY-00222" [ref=e407]
+                - cell "Client A 1773931852332" [ref=e408]
+                - cell "3/20/2026" [ref=e409]
+                - cell "$800" [ref=e410]
+                - cell "Sent" [ref=e411]
+  - button "Open Next.js Dev Tools" [ref=e417] [cursor=pointer]:
+    - img [ref=e418]
+  - alert [ref=e421]
+  - generic [ref=e422]: $200
+```

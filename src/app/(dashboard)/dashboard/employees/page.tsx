@@ -313,7 +313,7 @@ export default function EmployeesPage() {
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.department || "-"}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.email || "-"}</td>
                 <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">
-                  {emp.salary.toLocaleString()} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span>
+                  {emp.salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span>
                   <span className="text-text-muted font-normal text-xs ml-1">/{emp.salaryPeriod || "month"}</span>
                 </td>
                 <td className="px-4 py-3 text-center">

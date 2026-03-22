@@ -73,6 +73,8 @@ function agingBadge(inv: Invoice) {
   return <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${color}`}>{days}d overdue</span>;
 }
 
+const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function InvoicesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("invoices");
@@ -231,24 +233,24 @@ export default function InvoicesPage() {
       doc.setFont("helvetica", "bold"); doc.text(pdfT.billTo, pageWidth - 20, y, { align: "right" }); y += 6;
       doc.setFont("helvetica", "normal"); doc.text(fullInvoice.client?.name || "N/A", pageWidth - 20, y, { align: "right" });
       const tableHead = [[pdfT.description, pdfT.quantity, pdfT.unitPrice, pdfT.total]];
-      const tableBody = (fullInvoice.items || []).map((item: { description: string; quantity: number; unitPrice: number; total: number }) => [item.description, String(item.quantity), `$${Number(item.unitPrice).toFixed(2)}`, `$${Number(item.total).toFixed(2)}`]);
+      const tableBody = (fullInvoice.items || []).map((item: { description: string; quantity: number; unitPrice: number; total: number }) => [item.description, String(item.quantity), `$${fmtAmt(Number(item.unitPrice))}`, `$${fmtAmt(Number(item.total))}`]);
       autoTable(doc, { startY: 85, head: tableHead, body: tableBody, theme: "striped", headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 10, fontStyle: "bold" }, bodyStyles: { fontSize: 9 }, columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: 25, halign: "center" }, 2: { cellWidth: 30, halign: "right" }, 3: { cellWidth: 30, halign: "right" } }, margin: { left: 20, right: 20 } });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
       let pdfTotalsY = finalY;
-      doc.text(`${pdfT.subtotal}: $${Number(fullInvoice.subtotal).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      doc.text(`${pdfT.subtotal}: $${fmtAmt(Number(fullInvoice.subtotal))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       pdfTotalsY += 7;
       if (fullInvoice.discount > 0) {
         doc.setTextColor(34, 197, 94);
-        doc.text(`Discount (${fullInvoice.discount}%): -$${(Number(fullInvoice.subtotal) * fullInvoice.discount / 100).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+        doc.text(`Discount (${fullInvoice.discount}%): -$${fmtAmt(Number(fullInvoice.subtotal) * fullInvoice.discount / 100)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
         doc.setTextColor(60, 60, 60);
         pdfTotalsY += 7;
       }
-      doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): $${Number(fullInvoice.tax).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      doc.text(`${pdfT.tax} (${fullInvoice.taxRate}%): $${fmtAmt(Number(fullInvoice.tax))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       pdfTotalsY += 11;
       doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
-      doc.text(`${pdfT.grandTotal}: $${Number(fullInvoice.total).toFixed(2)}`, pageWidth - 20, pdfTotalsY, { align: "right" });
+      doc.text(`${pdfT.grandTotal}: $${fmtAmt(Number(fullInvoice.total))}`, pageWidth - 20, pdfTotalsY, { align: "right" });
       if (fullInvoice.notes) { doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100); doc.text(`${pdfT.notes}: ${fullInvoice.notes}`, 20, pdfTotalsY + 18); }
       doc.setFontSize(9); doc.setTextColor(150, 150, 150); doc.text(pdfT.thankYou, pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
       doc.save(`${fullInvoice.number}-${lang}.pdf`);
@@ -352,8 +354,8 @@ export default function InvoicesPage() {
                       <tr key={i} className="hover:bg-dark-bg/30">
                         <td className="px-3 py-2.5 text-text-primary">{item.description}</td>
                         <td className="px-3 py-2.5 text-right text-text-secondary">{item.quantity}</td>
-                        <td className="px-3 py-2.5 text-right text-text-secondary">{currencySymbol}{item.unitPrice.toFixed(2)}</td>
-                        <td className="px-3 py-2.5 text-right font-medium text-text-primary">{currencySymbol}{item.total.toFixed(2)}</td>
+                        <td className="px-3 py-2.5 text-right text-text-secondary">{currencySymbol}{fmtAmt(item.unitPrice)}</td>
+                        <td className="px-3 py-2.5 text-right font-medium text-text-primary">{currencySymbol}{fmtAmt(item.total)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -364,21 +366,21 @@ export default function InvoicesPage() {
               <div className="bg-dark-bg/40 rounded-xl border border-dark-border/50 p-3 space-y-1.5 text-sm">
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("invoices.subtotal")}</span>
-                  <span className="font-medium text-text-primary">{currencySymbol}{viewInvoice.subtotal.toFixed(2)}</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(viewInvoice.subtotal)}</span>
                 </div>
                 {viewInvoice.discount > 0 && (
                   <div className="flex justify-between text-text-secondary">
                     <span>Discount ({viewInvoice.discount}%)</span>
-                    <span className="font-medium text-emerald-400">-{currencySymbol}{(viewInvoice.subtotal * viewInvoice.discount / 100).toFixed(2)}</span>
+                    <span className="font-medium text-emerald-400">-{currencySymbol}{fmtAmt(viewInvoice.subtotal * viewInvoice.discount / 100)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("invoices.tax")} ({viewInvoice.taxRate}%)</span>
-                  <span className="font-medium text-text-primary">{currencySymbol}{viewInvoice.tax.toFixed(2)}</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(viewInvoice.tax)}</span>
                 </div>
                 <div className="flex justify-between border-t border-dark-border pt-1.5">
                   <span className="font-semibold text-text-primary">{t("field.total")}</span>
-                  <span className="text-base font-bold text-accent">{currencySymbol}{viewInvoice.total.toFixed(2)}</span>
+                  <span className="text-base font-bold text-accent">{currencySymbol}{fmtAmt(viewInvoice.total)}</span>
                 </div>
               </div>
 
@@ -437,11 +439,11 @@ export default function InvoicesPage() {
                     <div className="flex gap-4 text-sm mb-3">
                       <div className="flex-1 bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2">
                         <div className="text-text-muted text-xs">{t("payments.paid")}</div>
-                        <div className="font-semibold text-emerald-400">${totalPaid.toFixed(2)}</div>
+                        <div className="font-semibold text-emerald-400">{currencySymbol}{fmtAmt(totalPaid)}</div>
                       </div>
                       <div className={`flex-1 border rounded-lg px-3 py-2 ${balance > 0 ? "bg-orange-500/5 border-orange-500/20" : "bg-emerald-500/5 border-emerald-500/20"}`}>
                         <div className="text-text-muted text-xs">{t("payments.balance")}</div>
-                        <div className={`font-semibold ${balance > 0 ? "text-orange-400" : "text-emerald-400"}`}>${Math.abs(balance).toFixed(2)}{balance < 0 ? ` (${t("payments.overpaid")})` : ""}</div>
+                        <div className={`font-semibold ${balance > 0 ? "text-orange-400" : "text-emerald-400"}`}>{currencySymbol}{fmtAmt(Math.abs(balance))}{balance < 0 ? ` (${t("payments.overpaid")})` : ""}</div>
                       </div>
                     </div>
                   );
@@ -457,7 +459,7 @@ export default function InvoicesPage() {
                     {payments.map(p => (
                       <div key={p.id} className="flex items-center justify-between bg-dark-bg/50 border border-dark-border rounded-lg px-3 py-2 text-sm">
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold text-text-primary">${p.amount.toFixed(2)}</span>
+                          <span className="font-semibold text-text-primary">{currencySymbol}{fmtAmt(p.amount)}</span>
                           <span className="text-text-muted text-xs">{new Date(p.date).toLocaleDateString("en-GB")}</span>
                           <span className="text-xs px-2 py-0.5 rounded bg-accent/10 text-accent font-medium">{t(`payments.method.${p.method}`)}</span>
                           {p.reference && <span className="text-text-muted text-xs">#{p.reference}</span>}
@@ -548,7 +550,7 @@ export default function InvoicesPage() {
                           <input placeholder={t("field.description")} required value={item.description} onChange={e => updateItem(idx, "description", e.target.value)} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" />
                           <input type="number" min="1" value={item.quantity} onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
                           <input type="number" step="0.01" min="0" value={item.unitPrice} onChange={e => updateItem(idx, "unitPrice", parseFloat(e.target.value) || 0)} onKeyDown={e => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()} className="w-full px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-                          <span className="text-sm text-right font-medium text-text-primary">{currencySymbol}{(item.quantity * item.unitPrice).toFixed(2)}</span>
+                          <span className="text-sm text-right font-medium text-text-primary">{currencySymbol}{fmtAmt(item.quantity * item.unitPrice)}</span>
                           <button type="button" onClick={() => removeItem(idx)} className={`text-text-muted hover:text-danger p-1 ${items.length <= 1 ? "invisible" : ""}`}><Trash2 size={14} /></button>
                         </div>
                       ))}
@@ -563,21 +565,21 @@ export default function InvoicesPage() {
               <div className="bg-dark-bg/40 rounded-xl border border-dark-border/50 p-3 space-y-1.5 text-sm">
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("invoices.subtotal")}</span>
-                  <span className="font-medium text-text-primary">{currencySymbol}{subtotal.toFixed(2)}</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(subtotal)}</span>
                 </div>
                 {discountPct > 0 && (
                   <div className="flex justify-between text-text-secondary">
                     <span>Discount ({form.discount}%)</span>
-                    <span className="font-medium text-emerald-400">-{currencySymbol}{discountAmount.toFixed(2)}</span>
+                    <span className="font-medium text-emerald-400">-{currencySymbol}{fmtAmt(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("invoices.tax")} ({form.taxRate}%)</span>
-                  <span className="font-medium text-text-primary">{currencySymbol}{tax.toFixed(2)}</span>
+                  <span className="font-medium text-text-primary">{currencySymbol}{fmtAmt(tax)}</span>
                 </div>
                 <div className="flex justify-between border-t border-dark-border pt-1.5">
                   <span className="font-semibold text-text-primary">{t("field.total")}</span>
-                  <span className="text-base font-bold text-accent">{currencySymbol}{(afterDiscount + tax).toFixed(2)}</span>
+                  <span className="text-base font-bold text-accent">{currencySymbol}{fmtAmt(afterDiscount + tax)}</span>
                 </div>
               </div>
 
@@ -625,7 +627,7 @@ export default function InvoicesPage() {
                     {agingBadge(inv)}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">${inv.total.toFixed(2)}</td>
+                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">{currencySymbol}{fmtAmt(inv.total)}</td>
                 <td className="px-4 py-3 text-center">
                   {!canEdit ? (
                     <span className={`text-xs px-2 py-1 rounded-full font-medium border ${

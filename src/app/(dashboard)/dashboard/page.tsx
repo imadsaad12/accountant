@@ -30,6 +30,8 @@ const STATUS_COLORS: Record<string, string> = {
   overdue: "#ef4444",
 };
 
+const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const { orgSettings } = useOrgSettings();
@@ -68,9 +70,9 @@ export default function DashboardPage() {
   }
 
   const stats = [
-    { label: t("dashboard.gross"), value: `${sym}${data.grossEarning.toLocaleString()}`, icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
-    { label: t("dashboard.net"), value: `${sym}${data.netEarning.toLocaleString()}`, icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5", iconBg: "bg-teal-500/20", iconColor: "text-teal-400", trend: null, up: true },
-    { label: t("dashboard.pending"), value: `${sym}${data.pendingAmount.toLocaleString()}`, icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5", iconBg: "bg-amber-500/20", iconColor: "text-amber-400", trend: null, up: false },
+    { label: t("dashboard.gross"), value: `${sym}${fmtAmt(data.grossEarning)}`, icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
+    { label: t("dashboard.net"), value: `${sym}${fmtAmt(data.netEarning)}`, icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5", iconBg: "bg-teal-500/20", iconColor: "text-teal-400", trend: null, up: true },
+    { label: t("dashboard.pending"), value: `${sym}${fmtAmt(data.pendingAmount)}`, icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5", iconBg: "bg-amber-500/20", iconColor: "text-amber-400", trend: null, up: false },
     { label: t("dashboard.clients"), value: data.clientCount, icon: Users, gradient: "from-blue-500/20 to-blue-600/5", iconBg: "bg-blue-500/20", iconColor: "text-blue-400", trend: data.newClientsThisMonth > 0 ? `+${data.newClientsThisMonth} this month` : null, up: true },
     { label: t("dashboard.employees"), value: data.employeeCount, icon: UserCog, gradient: "from-pink-500/20 to-pink-600/5", iconBg: "bg-pink-500/20", iconColor: "text-pink-400", trend: null, up: true },
     { label: t("dashboard.invoices"), value: data.invoiceCount, icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5", iconBg: "bg-cyan-500/20", iconColor: "text-cyan-400", trend: data.newInvoicesThisMonth > 0 ? `+${data.newInvoicesThisMonth} this month` : null, up: true },
@@ -155,7 +157,7 @@ export default function DashboardPage() {
               <p className="text-xs text-text-muted mt-0.5">{t("dashboard.daily_trend")}</p>
             </div>
             <div className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium">
-              {sym}{data.grossEarning.toLocaleString()} {t("dashboard.gross_label")}
+              {sym}{fmtAmt(data.grossEarning)} {t("dashboard.gross_label")}
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -245,7 +247,7 @@ export default function DashboardPage() {
                   contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: "8px" }}
                   labelStyle={{ color: tooltipLabel }}
                   itemStyle={{ color: tooltipItem }}
-                  formatter={(value) => [`${sym}${Number(value).toFixed(2)}`, t("dashboard.amount")]}
+                  formatter={(value) => [`${sym}${fmtAmt(Number(value))}`, t("dashboard.amount")]}
                 />
                 <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                   {barData.map((_, i) => (
@@ -328,7 +330,7 @@ export default function DashboardPage() {
                   <td className="px-5 py-3.5 text-sm font-mono font-medium text-accent">{inv.number}</td>
                   <td className="px-5 py-3.5 text-sm text-text-secondary">{inv.client.name}</td>
                   <td className="px-5 py-3.5 text-sm text-text-muted">{new Date(inv.date).toLocaleDateString("en-GB")}</td>
-                  <td className="px-5 py-3.5 text-sm text-text-primary text-right font-medium">{sym}{inv.total.toLocaleString()}</td>
+                  <td className="px-5 py-3.5 text-sm text-text-primary text-right font-medium">{sym}{fmtAmt(inv.total)}</td>
                   <td className="px-5 py-3.5 text-center">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       inv.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :

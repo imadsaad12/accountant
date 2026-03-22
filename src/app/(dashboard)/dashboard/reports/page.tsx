@@ -69,7 +69,7 @@ export default function ReportsPage() {
     setLoading(false);
   }
 
-  function fmt(n: number) { return `${currencySymbol}${n.toFixed(2)}`; }
+  function fmt(n: number) { return `${currencySymbol}${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
   function pct(n: number, total: number) { return total > 0 ? `${((n / total) * 100).toFixed(1)}%` : "0%"; }
 
   function exportPDF() {
