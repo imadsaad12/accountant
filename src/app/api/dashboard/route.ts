@@ -34,8 +34,15 @@ export async function GET() {
     paymentsByInvoice[p.invoiceId] = (paymentsByInvoice[p.invoiceId] ?? 0) + p.amount;
   }
 
-  // grossEarning = all cash actually received (sum of all payments)
-  const grossEarning = allPayments.reduce((sum, p) => sum + p.amount, 0);
+  // grossEarning = total value of all fully paid invoices
+  //   + actual payments received on partially paid invoices
+  const grossEarning =
+    invoices
+      .filter(i => i.status === "paid")
+      .reduce((sum, i) => sum + i.total, 0) +
+    invoices
+      .filter(i => i.status === "partially_paid")
+      .reduce((sum, i) => sum + (paymentsByInvoice[i.id] ?? 0), 0);
 
   // pendingAmount = remaining balance on unpaid invoices (total − paid so far)
   const pendingAmount = invoices
