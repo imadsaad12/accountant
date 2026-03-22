@@ -640,26 +640,24 @@ export default function InvoicesPage() {
                       inv.status === "overdue" ? "text-red-400 border-red-500/20" :
                       "text-slate-400 border-dark-border"
                     }`}>{inv.status === "partially_paid" ? "Partially Paid" : t(`status.${inv.status}`)}</span>
+                  ) : updatingStatusId === inv.id ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-text-muted px-2 py-1">
+                      <Loader2 size={12} className="animate-spin" />
+                    </span>
                   ) : (
-                    {updatingStatusId === inv.id ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-text-muted px-2 py-1">
-                        <Loader2 size={12} className="animate-spin" />
-                      </span>
-                    ) : (
-                      <select value={inv.status} onChange={e => updateStatus(inv.id, e.target.value)} className={`text-xs px-2 py-1 rounded-full font-medium border cursor-pointer bg-dark-input ${
-                        inv.status === "paid" ? "text-emerald-400 border-emerald-500/20" :
-                        inv.status === "partially_paid" ? "text-amber-400 border-amber-500/20" :
-                        inv.status === "sent" ? "text-blue-400 border-blue-500/20" :
-                        inv.status === "overdue" ? "text-red-400 border-red-500/20" :
-                        "text-slate-400 border-dark-border"
-                      }`}>
-                        <option value="draft">{t("status.draft")}</option>
-                        <option value="sent">{t("status.sent")}</option>
-                        <option value="partially_paid">Partially Paid</option>
-                        <option value="paid">{t("status.paid")}</option>
-                        <option value="overdue">{t("status.overdue")}</option>
-                      </select>
-                    )}
+                    <select value={inv.status} onChange={e => updateStatus(inv.id, e.target.value)} className={`text-xs px-2 py-1 rounded-full font-medium border cursor-pointer bg-dark-input ${
+                      inv.status === "paid" ? "text-emerald-400 border-emerald-500/20" :
+                      inv.status === "partially_paid" ? "text-amber-400 border-amber-500/20" :
+                      inv.status === "sent" ? "text-blue-400 border-blue-500/20" :
+                      inv.status === "overdue" ? "text-red-400 border-red-500/20" :
+                      "text-slate-400 border-dark-border"
+                    }`}>
+                      <option value="draft">{t("status.draft")}</option>
+                      <option value="sent">{t("status.sent")}</option>
+                      <option value="partially_paid">Partially Paid</option>
+                      <option value="paid">{t("status.paid")}</option>
+                      <option value="overdue">{t("status.overdue")}</option>
+                    </select>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
