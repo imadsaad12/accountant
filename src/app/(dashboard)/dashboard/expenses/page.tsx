@@ -214,6 +214,7 @@ export default function ExpensesPage() {
           </select>
           <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
           <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+          <button onClick={loadData} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover">{t("common.search")}</button>
           {(filterCategory || filterFrom || filterTo) && (
             <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
               {t("common.clear")}
