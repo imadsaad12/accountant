@@ -3,26 +3,42 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { canView } from "@/lib/permissions";
 
-/** Count how many times a recurring expense falls within [fromDate, toDate]. */
-function countOccurrences(expenseDate: Date, recurrence: string, fromDate: Date, toDate: Date): number {
-  if (recurrence === "none" || expenseDate > toDate) return 0;
-  let count = 0;
-  let current = new Date(expenseDate);
-  while (current <= toDate) {
-    if (current >= fromDate) count++;
-    if (recurrence === "weekly") {
-      current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000);
-    } else if (recurrence === "monthly") {
-      current = new Date(current.getFullYear(), current.getMonth() + 1, current.getDate());
-    } else if (recurrence === "quarterly") {
-      current = new Date(current.getFullYear(), current.getMonth() + 3, current.getDate());
-    } else if (recurrence === "yearly") {
-      current = new Date(current.getFullYear() + 1, current.getMonth(), current.getDate());
-    } else {
-      break;
-    }
+function calcDays(start: Date, end: Date): number {
+  return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function calcMonths(start: Date, end: Date): number {
+  const startDay = start.getUTCDate();
+  const endDay   = end.getUTCDate();
+  const lastDayOfEndMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+  if (startDay === 1 && endDay === lastDayOfEndMonth) {
+    return (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth()) + 1;
   }
-  return count;
+  const days = calcDays(start, end);
+  return parseFloat((days / 30).toFixed(2));
+}
+
+/** Compute the pro-rated amount of a recurring expense for the period [fromDate, toDate]. */
+function computeRecurringAmount(rate: number, recurrence: string, expStart: Date, fromDate: Date, toDate: Date): number {
+  const effectiveStart = expStart > fromDate ? expStart : fromDate;
+  const days = calcDays(effectiveStart, toDate);
+  if (days <= 0) return 0;
+  if (recurrence === "weekly") {
+    return parseFloat((rate * (days / 7)).toFixed(2));
+  } else if (recurrence === "monthly") {
+    return parseFloat((rate * calcMonths(effectiveStart, toDate)).toFixed(2));
+  } else if (recurrence === "quarterly") {
+    return parseFloat((rate * (calcMonths(effectiveStart, toDate) / 3)).toFixed(2));
+  } else if (recurrence === "yearly") {
+    const sm = effectiveStart.getUTCMonth(), sd = effectiveStart.getUTCDate();
+    const em = toDate.getUTCMonth(), ed = toDate.getUTCDate();
+    const lastDay = new Date(Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth() + 1, 0)).getUTCDate();
+    const years = (sm === 0 && sd === 1 && em === 11 && ed === lastDay)
+      ? toDate.getUTCFullYear() - effectiveStart.getUTCFullYear() + 1
+      : parseFloat((days / 365).toFixed(2));
+    return parseFloat((rate * years).toFixed(2));
+  }
+  return 0;
 }
 
 export async function GET(req: NextRequest) {
@@ -43,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   if (type === "pl") {
     // Profit & Loss
-    const [invoices, allExpenses] = await Promise.all([
+    const [invoices, allExpenses, employees] = await Promise.all([
       prisma.invoice.findMany({
         where: {
           organizationId: orgId,
@@ -56,6 +72,10 @@ export async function GET(req: NextRequest) {
       prisma.expense.findMany({
         where: { organizationId: orgId, date: { lte: toDate } },
         orderBy: { category: "asc" },
+      }),
+      // Salary rows are computed from employees, not stored as expenses
+      prisma.employee.findMany({
+        where: { organizationId: orgId, hireDate: { lte: toDate } },
       }),
     ]);
 
@@ -89,8 +109,8 @@ export async function GET(req: NextRequest) {
     const grossProfit = revenue - cogs;
 
     // Group expenses by category
-    // - One-time (none/null): count only if date falls within [fromDate, toDate]
-    // - Recurring: multiply amount by number of occurrences within the range
+    // - One-time (recurrence=none): count only if date falls within [fromDate, toDate]
+    // - Recurring: pro-rate over the period (same logic as expenses page)
     const expensesByCategory: Record<string, number> = {};
     for (const exp of allExpenses) {
       const recurrence = exp.recurrence || "none";
@@ -98,14 +118,34 @@ export async function GET(req: NextRequest) {
       let amount = 0;
 
       if (recurrence === "none") {
-        if (expDate >= fromDate) amount = exp.amount;
+        if (expDate >= fromDate && expDate <= toDate) amount = exp.amount;
       } else {
-        const occurrences = countOccurrences(expDate, recurrence, fromDate, toDate);
-        amount = exp.amount * occurrences;
+        amount = computeRecurringAmount(exp.amount, recurrence, expDate, fromDate, toDate);
       }
 
       if (amount > 0) {
         expensesByCategory[exp.category] = (expensesByCategory[exp.category] ?? 0) + amount;
+      }
+    }
+
+    // Add dynamically computed salary rows
+    for (const emp of employees) {
+      const hireDate = new Date(emp.hireDate);
+      const empStart = hireDate > fromDate ? hireDate : fromDate;
+      const days = calcDays(empStart, toDate);
+      if (days <= 0) continue;
+      const rate = Number(emp.salary);
+      const period = emp.salaryPeriod || "month";
+      let salaryAmount = 0;
+      if (period === "day") {
+        salaryAmount = parseFloat((rate * days).toFixed(2));
+      } else if (period === "week") {
+        salaryAmount = parseFloat((rate * (days / 7)).toFixed(2));
+      } else {
+        salaryAmount = parseFloat((rate * calcMonths(empStart, toDate)).toFixed(2));
+      }
+      if (salaryAmount > 0) {
+        expensesByCategory["salaries"] = (expensesByCategory["salaries"] ?? 0) + salaryAmount;
       }
     }
 
