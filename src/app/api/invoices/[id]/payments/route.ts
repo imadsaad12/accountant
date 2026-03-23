@@ -30,6 +30,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const data = await req.json();
+  const totalPaidSoFar = invoice.payments.reduce((s, p) => s + p.amount, 0);
+  const remaining = parseFloat((invoice.total - totalPaidSoFar).toFixed(2));
+  const requestedAmount = parseFloat(data.amount);
+  if (requestedAmount > remaining) {
+    return NextResponse.json({ error: `Payment exceeds remaining balance of ${remaining}` }, { status: 400 });
+  }
+
   const payment = await prisma.payment.create({
     data: {
       invoiceId: id,

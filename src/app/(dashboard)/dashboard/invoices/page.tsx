@@ -513,7 +513,15 @@ export default function InvoicesPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-text-secondary mb-1 block">{t("payments.amount")} *</label>
-                        <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="0.00" />
+                        {(() => {
+                          const remaining = parseFloat((viewInvoice.total - payments.reduce((s, p) => s + p.amount, 0)).toFixed(2));
+                          return (
+                            <>
+                              <input type="number" step="0.01" min="0.01" max={remaining} required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="0.00" />
+                              <p className="text-[11px] text-text-muted mt-1">Max: {currencySymbol}{fmtAmt(remaining)}</p>
+                            </>
+                          );
+                        })()}
                       </div>
                       <div>
                         <label className="text-xs font-medium text-text-secondary mb-1 block">{t("payments.date")}</label>
