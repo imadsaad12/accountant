@@ -120,8 +120,34 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!canEdit(session.permissions, "invoices")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const invoice = await prisma.invoice.findFirst({ where: { id, organizationId: session.organizationId } });
+  const invoice = await prisma.invoice.findFirst({
+    where: { id, organizationId: session.organizationId },
+    include: { items: { include: { product: { include: { components: true } } } } },
+  });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Restore stock for each invoice item before deleting
+  for (const item of invoice.items) {
+    if (!item.productId) continue;
+    const product = item.product;
+    if (!product) continue;
+
+    if (product.components && product.components.length > 0) {
+      // Composite product: restore each component's stock
+      for (const comp of product.components) {
+        await prisma.product.update({
+          where: { id: comp.componentId },
+          data: { quantity: { increment: comp.quantity * item.quantity } },
+        });
+      }
+    } else {
+      // Simple product: restore its stock directly
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { quantity: { increment: item.quantity } },
+      });
+    }
+  }
 
   await prisma.invoice.delete({ where: { id } });
   await logAudit({ session, action: "delete", entity: "invoice", entityId: id, description: `Deleted invoice ${invoice.number}` });

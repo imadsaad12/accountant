@@ -103,6 +103,7 @@ export default function InvoicesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<InvSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showForm, setShowForm] = useState(false);
@@ -226,7 +227,9 @@ export default function InvoicesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("invoices.delete_confirm"))) return;
+    setDeletingId(id);
     await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+    setDeletingId(null);
     loadData();
   }
 
@@ -796,7 +799,11 @@ export default function InvoicesPage() {
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openViewInvoice(inv)} className="text-text-muted hover:text-accent p-1" title="View"><Eye size={16} /></button>
                   <button onClick={() => exportPDF(inv, inv.language || "fr")} className="text-text-muted hover:text-success p-1" title="Download PDF"><Download size={16} /></button>
-                  {canEdit && <button onClick={() => handleDelete(inv.id)} className="text-text-muted hover:text-danger p-1" title="Delete"><Trash2 size={16} /></button>}
+                  {canEdit && (
+                    <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id} className="text-text-muted hover:text-danger p-1" title="Delete">
+                      {deletingId === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
