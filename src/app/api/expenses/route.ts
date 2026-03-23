@@ -30,11 +30,14 @@ export async function GET(req: NextRequest) {
     include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } } },
   });
 
-  // Dynamically compute salary rows when a date range is provided
+  // Dynamically compute salary rows — use provided range or default to current year
   const salaryRows: typeof storedExpenses = [];
-  if (from && to && (!category || category === "salaries")) {
-    const fromDate = new Date(from + "T00:00:00.000Z");
-    const toDate = new Date(to + "T23:59:59.999Z");
+  const now = new Date();
+  const effectiveFrom = from ?? `${now.getFullYear()}-01-01`;
+  const effectiveTo   = to   ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (!category || category === "salaries") {
+    const fromDate = new Date(effectiveFrom + "T00:00:00.000Z");
+    const toDate = new Date(effectiveTo + "T23:59:59.999Z");
 
     const employees = await prisma.employee.findMany({
       where: {
@@ -45,8 +48,8 @@ export async function GET(req: NextRequest) {
 
     for (const emp of employees) {
       const hireDate = new Date(emp.hireDate);
-      const effectiveFrom = hireDate > fromDate ? hireDate : fromDate;
-      const days = Math.floor((toDate.getTime() - effectiveFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const empStart = hireDate > fromDate ? hireDate : fromDate;
+      const days = Math.floor((toDate.getTime() - empStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       if (days <= 0) continue;
 
       const rate = Number(emp.salary);
@@ -62,14 +65,24 @@ export async function GET(req: NextRequest) {
         amount = parseFloat((rate * weeks).toFixed(2));
         description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/week × ${weeks} weeks)`;
       } else {
-        const months = parseFloat((days / 30).toFixed(2));
+        // Use exact calendar months when the range aligns to month boundaries
+        // (e.g. Feb 1–Feb 28 = 1 month, not 0.93; Mar 1–Mar 31 = 1 month, not 1.03)
+        const startDay = empStart.getDate();
+        const endDay   = toDate.getDate();
+        const lastDayOfEndMonth = new Date(toDate.getFullYear(), toDate.getMonth() + 1, 0).getDate();
+        let months: number;
+        if (startDay === 1 && endDay === lastDayOfEndMonth) {
+          months = (toDate.getFullYear() - empStart.getFullYear()) * 12 + (toDate.getMonth() - empStart.getMonth()) + 1;
+        } else {
+          months = parseFloat((days / 30).toFixed(2));
+        }
         amount = parseFloat((rate * months).toFixed(2));
-        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/month × ${months} months)`;
+        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/month × ${months} month${months === 1 ? "" : "s"})`;
       }
 
       salaryRows.push({
         id: `salary-${emp.id}`,
-        date: effectiveFrom,
+        date: empStart,
         amount,
         description,
         category: "salaries",
@@ -80,8 +93,8 @@ export async function GET(req: NextRequest) {
         accountId: null,
         organizationId: session.organizationId,
         createdById: null,
-        createdAt: effectiveFrom,
-        updatedAt: effectiveFrom,
+        createdAt: empStart,
+        updatedAt: empStart,
         createdBy: null,
         account: null,
       });
