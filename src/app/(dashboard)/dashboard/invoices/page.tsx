@@ -104,6 +104,7 @@ export default function InvoicesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<InvSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showForm, setShowForm] = useState(false);
@@ -239,6 +240,7 @@ export default function InvoicesPage() {
   };
 
   async function exportPDF(invoice: Invoice, lang: string) {
+    setDownloadingId(invoice.id);
     try {
       const res = await fetch(`/api/invoices/${invoice.id}`);
       if (!res.ok) throw new Error("Failed to fetch invoice");
@@ -292,6 +294,8 @@ export default function InvoicesPage() {
     } catch (err) {
       console.error("PDF export error:", err);
       alert(t("invoices.pdf_error"));
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -552,8 +556,12 @@ export default function InvoicesPage() {
 
               <div className="flex gap-2 justify-end pt-4 border-t border-dark-border">
                 <span className="text-sm text-text-muted mr-2 self-center">{t("invoices.download_pdf")}:</span>
-                <button onClick={() => exportPDF(viewInvoice, "fr")} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium">Français</button>
-                <button onClick={() => exportPDF(viewInvoice, "en")} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium">English</button>
+                <button onClick={() => exportPDF(viewInvoice, "fr")} disabled={!!downloadingId} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
+                  {downloadingId === viewInvoice.id ? <Loader2 size={12} className="animate-spin" /> : null}Français
+                </button>
+                <button onClick={() => exportPDF(viewInvoice, "en")} disabled={!!downloadingId} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
+                  {downloadingId === viewInvoice.id ? <Loader2 size={12} className="animate-spin" /> : null}English
+                </button>
               </div>
             </div>
           </div>
@@ -798,7 +806,9 @@ export default function InvoicesPage() {
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openViewInvoice(inv)} className="text-text-muted hover:text-accent p-1" title="View"><Eye size={16} /></button>
-                  <button onClick={() => exportPDF(inv, inv.language || "fr")} className="text-text-muted hover:text-success p-1" title="Download PDF"><Download size={16} /></button>
+                  <button onClick={() => exportPDF(inv, inv.language || "fr")} disabled={downloadingId === inv.id} className="text-text-muted hover:text-success p-1" title="Download PDF">
+                    {downloadingId === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  </button>
                   {canEdit && (
                     <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id} className="text-text-muted hover:text-danger p-1" title="Delete">
                       {deletingId === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
