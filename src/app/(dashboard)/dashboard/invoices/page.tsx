@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle, ChevronUp, ChevronDown, Edit2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Loader2 } from "lucide-react";
@@ -108,6 +108,7 @@ export default function InvoicesPage() {
   const [sortField, setSortField] = useState<InvSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
   const [items, setItems] = useState<typeof emptyItem[]>([{ ...emptyItem }]);
@@ -209,8 +210,13 @@ export default function InvoicesPage() {
         items: items.map(item => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, productId: item.productId || undefined })),
         fees: fees.filter(f => f.label.trim() && f.amount > 0),
       };
-      await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (editId) {
+        await fetch(`/api/invoices/${editId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      } else {
+        await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      }
       setShowForm(false);
+      setEditId(null);
       setItems([{ ...emptyItem }]);
       setFees([]);
       loadData();
@@ -232,6 +238,29 @@ export default function InvoicesPage() {
     await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     setDeletingId(null);
     loadData();
+  }
+
+  function openEdit(inv: Invoice) {
+    setEditId(inv.id);
+    setForm({
+      clientId: inv.clientId,
+      date: inv.date.split("T")[0],
+      dueDate: inv.dueDate ? inv.dueDate.split("T")[0] : "",
+      taxRate: String(inv.taxRate),
+      discount: String(inv.discount),
+      language: inv.language || "fr",
+      notes: inv.notes || "",
+      status: inv.status,
+    });
+    setItems(inv.items.map(item => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.total,
+      productId: item.productId || "",
+    })));
+    setFees(inv.fees.map(f => ({ id: f.id, label: f.label, amount: f.amount })));
+    setShowForm(true);
   }
 
   const pdfTranslations: Record<string, Record<string, string>> = {
@@ -573,8 +602,8 @@ export default function InvoicesPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-text-primary">{t("invoices.add")}</h2>
-              <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+              <h2 className="text-lg font-semibold text-text-primary">{editId ? t("invoices.edit") : t("invoices.add")}</h2>
+              <button onClick={() => { setShowForm(false); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -735,10 +764,10 @@ export default function InvoicesPage() {
                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               </div>
               <div className="flex gap-3 justify-end">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
+                <button type="button" onClick={() => { setShowForm(false); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
                   {saving && <Loader2 size={14} className="animate-spin" />}
-                  {t("invoices.add")}
+                  {editId ? t("common.save") : t("invoices.add")}
                 </button>
               </div>
             </form>
@@ -809,6 +838,9 @@ export default function InvoicesPage() {
                   <button onClick={() => exportPDF(inv, inv.language || "fr")} disabled={downloadingId === inv.id} className="text-text-muted hover:text-success p-1" title="Download PDF">
                     {downloadingId === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                   </button>
+                  {canEdit && (
+                    <button onClick={() => openEdit(inv)} className="text-text-muted hover:text-accent p-1" title="Edit"><Edit2 size={16} /></button>
+                  )}
                   {canEdit && (
                     <button onClick={() => handleDelete(inv.id)} disabled={deletingId === inv.id} className="text-text-muted hover:text-danger p-1" title="Delete">
                       {deletingId === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
