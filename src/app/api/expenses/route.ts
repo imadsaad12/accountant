@@ -75,23 +75,18 @@ export async function GET(req: NextRequest) {
 
     const rate = Number(exp.amount);
     let computedAmount = 0;
-    let description = exp.description;
 
     if (exp.recurrence === "weekly") {
       const weeks = parseFloat((days / 7).toFixed(2));
       computedAmount = parseFloat((rate * weeks).toFixed(2));
-      description = `${exp.description} (${rate}/week × ${weeks} weeks)`;
     } else if (exp.recurrence === "monthly") {
       const months = calcMonths(effectiveStart, toDate);
       computedAmount = parseFloat((rate * months).toFixed(2));
-      description = `${exp.description} (${rate}/month × ${months} month${months === 1 ? "" : "s"})`;
     } else if (exp.recurrence === "quarterly") {
       const months = calcMonths(effectiveStart, toDate);
       const quarters = parseFloat((months / 3).toFixed(2));
       computedAmount = parseFloat((rate * quarters).toFixed(2));
-      description = `${exp.description} (${rate}/quarter × ${quarters} quarter${quarters === 1 ? "" : "s"})`;
     } else if (exp.recurrence === "yearly") {
-      // Use same boundary logic: Jan 1 → Dec 31 = exactly 1 year
       const startMonth = effectiveStart.getUTCMonth();
       const startDay2  = effectiveStart.getUTCDate();
       const endMonth   = toDate.getUTCMonth();
@@ -104,10 +99,10 @@ export async function GET(req: NextRequest) {
         years = parseFloat((days / 365).toFixed(2));
       }
       computedAmount = parseFloat((rate * years).toFixed(2));
-      description = `${exp.description} (${rate}/year × ${years} year${years === 1 ? "" : "s"})`;
     }
 
-    recurringRows.push({ ...exp, date: effectiveStart, amount: computedAmount, description });
+    // Only override amount and date — never touch the stored description
+    recurringRows.push({ ...exp, date: effectiveStart, amount: computedAmount });
   }
 
   // 3. Salary rows — dynamically computed from employees
