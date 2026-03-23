@@ -18,6 +18,8 @@ interface Expense {
   note: string | null;
   createdBy: { name: string } | null;
   account: { name: string; code: string } | null;
+  _computedAmount?: number;
+  _computedDescription?: string;
 }
 
 const RECURRENCE_OPTIONS = [
@@ -180,7 +182,7 @@ export default function ExpensesPage() {
       else if (sortField === "description") { va = a.description.toLowerCase(); vb = b.description.toLowerCase(); }
       else if (sortField === "category") { va = a.category.toLowerCase(); vb = b.category.toLowerCase(); }
       else if (sortField === "vendor") { va = (a.vendor || "").toLowerCase(); vb = (b.vendor || "").toLowerCase(); }
-      else if (sortField === "amount") { va = a.amount; vb = b.amount; }
+      else if (sortField === "amount") { va = a._computedAmount ?? a.amount; vb = b._computedAmount ?? b.amount; }
       if (va < vb) return sortDir === "asc" ? -1 : 1;
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
@@ -190,10 +192,10 @@ export default function ExpensesPage() {
   // Stat cards reflect filtered results when a filter is active, otherwise all-time
   const hasFilter = !!(filterCategory || filterFrom || filterTo);
   const statSource = hasFilter ? expenses : allExpenses;
-  const totalAmount = statSource.reduce((s, e) => s + e.amount, 0);
+  const totalAmount = statSource.reduce((s, e) => s + (e._computedAmount ?? e.amount), 0);
   const byCategory: Record<string, number> = {};
   for (const exp of statSource) {
-    byCategory[exp.category] = (byCategory[exp.category] ?? 0) + exp.amount;
+    byCategory[exp.category] = (byCategory[exp.category] ?? 0) + (exp._computedAmount ?? exp.amount);
   }
 
   // Last month stat card values (computed from API fetch)
@@ -378,7 +380,7 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3 text-sm text-text-secondary">{new Date(exp.date).toLocaleDateString("en-GB")}</td>
                     <td className="px-4 py-3 text-sm text-text-primary font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {exp.description}
+                        {exp._computedDescription ?? exp.description}
                         {exp.recurrence && exp.recurrence !== "none" && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20 font-medium">
                             ↻ {RECURRENCE_OPTIONS.find(o => o.value === exp.recurrence)?.label ?? exp.recurrence}
@@ -393,7 +395,7 @@ export default function ExpensesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{exp.vendor || "-"}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-danger text-right">{currencySymbol}{fmtAmt(exp.amount)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-danger text-right">{currencySymbol}{fmtAmt(exp._computedAmount ?? exp.amount)}</td>
                     <td className="px-4 py-3 text-right space-x-1">
                       {canEdit && (
                         <>
