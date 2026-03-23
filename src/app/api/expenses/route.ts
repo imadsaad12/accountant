@@ -67,12 +67,13 @@ export async function GET(req: NextRequest) {
       } else {
         // Use exact calendar months when the range aligns to month boundaries
         // (e.g. Feb 1–Feb 28 = 1 month, not 0.93; Mar 1–Mar 31 = 1 month, not 1.03)
-        const startDay = empStart.getDate();
-        const endDay   = toDate.getDate();
-        const lastDayOfEndMonth = new Date(toDate.getFullYear(), toDate.getMonth() + 1, 0).getDate();
+        // Use UTC methods because dates are stored/compared as UTC
+        const startDay = empStart.getUTCDate();
+        const endDay   = toDate.getUTCDate();
+        const lastDayOfEndMonth = new Date(Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth() + 1, 0)).getUTCDate();
         let months: number;
         if (startDay === 1 && endDay === lastDayOfEndMonth) {
-          months = (toDate.getFullYear() - empStart.getFullYear()) * 12 + (toDate.getMonth() - empStart.getMonth()) + 1;
+          months = (toDate.getUTCFullYear() - empStart.getUTCFullYear()) * 12 + (toDate.getUTCMonth() - empStart.getUTCMonth()) + 1;
         } else {
           months = parseFloat((days / 30).toFixed(2));
         }
