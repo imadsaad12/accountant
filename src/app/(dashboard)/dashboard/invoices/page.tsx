@@ -515,10 +515,15 @@ export default function InvoicesPage() {
                         <label className="text-xs font-medium text-text-secondary mb-1 block">{t("payments.amount")} *</label>
                         {(() => {
                           const remaining = parseFloat((viewInvoice.total - payments.reduce((s, p) => s + p.amount, 0)).toFixed(2));
+                          const enteredAmount = parseFloat(paymentForm.amount);
+                          const exceedsBalance = !isNaN(enteredAmount) && enteredAmount > remaining;
                           return (
                             <>
-                              <input type="number" step="0.01" min="0.01" max={remaining} required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="0.00" />
-                              <p className="text-[11px] text-text-muted mt-1">Max: {currencySymbol}{fmtAmt(remaining)}</p>
+                              <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className={`w-full px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${exceedsBalance ? "border-danger" : "border-dark-border"}`} placeholder="0.00" />
+                              {exceedsBalance
+                                ? <p className="text-[11px] text-danger mt-1">Exceeds remaining balance of {currencySymbol}{fmtAmt(remaining)}</p>
+                                : <p className="text-[11px] text-text-muted mt-1">Remaining: {currencySymbol}{fmtAmt(remaining)}</p>
+                              }
                             </>
                           );
                         })()}
@@ -542,7 +547,7 @@ export default function InvoicesPage() {
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button type="button" onClick={() => setShowPaymentForm(false)} className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                      <button type="submit" disabled={savingPayment} className="px-3 py-1.5 text-xs font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                      <button type="submit" disabled={savingPayment || (() => { const r = viewInvoice.total - payments.reduce((s,p)=>s+p.amount,0); return !isNaN(parseFloat(paymentForm.amount)) && parseFloat(paymentForm.amount) > r; })()} className="px-3 py-1.5 text-xs font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
                         {savingPayment ? <Loader2 size={13} className="animate-spin inline" /> : t("payments.save")}
                       </button>
                     </div>
