@@ -303,7 +303,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrollY > 20 || mobileMenuOpen ? "bg-[#080b12]/95 backdrop-blur-xl border-b border-white/[0.06]" : ""}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <CashentLogo className="text-2xl" />
+            <CashentLogo className="text-4xl" />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-400">
             <a href="#features" onClick={e => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }} className="hover:text-white transition-colors cursor-pointer">Features</a>
@@ -608,7 +608,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/[0.06] max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <CashentLogo className="text-xl" />
+            <CashentLogo className="text-3xl" />
           </div>
           <p className="text-slate-500 text-sm">© 2026 Cashent. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-slate-500">
