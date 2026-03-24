@@ -93,7 +93,7 @@ export default function Sidebar({
         // Desktop: static in-flow
         "md:static md:z-auto",
         // Width
-        collapsed ? "md:w-[72px] w-52" : "w-52",
+        collapsed ? "md:w-[72px] w-48" : "w-48 md:w-48 lg:w-52 xl:w-56",
         // Mobile open/close via transform
         mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         // Common
