@@ -8,6 +8,8 @@ export default function CashentLogo({ className = "" }: { className?: string }) 
         WebkitBackgroundClip: "text",
         WebkitTextFillColor: "transparent",
         backgroundClip: "text",
+        display: "inline-block",
+        paddingRight: "0.15em",
       }}
       className={className}
     >

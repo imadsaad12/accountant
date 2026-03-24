@@ -106,7 +106,7 @@ export default function Sidebar({
       <div className="p-4 border-b border-dark-border flex items-center justify-between">
         {!collapsed && (
           <div className="flex flex-col">
-            <CashentLogo className="text-xl" />
+            <CashentLogo className="text-3xl" />
             <span className="text-xs text-text-muted truncate">{orgName}</span>
           </div>
         )}
