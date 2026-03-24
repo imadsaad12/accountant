@@ -9,6 +9,10 @@ const ooohBaby = Oooh_Baby({ subsets: ["latin"], variable: "--font-oooh-baby", w
 export const metadata: Metadata = {
   title: "Cashent - Business Management",
   description: "Accounting and business management for SMBs",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 };
 
 export const viewport: Viewport = {
