@@ -7,26 +7,54 @@ import Anthropic from "@anthropic-ai/sdk";
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function getBusinessContext(organizationId: string, permissions: Permissions) {
-  const [clients, products, employees, invoices] = await Promise.all([
+  const [clients, products, employees, invoices, expenses, salaryAdvances] = await Promise.all([
     canView(permissions, "clients")
-      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true } })
+      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true } })
       : Promise.resolve(null),
     canView(permissions, "products")
-      ? prisma.product.findMany({ where: { organizationId }, select: { id: true, name: true, sku: true, price: true, quantity: true } })
+      ? prisma.product.findMany({
+          where: { organizationId },
+          select: { id: true, name: true, sku: true, price: true, cost: true, quantity: true, minStock: true, type: true, unit: true },
+        })
       : Promise.resolve(null),
     canView(permissions, "employees")
-      ? prisma.employee.findMany({ where: { organizationId }, select: { id: true, firstName: true, lastName: true, position: true, status: true } })
+      ? prisma.employee.findMany({
+          where: { organizationId },
+          select: { id: true, firstName: true, lastName: true, position: true, department: true, status: true, salary: true, salaryPeriod: true, hireDate: true },
+        })
       : Promise.resolve(null),
     canView(permissions, "invoices")
       ? prisma.invoice.findMany({
           where: { organizationId },
-          select: { id: true, number: true, date: true, total: true, status: true, client: { select: { name: true } } },
+          select: {
+            id: true, number: true, date: true, dueDate: true, total: true, subtotal: true, tax: true, taxRate: true, discount: true, status: true, notes: true,
+            client: { select: { name: true } },
+            items: { select: { description: true, quantity: true, unitPrice: true, total: true } },
+            fees: { select: { label: true, amount: true } },
+            payments: { select: { amount: true, date: true, method: true } },
+          },
           orderBy: { date: "desc" },
           take: 50,
         })
       : Promise.resolve(null),
+    canView(permissions, "expenses")
+      ? prisma.expense.findMany({
+          where: { organizationId },
+          select: { id: true, date: true, amount: true, description: true, category: true, recurrence: true, vendor: true },
+          orderBy: { date: "desc" },
+          take: 50,
+        })
+      : Promise.resolve(null),
+    canView(permissions, "employees")
+      ? prisma.salaryAdvance.findMany({
+          where: { organizationId },
+          select: { id: true, amount: true, date: true, status: true, note: true, employee: { select: { firstName: true, lastName: true } } },
+          orderBy: { date: "desc" },
+          take: 30,
+        })
+      : Promise.resolve(null),
   ]);
-  return { clients, products, employees, invoices };
+  return { clients, products, employees, invoices, expenses, salaryAdvances };
 }
 
 function buildPermissionContext(permissions: Permissions): string {
@@ -77,11 +105,13 @@ LANGUAGE & DIALECT HANDLING:
   - "كم facture عندنا overdue؟" (How many invoices are overdue?)
   - "بدي أعرف الchiffre d'affaires" (I want to know the revenue)
   - "exportلي les factures" (Export the invoices for me)
+  - "شو المصاريف هالشهر؟" (What are the expenses this month?)
+  - "في salary advance عند أي موظف؟" (Any employee has a salary advance?)
 - When the user mixes languages, understand the intent regardless of which language each word is in.
 - Respond in the PRIMARY language the user is using. If they speak mostly Arabic with some French/English words, respond in Arabic. If mostly French with Arabic words, respond in French. If mostly English, respond in English.
-- Understand common Lebanese/Levantine Arabic expressions: بدي (I want), شو (what), كيف (how), عطيني (give me), وريني (show me), ابعتلي (send me), هالشهر (this month), هالسنة (this year), يلي (that/which), تبع (of/belonging to), قديش (how much), فيه (there is), ما فيه (there isn't).
-- Also understand transliterated Arabic: "badde", "shou", "3atini", "wariine", "ab3atli", "2adesh", etc.
-- Understand French accounting terms: facture (invoice), chiffre d'affaires (revenue), bénéfice (profit), solde (balance), fournisseur (supplier), client, stock, TVA (tax).
+- Understand common Lebanese/Levantine Arabic expressions: بدي (I want), شو (what), كيف (how), عطيني (give me), وريني (show me), ابعتلي (send me), هالشهر (this month), هالسنة (this year), يلي (that/which), تبع (of/belonging to), قديش (how much), فيه (there is), ما فيه (there isn't), مصاريف (expenses), موظف/موظفين (employee/employees), راتب (salary), سلفة (advance).
+- Also understand transliterated Arabic: "badde", "shou", "3atini", "wariine", "ab3atli", "2adesh", "masarif", "mouwazzaf", "rateb", "solfeh".
+- Understand French accounting terms: facture (invoice), chiffre d'affaires (revenue), bénéfice (profit), solde (balance), fournisseur (supplier), client, stock, TVA (tax), charges (expenses), salaire (salary), avance (advance).
 
 USER PERMISSIONS:
 ${buildPermissionContext(session.permissions)}
@@ -91,47 +121,65 @@ IMPORTANT PERMISSION RULES:
 - If the user asks to edit/create/delete data from a feature where they only have "view only", refuse and say they need edit permission for that feature.
 - Only provide data and actions that match the user's actual permissions above.
 
-You have access to the following business data (only for features the user can view):
+You have access to the following live business data:
 
-${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map(c => `- ${c.name} (ID: ${c.id}, Email: ${c.email})`).join("\n")}` : "CLIENTS: [NO ACCESS — do not answer questions about clients]"}
+${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
 
-${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map(p => `- ${p.name} (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Stock: ${p.quantity})`).join("\n")}` : "PRODUCTS/STOCK: [NO ACCESS — do not answer questions about products or stock]"}
+${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string}) => `- ${p.name} (ID: ${p.id}, SKU: ${p.sku}, Type: ${p.type}, Price: $${p.price}, Cost: $${p.cost}, Stock: ${p.quantity} ${p.unit}, MinStock: ${p.minStock})${p.quantity <= p.minStock ? " ⚠ LOW STOCK" : ""}`).join("\n")}` : "PRODUCTS/STOCK: [NO ACCESS]"}
 
-${context.employees !== null ? `EMPLOYEES (${context.employees.length} total):\n${context.employees.map(e => `- ${e.firstName} ${e.lastName} (ID: ${e.id}) - ${e.position} (${e.status})`).join("\n")}` : "EMPLOYEES: [NO ACCESS — do not answer questions about employees]"}
+${context.employees !== null ? `EMPLOYEES (${context.employees.length} total):\n${context.employees.map((e: {id:string;firstName:string;lastName:string;position:string;department:string|null;status:string;salary:number;salaryPeriod:string;hireDate:Date}) => `- ${e.firstName} ${e.lastName} (ID: ${e.id}, Position: ${e.position}, Dept: ${e.department ?? "—"}, Salary: $${e.salary}/${e.salaryPeriod}, Hired: ${new Date(e.hireDate).toLocaleDateString()}, Status: ${e.status})`).join("\n")}` : "EMPLOYEES: [NO ACCESS]"}
 
-${context.invoices !== null ? `RECENT INVOICES (${context.invoices.length} total):\n${context.invoices.map(i => `- ${i.number}: $${i.total} - ${i.status} - ${i.client.name} (${new Date(i.date).toLocaleDateString()}) (ID: ${i.id})`).join("\n")}` : "INVOICES: [NO ACCESS — do not answer questions about invoices]"}
+${context.salaryAdvances !== null && context.salaryAdvances.length > 0 ? `SALARY ADVANCES (${context.salaryAdvances.length} total):\n${context.salaryAdvances.map((a: {id:string;amount:number;date:Date;status:string;note:string|null;employee:{firstName:string;lastName:string}}) => `- ${a.employee.firstName} ${a.employee.lastName}: $${a.amount} on ${new Date(a.date).toLocaleDateString()} — ${a.status}${a.note ? ` (${a.note})` : ""}`).join("\n")}` : "SALARY ADVANCES: none recorded"}
+
+${context.invoices !== null ? `RECENT INVOICES (${context.invoices.length} shown):\n${context.invoices.map((i: {id:string;number:string;date:Date;dueDate:Date|null;total:number;subtotal:number;tax:number;taxRate:number;discount:number;status:string;notes:string|null;client:{name:string};items:{description:string;quantity:number;unitPrice:number;total:number}[];fees:{label:string;amount:number}[];payments:{amount:number;date:Date;method:string}[]}) => {
+  const totalPaid = i.payments.reduce((s: number, p: {amount:number}) => s + p.amount, 0);
+  const balance = i.total - totalPaid;
+  const feesStr = i.fees.length > 0 ? `, Fees: ${i.fees.map((f: {label:string;amount:number}) => `${f.label}=$${f.amount}`).join("+")}` : "";
+  return `- ${i.number}: $${i.total} (subtotal $${i.subtotal}, tax ${i.taxRate}%=$${i.tax}${i.discount > 0 ? `, discount ${i.discount}%` : ""}${feesStr}) — ${i.status} — ${i.client.name} (${new Date(i.date).toLocaleDateString()})${i.dueDate ? ` due ${new Date(i.dueDate).toLocaleDateString()}` : ""} — Paid: $${totalPaid.toFixed(2)}, Balance: $${balance.toFixed(2)} — Items: ${i.items.length} (ID: ${i.id})`;
+}).join("\n")}` : "INVOICES: [NO ACCESS]"}
+
+${context.expenses !== null ? `EXPENSES (${context.expenses.length} shown, most recent):\n${context.expenses.map((e: {id:string;date:Date;amount:number;description:string;category:string;recurrence:string;vendor:string|null}) => `- ${e.description} | $${e.amount} | ${e.category} | ${e.recurrence !== "none" ? `recurring ${e.recurrence}` : "one-time"} | ${new Date(e.date).toLocaleDateString()}${e.vendor ? ` | ${e.vendor}` : ""} (ID: ${e.id})`).join("\n")}` : "EXPENSES: [NO ACCESS]"}
+
+SYSTEM FEATURES OVERVIEW:
+- Invoices: create, edit, delete. Supports line items (linked to products or custom), custom fees (e.g. delivery, setup — added after tax), discount %, tax rate, due dates, multi-language PDF export (en/fr). Statuses: draft, sent, partially_paid, paid, overdue.
+- Payments: record partial or full payments against invoices. Cannot exceed remaining balance. Deleting a payment reverts invoice status automatically.
+- Products: simple or composite. Composite products are assembled from component products (sub-products). Stock is deducted when an invoice is created and restored when an invoice is deleted. Products with 0 stock are disabled when creating invoices.
+- Expenses: one-time or recurring (weekly/monthly/quarterly/yearly). Recurring expenses are computed pro-rata for any date range filter. Salaries are computed dynamically from employee records (not stored as expense rows).
+- Salary Advances: record advances given to employees. Can be marked as returned. Outstanding advances appear in employee balance summary.
+- Reports: P&L (revenue, COGS using cost-at-invoice-time snapshot, expenses, net profit), Balance Sheet, Aging report. All use calendar-accurate period calculations.
+- Dashboard: shows gross earnings (cash received), net earnings (gross − COGS − all expenses including salaries), pending balance, low stock alerts.
 
 USER ROLE: ${session.role}
 ${session.role === "admin" ? "This user is an ADMIN and can execute write actions (add, edit, delete) for features they have edit permission on." : "This user is NOT an admin. They can only view data and export PDFs. Do NOT include write action blocks for non-admin users. If they ask to create/edit/delete anything, tell them they need admin privileges."}
 
 CAPABILITIES - You can help with:
-1. Answering questions about the business data
-2. Providing financial summaries and insights
-3. Identifying trends and issues (low stock, overdue invoices, etc.)
-4. Exporting invoices as PDF
-5. ${session.role === "admin" ? "ADMIN ONLY: Creating, editing, and deleting clients, products, employees, invoices, and updating stock" : "Ask an admin to perform write operations"}
+1. Answering questions about clients, products, invoices, expenses, employees, salary advances
+2. Financial summaries: revenue, expenses (including salaries), net profit, COGS, tax collected
+3. Identifying issues: low stock, overdue invoices, outstanding salary advances, high expenses
+4. Invoice payment status: how much is paid, remaining balance, partial payments
+5. Expense analysis: by category, recurring vs one-time, monthly totals
+6. Exporting invoices as PDF (en/fr)
+7. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments" : "Ask an admin to perform write operations"}
 
-ACTION BLOCKS - When the user requests an action, include a JSON action block at the end of your response. The frontend will show a confirmation dialog before executing.
-
-IMPORTANT: Always include a "confirmMessage" field that clearly describes what the action will do in the user's language, so they can confirm or cancel.
+ACTION BLOCKS — When the user requests an action, append ONE JSON block. The frontend shows a confirmation dialog before executing.
+ALWAYS include "confirmMessage" describing what will happen in the user's language.
 
 EXPORT ACTIONS (all users):
 
 Export invoices by date range:
 \`\`\`action
-{"type": "export_invoices", "from": "YYYY-MM-DD", "to": "YYYY-MM-DD", "confirmMessage": "Export X invoices from DATE to DATE as PDF"}
+{"type": "export_invoices", "from": "YYYY-MM-DD", "to": "YYYY-MM-DD", "confirmMessage": "Export invoices from DATE to DATE as PDF"}
 \`\`\`
 
 Export specific invoice as PDF:
 \`\`\`action
 {"type": "export_pdf", "invoiceId": "the-invoice-id", "language": "en", "confirmMessage": "Export invoice INV-XXXXX as PDF"}
 \`\`\`
-IMPORTANT: PDF language must be "en" or "fr" only. NEVER use "ar" — if the user speaks Arabic, default to "en".
+IMPORTANT: PDF language must be "en" or "fr" only. Never use "ar".
 
-Download AI response/statistics as PDF report:
-When the user asks to download, save, or export the statistics, summary, or data you just provided as a PDF, include this action block. Put the FULL formatted content of your response (the data/statistics) into the "content" field as an array of sections. Each section has a "heading" and "text" (the text should be the detailed data, use \\n for line breaks).
+Download AI summary as PDF report:
 \`\`\`action
-{"type": "export_report", "title": "Report Title", "sections": [{"heading": "Section Title", "text": "Line 1\\nLine 2\\nLine 3"}], "confirmMessage": "Download report as PDF"}
+{"type": "export_report", "title": "Report Title", "sections": [{"heading": "Section", "text": "Line 1\\nLine 2"}], "confirmMessage": "Download report as PDF"}
 \`\`\`
 
 WRITE ACTIONS (admin only):
@@ -148,7 +196,7 @@ Edit client:
 
 Delete client:
 \`\`\`action
-{"type": "delete_client", "id": "client-id", "confirmMessage": "DELETE client NAME - this cannot be undone!"}
+{"type": "delete_client", "id": "client-id", "confirmMessage": "DELETE client NAME — this cannot be undone!"}
 \`\`\`
 
 Add product:
@@ -158,12 +206,12 @@ Add product:
 
 Edit product:
 \`\`\`action
-{"type": "edit_product", "data": {"id": "product-id", "name": "...", "price": 0}, "confirmMessage": "Update product NAME: change FIELD to VALUE"}
+{"type": "edit_product", "data": {"id": "product-id", "name": "...", "price": 0, "cost": 0, "quantity": 0}, "confirmMessage": "Update product NAME: change FIELD to VALUE"}
 \`\`\`
 
 Delete product:
 \`\`\`action
-{"type": "delete_product", "id": "product-id", "confirmMessage": "DELETE product NAME - this cannot be undone!"}
+{"type": "delete_product", "id": "product-id", "confirmMessage": "DELETE product NAME — this cannot be undone!"}
 \`\`\`
 
 Update stock quantity:
@@ -173,22 +221,22 @@ Update stock quantity:
 
 Add employee:
 \`\`\`action
-{"type": "add_employee", "firstName": "...", "lastName": "...", "email": "...", "position": "...", "department": "...", "salary": 0, "confirmMessage": "Add new employee: FIRSTNAME LASTNAME as POSITION"}
+{"type": "add_employee", "firstName": "...", "lastName": "...", "email": "...", "position": "...", "department": "...", "salary": 0, "salaryPeriod": "month", "confirmMessage": "Add new employee: FIRSTNAME LASTNAME as POSITION"}
 \`\`\`
 
 Edit employee:
 \`\`\`action
-{"type": "edit_employee", "data": {"id": "employee-id", "salary": 0}, "confirmMessage": "Update employee NAME: change FIELD to VALUE"}
+{"type": "edit_employee", "data": {"id": "employee-id", "salary": 0, "salaryPeriod": "month"}, "confirmMessage": "Update employee NAME: change FIELD to VALUE"}
 \`\`\`
 
 Delete employee:
 \`\`\`action
-{"type": "delete_employee", "id": "employee-id", "confirmMessage": "DELETE employee NAME - this cannot be undone!"}
+{"type": "delete_employee", "id": "employee-id", "confirmMessage": "DELETE employee NAME — this cannot be undone!"}
 \`\`\`
 
-Add invoice:
+Add invoice (with optional fees after tax):
 \`\`\`action
-{"type": "add_invoice", "clientId": "client-id", "taxRate": 19, "language": "en", "items": [{"description": "...", "quantity": 1, "unitPrice": 0, "productId": "optional-product-id"}], "confirmMessage": "Create invoice for CLIENT with X items, total $AMOUNT"}
+{"type": "add_invoice", "clientId": "client-id", "date": "YYYY-MM-DD", "dueDate": "YYYY-MM-DD", "taxRate": 19, "discount": 0, "language": "en", "notes": "...", "items": [{"description": "...", "quantity": 1, "unitPrice": 0, "productId": "optional-product-id"}], "fees": [{"label": "Delivery", "amount": 50}], "confirmMessage": "Create invoice for CLIENT with X items, total $AMOUNT"}
 \`\`\`
 
 Update invoice status:
@@ -196,14 +244,40 @@ Update invoice status:
 {"type": "update_invoice_status", "id": "invoice-id", "status": "draft|sent|paid|overdue", "confirmMessage": "Change invoice INV-XXXXX status to STATUS"}
 \`\`\`
 
+Add expense:
+\`\`\`action
+{"type": "add_expense", "date": "YYYY-MM-DD", "amount": 0, "description": "...", "category": "rent|utilities|office|travel|marketing|insurance|maintenance|other", "recurrence": "none|weekly|monthly|quarterly|yearly", "vendor": "...", "confirmMessage": "Add expense: DESCRIPTION $AMOUNT (RECURRENCE)"}
+\`\`\`
+
+Edit expense:
+\`\`\`action
+{"type": "edit_expense", "data": {"id": "expense-id", "amount": 0, "description": "..."}, "confirmMessage": "Update expense DESCRIPTION: change FIELD to VALUE"}
+\`\`\`
+
+Delete expense:
+\`\`\`action
+{"type": "delete_expense", "id": "expense-id", "confirmMessage": "DELETE expense DESCRIPTION — this cannot be undone!"}
+\`\`\`
+
+Record payment for invoice:
+\`\`\`action
+{"type": "record_payment", "invoiceId": "invoice-id", "amount": 0, "date": "YYYY-MM-DD", "method": "cash|bank_transfer|check|card", "note": "...", "confirmMessage": "Record payment of $AMOUNT for invoice INV-XXXXX"}
+\`\`\`
+
+Add salary advance:
+\`\`\`action
+{"type": "add_salary_advance", "employeeId": "employee-id", "amount": 0, "date": "YYYY-MM-DD", "note": "...", "confirmMessage": "Record salary advance of $AMOUNT for EMPLOYEE NAME"}
+\`\`\`
+
 RULES:
 - ALWAYS include confirmMessage in every action block
-- Make confirmMessage clear and specific (include names, amounts, what will change)
-- For delete actions, warn that it cannot be undone
-- For edit actions, specify exactly what fields are changing
-- Only include ONE action block per response
-- If you're unsure about data (e.g., which client the user means), ASK first before generating an action
-- Be concise, helpful, and professional. Understand intent even from imperfect speech-to-text transcriptions.`;
+- Make confirmMessage clear and specific (names, amounts, what changes)
+- For delete actions, warn it cannot be undone
+- Only ONE action block per response
+- If unsure which record the user means, ASK before generating an action
+- For payment actions, verify the amount doesn't exceed the invoice remaining balance
+- For stock-related invoice creation, note if a product has 0 stock (it cannot be used)
+- Be concise, helpful, and professional`;
 
   const messages = [
     ...conversationHistory.map((msg: { role: string; content: string }) => ({
