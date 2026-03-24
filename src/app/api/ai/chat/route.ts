@@ -14,7 +14,10 @@ async function getBusinessContext(organizationId: string, permissions: Permissio
     canView(permissions, "products")
       ? prisma.product.findMany({
           where: { organizationId },
-          select: { id: true, name: true, sku: true, price: true, cost: true, quantity: true, minStock: true, type: true, unit: true },
+          select: {
+            id: true, name: true, sku: true, price: true, cost: true, quantity: true, minStock: true, type: true, unit: true,
+            components: { select: { quantity: true, component: { select: { name: true, quantity: true } } } },
+          },
         })
       : Promise.resolve(null),
     canView(permissions, "employees")
@@ -125,7 +128,14 @@ You have access to the following live business data:
 
 ${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
 
-${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string}) => `- ${p.name} (ID: ${p.id}, SKU: ${p.sku}, Type: ${p.type}, Price: $${p.price}, Cost: $${p.cost}, Stock: ${p.quantity} ${p.unit}, MinStock: ${p.minStock})${p.quantity <= p.minStock ? " ⚠ LOW STOCK" : ""}`).join("\n")}` : "PRODUCTS/STOCK: [NO ACCESS]"}
+${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string;components:{quantity:number;component:{name:string;quantity:number}}[]}) => {
+  if (p.type === "composite" && p.components.length > 0) {
+    const canMake = Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)));
+    const parts = p.components.map(c => `${c.component.name}: ${c.component.quantity} avail, needs ${c.quantity}`).join("; ");
+    return `- ${p.name} [COMPOSITE] (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Can make: ${canMake} units, MinStock: ${p.minStock}, Components: ${parts})${canMake <= p.minStock ? " ⚠ LOW/NO STOCK" : ""}`;
+  }
+  return `- ${p.name} [SIMPLE] (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Cost: $${p.cost}, Stock: ${p.quantity} ${p.unit}, MinStock: ${p.minStock})${p.quantity <= p.minStock ? " ⚠ LOW STOCK" : ""}`;
+}).join("\n")}` : "PRODUCTS/STOCK: [NO ACCESS]"}
 
 ${context.employees !== null ? `EMPLOYEES (${context.employees.length} total):\n${context.employees.map((e: {id:string;firstName:string;lastName:string;position:string;department:string|null;status:string;salary:number;salaryPeriod:string;hireDate:Date}) => `- ${e.firstName} ${e.lastName} (ID: ${e.id}, Position: ${e.position}, Dept: ${e.department ?? "—"}, Salary: $${e.salary}/${e.salaryPeriod}, Hired: ${new Date(e.hireDate).toLocaleDateString()}, Status: ${e.status})`).join("\n")}` : "EMPLOYEES: [NO ACCESS]"}
 
