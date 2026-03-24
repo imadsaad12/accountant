@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Inter, Outfit, Oooh_Baby } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", weight: ["600", "700"] });
+const ooohBaby = Oooh_Baby({ subsets: ["latin"], variable: "--font-oooh-baby", weight: "400" });
 
 export const metadata: Metadata = {
   title: "Cashent - Business Management",
@@ -22,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={outfit.variable}>
+    <html lang="en" className={`${outfit.variable} ${ooohBaby.variable}`}>
       <body className={inter.className}>{children}</body>
     </html>
   );
