@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Users, Package, UserCog, FileText, DollarSign, AlertTriangle, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
+import { PermissionGuard } from "@/components/PermissionGuard";
 import { formatDateInTz } from "@/lib/tz";
 import { useTranslation } from "@/components/LanguageProvider";
 import {
@@ -126,6 +127,7 @@ export default function DashboardPage() {
   }));
 
   return (
+    <PermissionGuard feature="dashboard" redirectTo="/no-access">
     <div>
       {/* Header */}
       <div className="mb-4 sm:mb-8">
@@ -363,5 +365,6 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+    </PermissionGuard>
   );
 }

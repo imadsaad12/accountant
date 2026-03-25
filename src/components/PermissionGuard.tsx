@@ -46,10 +46,12 @@ export function usePermissions() {
 export function PermissionGuard({
   feature,
   requireEdit = false,
+  redirectTo = "/dashboard",
   children,
 }: {
   feature: Feature;
   requireEdit?: boolean;
+  redirectTo?: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -59,8 +61,8 @@ export function PermissionGuard({
     if (loading || !info) return;
     if (info.role === "admin") return;
     const allowed = requireEdit ? canEdit(info.permissions, feature) : canView(info.permissions, feature);
-    if (!allowed) router.replace("/dashboard");
-  }, [info, loading, feature, requireEdit, router]);
+    if (!allowed) router.replace(redirectTo);
+  }, [info, loading, feature, requireEdit, redirectTo, router]);
 
   if (loading) {
     return (
