@@ -10,6 +10,7 @@ import {
   FileText,
   Mic,
   LogOut,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   ScrollText,
@@ -73,7 +74,10 @@ export default function Sidebar({
       .catch(() => {});
   }, []);
 
+  const [loggingOut, setLoggingOut] = useState(false);
+
   async function handleLogout() {
+    setLoggingOut(true);
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
   }
@@ -202,11 +206,12 @@ export default function Sidebar({
         )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-muted hover:bg-danger/10 hover:text-danger w-full border border-transparent"
+          disabled={loggingOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-muted hover:bg-danger/10 hover:text-danger w-full border border-transparent disabled:opacity-60"
           title={collapsed ? t("nav.logout") : undefined}
         >
-          <LogOut size={18} />
-          {!collapsed && <span>{t("nav.logout")}</span>}
+          {loggingOut ? <Loader2 size={18} className="animate-spin" /> : <LogOut size={18} />}
+          {!collapsed && <span>{loggingOut ? "..." : t("nav.logout")}</span>}
         </button>
       </div>
     </aside>
