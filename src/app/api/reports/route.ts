@@ -66,16 +66,22 @@ export async function GET(req: NextRequest) {
           status: { in: ["paid", "partially_paid"] },
           date: { gte: fromDate, lte: toDate },
         },
-        include: { items: true, payments: true },
+        select: {
+          id: true,
+          total: true,
+          tax: true,
+          items: { select: { unitCost: true, quantity: true } },
+          payments: { select: { amount: true } },
+        },
       }),
-      // Fetch all expenses that started on or before the end of the period
       prisma.expense.findMany({
         where: { organizationId: orgId, date: { lte: toDate } },
         orderBy: { category: "asc" },
+        select: { amount: true, recurrence: true, date: true, category: true },
       }),
-      // Salary rows are computed from employees, not stored as expenses
       prisma.employee.findMany({
         where: { organizationId: orgId, hireDate: { lte: toDate } },
+        select: { salary: true, salaryPeriod: true, hireDate: true },
       }),
     ]);
 
@@ -169,12 +175,24 @@ export async function GET(req: NextRequest) {
   if (type === "bs") {
     // Balance Sheet (snapshot at toDate)
     const [products, invoices, payments] = await Promise.all([
-      prisma.product.findMany({ where: { organizationId: orgId } }),
+      prisma.product.findMany({
+        where: { organizationId: orgId },
+        select: { cost: true, quantity: true },
+      }),
       prisma.invoice.findMany({
         where: { organizationId: orgId, status: { in: ["sent", "overdue", "paid"] } },
-        include: { payments: true },
+        select: {
+          id: true,
+          total: true,
+          tax: true,
+          status: true,
+          payments: { select: { amount: true } },
+        },
       }),
-      prisma.payment.findMany({ where: { organizationId: orgId, date: { lte: toDate } } }),
+      prisma.payment.findMany({
+        where: { organizationId: orgId, date: { lte: toDate } },
+        select: { amount: true },
+      }),
     ]);
 
     // Assets
@@ -217,7 +235,14 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const invoices = await prisma.invoice.findMany({
       where: { organizationId: orgId, status: { in: ["sent", "overdue", "partially_paid"] } },
-      include: { client: true, payments: true },
+      select: {
+        id: true,
+        number: true,
+        total: true,
+        dueDate: true,
+        client: { select: { name: true } },
+        payments: { select: { amount: true } },
+      },
     });
 
     const buckets = { current: 0, days1_30: 0, days31_60: 0, days61_90: 0, days90plus: 0 };

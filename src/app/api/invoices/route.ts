@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
   const invoices = await prisma.invoice.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { client: true, items: { include: { product: true } }, fees: true },
+    include: {
+      client: { select: { id: true, name: true, email: true, phone: true, address: true } },
+      items: { include: { product: { select: { id: true, name: true, unit: true } } } },
+      fees: true,
+    },
   });
   return NextResponse.json(invoices);
 }
@@ -124,7 +128,11 @@ export async function POST(req: NextRequest) {
         create: fees.map((f: { label: string; amount: number }) => ({ label: f.label, amount: f.amount })),
       } : undefined,
     },
-    include: { client: true, items: { include: { product: true } }, fees: true },
+    include: {
+      client: { select: { id: true, name: true, email: true, phone: true, address: true } },
+      items: { include: { product: { select: { id: true, name: true, unit: true } } } },
+      fees: true,
+    },
   });
 
   // Deduct stock after successful invoice creation

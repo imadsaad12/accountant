@@ -13,7 +13,7 @@ export async function GET() {
     where: { organizationId: session.organizationId },
     orderBy: { createdAt: "desc" },
     include: {
-      category: true,
+      category: { select: { id: true, name: true } },
       components: {
         include: { component: { select: { id: true, name: true, quantity: true, unit: true, cost: true } } },
       },

@@ -15,7 +15,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [invoice, org] = await Promise.all([
     prisma.invoice.findFirst({
       where: { id, organizationId: session.organizationId },
-      include: { client: true, items: { include: { product: true } }, fees: true },
+      include: {
+        client: { select: { id: true, name: true, email: true, phone: true, address: true } },
+        items: { include: { product: { select: { id: true, name: true, unit: true } } } },
+        fees: true,
+      },
     }),
     prisma.organization.findUnique({ where: { id: session.organizationId }, select: { name: true } }),
   ]);
@@ -72,7 +76,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           create: fees.map((f: { label: string; amount: number }) => ({ label: f.label, amount: f.amount })),
         } : undefined,
       },
-      include: { client: true, items: { include: { product: true } }, fees: true },
+      include: {
+        client: { select: { id: true, name: true, email: true, phone: true, address: true } },
+        items: { include: { product: { select: { id: true, name: true, unit: true } } } },
+        fees: true,
+      },
     });
     await logAudit({ session, action: "update", entity: "invoice", entityId: invoice.id, description: `Updated invoice ${invoice.number}` });
     return NextResponse.json(invoice);

@@ -20,11 +20,14 @@ export async function GET() {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Always ensure defaults exist (skipDuplicates = safe to run every time)
-  await prisma.category.createMany({
-    data: DEFAULT_CATEGORIES.map(name => ({ name, organizationId: session.organizationId })),
-    skipDuplicates: true,
-  });
+  // Seed defaults only if this org has no categories yet
+  const existingCount = await prisma.category.count({ where: { organizationId: session.organizationId } });
+  if (existingCount === 0) {
+    await prisma.category.createMany({
+      data: DEFAULT_CATEGORIES.map(name => ({ name, organizationId: session.organizationId })),
+      skipDuplicates: true,
+    });
+  }
 
   const categories = await prisma.category.findMany({
     where: { organizationId: session.organizationId },

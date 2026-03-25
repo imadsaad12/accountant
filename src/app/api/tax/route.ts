@@ -8,25 +8,29 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "tax")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
-  const invoices = await prisma.invoice.findMany({
-    where: { organizationId: session.organizationId },
-    select: {
-      id: true,
-      number: true,
-      date: true,
-      status: true,
-      subtotal: true,
-      tax: true,
-      taxRate: true,
-      total: true,
-      client: { select: { name: true } },
-    },
-    orderBy: { date: "desc" },
-  });
+  const [invoices, taxAgg] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { organizationId: session.organizationId },
+      select: {
+        id: true,
+        number: true,
+        date: true,
+        status: true,
+        subtotal: true,
+        tax: true,
+        taxRate: true,
+        total: true,
+        client: { select: { name: true } },
+      },
+      orderBy: { date: "desc" },
+    }),
+    prisma.invoice.aggregate({
+      where: { organizationId: session.organizationId, status: "paid" },
+      _sum: { tax: true },
+    }),
+  ]);
 
-  const totalTaxCollected = invoices
-    .filter((i) => i.status === "paid")
-    .reduce((sum, i) => sum + i.tax, 0);
+  const totalTaxCollected = taxAgg._sum.tax ?? 0;
 
   return NextResponse.json({ invoices, totalTaxCollected });
 }
