@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users, Package, UserCog, FileText, DollarSign, AlertTriangle, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { formatDateInTz } from "@/lib/tz";
@@ -70,14 +71,7 @@ export default function DashboardPage() {
   }, []);
 
   if (!data) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-text-muted text-sm">{t("common.loading")}</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const stats = [

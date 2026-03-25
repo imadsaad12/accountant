@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ScrollText, Sparkles, User, ChevronLeft, ChevronRight, Search, Plus, Pencil, Trash2, X } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgTimezone } from "@/components/OrgSettingsProvider";
 import { formatDateTimeInTz } from "@/lib/tz";
@@ -73,6 +74,8 @@ export default function ActivityLogPage() {
   function formatDate(dateStr: string) {
     return formatDateTimeInTz(dateStr, tz);
   }
+
+  if (loading) return <TablePageSkeleton rows={10} hasFilters cols={6} />;
 
   return (
     <PermissionGuard feature="activity_log">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2, Shield, X, Check, ChevronDown, ChevronUp, UserCheck, Loader2 } from "lucide-react";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { ALL_FEATURES, FEATURE_LABELS, DEFAULT_EMPLOYEE_PERMISSIONS, type Permissions, type Feature } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgTimezone } from "@/components/OrgSettingsProvider";
@@ -280,6 +281,8 @@ export default function TeamPage() {
       return parts.length ? parts.join(", ") : t("team.no_access");
     } catch { return t("team.no_access"); }
   }
+
+  if (loading) return <TablePageSkeleton rows={6} cols={4} />;
 
   return (
     <div className="max-w-5xl mx-auto">

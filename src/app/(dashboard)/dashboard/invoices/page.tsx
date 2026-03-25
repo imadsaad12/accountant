@@ -5,6 +5,7 @@ import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle, ChevronUp, Che
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Loader2 } from "lucide-react";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -364,7 +365,7 @@ export default function InvoicesPage() {
   const tax = afterDiscount * (parseFloat(form.taxRate) / 100);
   const feesTotal = fees.reduce((s, f) => s + (f.amount || 0), 0);
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent"></div></div>;
+  if (loading) return <TablePageSkeleton rows={10} hasFilters cols={6} />;
 
   return (
     <PermissionGuard feature="invoices">

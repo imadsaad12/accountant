@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -154,7 +155,7 @@ export default function EmployeesPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent"></div></div>;
+  if (loading) return <TablePageSkeleton rows={8} hasFilters cols={5} />;
 
   return (
     <PermissionGuard feature="employees">

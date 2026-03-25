@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -201,6 +202,8 @@ export default function ExpensesPage() {
   const lastMonthName = formatMonthInTz(lmFromStr + "T12:00:00Z", tz);
   const lastMonthStartStr = formatDateInTz(lmFromStr + "T12:00:00Z", tz);
   const lastMonthEndStr = formatDateInTz(lmToStr + "T12:00:00Z", tz);
+
+  if (loading) return <TablePageSkeleton rows={8} hasFilters cols={5} />;
 
   return (
     <PermissionGuard feature="expenses">

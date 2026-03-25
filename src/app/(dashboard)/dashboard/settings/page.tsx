@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2 } from "lucide-react";
+import { SettingsSkeleton } from "@/components/skeletons/SettingsSkeleton";
 import { TIMEZONES } from "@/lib/tz";
 import { COUNTRIES } from "@/components/PhoneInput";
 import { useTranslation, useSetLang } from "@/components/LanguageProvider";
@@ -118,7 +119,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return <div className="max-w-2xl mx-auto p-8 text-center text-text-muted">{t("common.loading")}</div>;
+    return <SettingsSkeleton />;
   }
 
   return (

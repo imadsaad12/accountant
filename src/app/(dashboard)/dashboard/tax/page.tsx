@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PermissionGuard } from "@/components/PermissionGuard";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
 import { formatDateInTz } from "@/lib/tz";
 import { useTranslation } from "@/components/LanguageProvider";
@@ -59,6 +60,8 @@ export default function TaxPage() {
 
   const paidTax = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + i.tax, 0);
   const pendingTax = invoices.filter((i) => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + i.tax, 0);
+
+  if (loading) return <TablePageSkeleton rows={6} hasFilters statCards={4} cols={5} />;
 
   return (
     <PermissionGuard feature="tax">

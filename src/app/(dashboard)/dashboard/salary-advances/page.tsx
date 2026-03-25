@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, X, Loader2, Banknote, CheckCircle2, Clock } from "lucide-react";
+import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 import { todayInTz, formatDateInTz } from "@/lib/tz";
@@ -108,6 +109,8 @@ export default function SalaryAdvancesPage() {
   const totalAdvanced  = advances.reduce((s, a) => s + a.amount, 0);
   const totalReturned  = advances.filter(a => a.status === "returned").reduce((s, a) => s + a.amount, 0);
   const totalOutstanding = advances.filter(a => a.status === "pending").reduce((s, a) => s + a.amount, 0);
+
+  if (loading) return <TablePageSkeleton rows={8} hasFilters cols={5} />;
 
   return (
     <PermissionGuard feature="salary_advances">
