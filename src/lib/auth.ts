@@ -19,7 +19,7 @@ export async function verifyPassword(password: string, hashed: string) {
 export async function createToken(payload: { userId: string; email: string; name: string; role: string; organizationId: string }) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("7d")
+    .setExpirationTime("180d")
     .sign(SECRET);
 }
 
