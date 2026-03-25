@@ -38,6 +38,10 @@ export function useOrgSettings() {
   return useContext(OrgSettingsContext);
 }
 
+export function useOrgTimezone(): string {
+  return useContext(OrgSettingsContext).orgSettings.timezone || "UTC";
+}
+
 /** Currency code → symbol */
 export const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",

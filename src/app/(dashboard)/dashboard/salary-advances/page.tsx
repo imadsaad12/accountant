@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, X, Loader2, Banknote, CheckCircle2, Clock } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
-import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { todayInTz, formatDateInTz } from "@/lib/tz";
 import { useTranslation } from "@/components/LanguageProvider";
 
 interface Employee {
@@ -36,7 +37,7 @@ const fmtCompact = (n: number) => {
 const emptyForm = {
   employeeId: "",
   amount: "",
-  date: new Date().toISOString().split("T")[0],
+  date: "", // set to todayInTz(tz) when opening form
   note: "",
 };
 
@@ -45,6 +46,7 @@ export default function SalaryAdvancesPage() {
   const canEdit = canEditFeature("salary_advances");
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const sym = getCurrencySymbol(orgSettings.defaultCurrency);
 
   const [advances, setAdvances] = useState<SalaryAdvance[]>([]);
@@ -78,7 +80,7 @@ export default function SalaryAdvancesPage() {
         body: JSON.stringify(form),
       });
       setShowForm(false);
-      setForm({ ...emptyForm });
+      setForm({ ...emptyForm, date: todayInTz(tz) });
       loadData();
     } finally {
       setSaving(false);
@@ -118,7 +120,7 @@ export default function SalaryAdvancesPage() {
           </div>
           {canEdit && (
             <button
-              onClick={() => { setForm({ ...emptyForm }); setShowForm(true); }}
+              onClick={() => { setForm({ ...emptyForm, date: todayInTz(tz) }); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium"
             >
               <Plus size={16} /> {t("salary_advances.add")}
@@ -253,7 +255,7 @@ export default function SalaryAdvancesPage() {
                       <p className="text-sm font-medium text-text-primary">{adv.employee.firstName} {adv.employee.lastName}</p>
                       <p className="text-xs text-text-muted">{adv.employee.position}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{new Date(adv.date).toLocaleDateString("en-GB")}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{formatDateInTz(adv.date, tz)}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-right text-text-primary">{sym}{fmtAmt(adv.amount)}</td>
                     <td className="px-4 py-3 text-sm text-text-muted max-w-[160px] truncate">{adv.note || "—"}</td>
                     <td className="px-4 py-3 text-center">

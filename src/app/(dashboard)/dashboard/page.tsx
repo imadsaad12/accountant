@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Users, Package, UserCog, FileText, DollarSign, AlertTriangle, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { useOrgSettings, currencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
+import { formatDateInTz } from "@/lib/tz";
 import { useTranslation } from "@/components/LanguageProvider";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -43,6 +44,7 @@ const fmtCompact = (n: number) => {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const sym = currencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
   const [isLight, setIsLight] = useState(false);
@@ -98,7 +100,7 @@ export default function DashboardPage() {
     .slice()
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .reduce((acc, inv) => {
-      const date = new Date(inv.date).toLocaleDateString("en", { month: "short", day: "numeric" });
+      const date = new Intl.DateTimeFormat("en", { timeZone: tz, month: "short", day: "numeric" }).format(new Date(inv.date));
       const existing = acc.find(a => a.date === date);
       if (existing) {
         existing.revenue += inv.total;
@@ -342,7 +344,7 @@ export default function DashboardPage() {
                 <tr key={inv.id} className="hover:bg-dark-card-hover">
                   <td className="px-5 py-3.5 text-sm font-mono font-medium text-accent">{inv.number}</td>
                   <td className="px-5 py-3.5 text-sm text-text-secondary">{inv.client.name}</td>
-                  <td className="px-5 py-3.5 text-sm text-text-muted">{new Date(inv.date).toLocaleDateString("en-GB")}</td>
+                  <td className="px-5 py-3.5 text-sm text-text-muted">{formatDateInTz(inv.date, tz)}</td>
                   <td className="px-5 py-3.5 text-sm text-text-primary text-right font-medium">{sym}{fmtAmt(inv.total)}</td>
                   <td className="px-5 py-3.5 text-center">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${

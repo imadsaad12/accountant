@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2, Shield, X, Check, ChevronDown, ChevronUp, UserCheck, Loader2 } from "lucide-react";
 import { ALL_FEATURES, FEATURE_LABELS, DEFAULT_EMPLOYEE_PERMISSIONS, type Permissions, type Feature } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
+import { useOrgTimezone } from "@/components/OrgSettingsProvider";
+import { formatDateInTz } from "@/lib/tz";
 
 interface Employee {
   id: string;
@@ -42,6 +44,9 @@ function PermissionMatrix({
   readonly?: boolean;
   t: (key: string) => string;
 }) {
+  // These features are view-only — no edit distinction, just grant/revoke access
+  const VIEW_ONLY_FEATURES: Feature[] = ["dashboard", "reports", "activity_log", "tax", "ai", "settings"];
+
   const toggle = (feature: Feature, type: "view" | "edit") => {
     if (!onChange) return;
     const updated = { ...permissions };
@@ -57,10 +62,10 @@ function PermissionMatrix({
     onChange(updated);
   };
 
-  const toggleAI = () => {
+  const toggleAccess = (feature: Feature) => {
     if (!onChange) return;
-    const hasAccess = permissions.ai?.view || permissions.ai?.edit;
-    onChange({ ...permissions, ai: { view: !hasAccess, edit: !hasAccess } });
+    const hasAccess = permissions[feature]?.view || permissions[feature]?.edit;
+    onChange({ ...permissions, [feature]: { view: !hasAccess, edit: !hasAccess } });
   };
 
   return (
@@ -75,8 +80,8 @@ function PermissionMatrix({
         </thead>
         <tbody>
           {ALL_FEATURES.map((feature) => {
-            if (feature === "ai") {
-              const hasAccess = permissions.ai?.view || permissions.ai?.edit;
+            if (VIEW_ONLY_FEATURES.includes(feature)) {
+              const hasAccess = permissions[feature]?.view || permissions[feature]?.edit;
               return (
                 <tr key={feature} className="border-t border-dark-border">
                   <td className="px-3 py-2 text-text-primary">{FEATURE_LABELS[feature]}</td>
@@ -84,7 +89,7 @@ function PermissionMatrix({
                     <button
                       type="button"
                       disabled={readonly}
-                      onClick={toggleAI}
+                      onClick={() => toggleAccess(feature)}
                       className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                         hasAccess
                           ? "bg-accent/20 text-accent hover:bg-accent/30"
@@ -139,6 +144,7 @@ function PermissionMatrix({
 
 export default function TeamPage() {
   const t = useTranslation();
+  const tz = useOrgTimezone();
   const [users, setUsers] = useState<User[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,7 +338,7 @@ export default function TeamPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-text-secondary">{getPermissionSummary(user)}</td>
                   <td className="px-4 py-3 text-sm text-text-muted">
-                    {new Date(user.createdAt).toLocaleDateString("en-GB")}
+                    {formatDateInTz(user.createdAt, tz)}
                   </td>
                   <td className="px-4 py-3">
                     {user.role !== "admin" && (

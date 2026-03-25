@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PermissionGuard } from "@/components/PermissionGuard";
-import { useOrgSettings, currencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
+import { formatDateInTz } from "@/lib/tz";
 import { useTranslation } from "@/components/LanguageProvider";
 
 interface TaxInvoice {
@@ -39,6 +40,7 @@ function fmtCompact(n: number) {
 
 export default function TaxPage() {
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const sym = currencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
   const [invoices, setInvoices] = useState<TaxInvoice[]>([]);
@@ -119,7 +121,7 @@ export default function TaxPage() {
                     <td className="px-4 py-3 text-sm font-medium text-text-primary">{inv.number}</td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
                     <td className="px-4 py-3 text-sm text-text-muted">
-                      {new Date(inv.date).toLocaleDateString("en-GB")}
+                      {formatDateInTz(inv.date, tz)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[inv.status] ?? "bg-dark-input text-text-muted"}`}>

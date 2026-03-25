@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
-import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { todayInTz, formatDateInTz, formatMonthInTz, lastMonthRangeInTz } from "@/lib/tz";
 
 interface Expense {
   id: string;
@@ -36,7 +37,7 @@ type SortDir = "asc" | "desc";
 const CATEGORIES = ["rent", "utilities", "salaries", "office", "travel", "marketing", "insurance", "maintenance", "other"];
 
 const emptyForm = {
-  date: new Date().toISOString().split("T")[0],
+  date: "", // will be set after tz is known
   amount: "",
   description: "",
   category: "other",
@@ -73,6 +74,7 @@ export default function ExpensesPage() {
   const canEdit = canEditFeature("expenses");
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
@@ -95,13 +97,8 @@ export default function ExpensesPage() {
     if (cat) params.set("category", cat);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    // Compute last month date range for the stat card
-    const now = new Date();
-    const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const lmFrom = `${lmStart.getFullYear()}-${pad(lmStart.getMonth() + 1)}-${pad(lmStart.getDate())}`;
-    const lmTo = `${lmEnd.getFullYear()}-${pad(lmEnd.getMonth() + 1)}-${pad(lmEnd.getDate())}`;
+    // Compute last month date range for the stat card (using org timezone)
+    const { from: lmFrom, to: lmTo } = lastMonthRangeInTz(tz);
     const lmParams = new URLSearchParams({ from: lmFrom, to: lmTo });
     const [filteredRes, allRes, lmRes] = await Promise.all([
       fetch(`/api/expenses?${params}`),
@@ -118,7 +115,7 @@ export default function ExpensesPage() {
 
   function openAdd() {
     setEditId(null);
-    setForm({ ...emptyForm });
+    setForm({ ...emptyForm, date: todayInTz(tz) });
     setShowForm(true);
   }
 
@@ -199,13 +196,11 @@ export default function ExpensesPage() {
   }
 
   // Last month stat card values (computed from API fetch)
-  const now = new Date();
-  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
   const lastMonthTotal = lastMonthExpenses.reduce((s, e) => s + e.amount, 0);
-  const lastMonthName = lastMonthDate.toLocaleDateString("en-GB", { month: "short" });
-  const lastMonthStartStr = lastMonthDate.toLocaleDateString("en-GB");
-  const lastMonthEndStr = lastMonthEnd.toLocaleDateString("en-GB");
+  const { from: lmFromStr, to: lmToStr } = lastMonthRangeInTz(tz);
+  const lastMonthName = formatMonthInTz(lmFromStr + "T12:00:00Z", tz);
+  const lastMonthStartStr = formatDateInTz(lmFromStr + "T12:00:00Z", tz);
+  const lastMonthEndStr = formatDateInTz(lmToStr + "T12:00:00Z", tz);
 
   return (
     <PermissionGuard feature="expenses">
@@ -377,7 +372,7 @@ export default function ExpensesPage() {
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">{t("expenses.empty")}</td></tr>
                 ) : sortedExpenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(exp => (
                   <tr key={exp.id} className="hover:bg-dark-card-hover">
-                    <td className="px-4 py-3 text-sm text-text-secondary">{new Date(exp.date).toLocaleDateString("en-GB")}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{formatDateInTz(exp.date, tz)}</td>
                     <td className="px-4 py-3 text-sm text-text-primary font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         {exp._computedDescription ?? exp.description}

@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   BarChart3, FileText, Package, TrendingUp,
   Bot, Shield, Globe, ChevronRight, ArrowRight,
-  Receipt, UserCog, Activity, Zap, CheckCircle, X, TriangleAlert, Menu,
+  Receipt, UserCog, Activity, Zap, CheckCircle, X, TriangleAlert, Menu, Mail, MessageCircle,
 } from "lucide-react";
 
 // ─── Intersection observer fade-in ───────────────────────────────────────────
@@ -282,6 +282,7 @@ function LanguageSection() {
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -582,12 +583,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href="mailto:imad.alhaj.saad@gmail.com?subject=Interested%20in%20Cashent%20Pro&body=Hi%2C%0A%0AI%27m%20interested%20in%20the%20Pro%20plan.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
-                className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-colors bg-indigo-600 hover:bg-indigo-500 text-white"
+              <button
+                onClick={() => setShowContact(true)}
+                className="block w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-colors bg-indigo-600 hover:bg-indigo-500 text-white"
               >
                 Contact us
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -618,6 +619,50 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Contact Popup */}
+      {showContact && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowContact(false)}>
+          <div className="bg-[#0f1623] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold text-white">Get in touch</h3>
+              <button onClick={() => setShowContact(false)} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                <X size={16} className="text-white" />
+              </button>
+            </div>
+            <p className="text-slate-400 text-sm mb-5">Choose how you'd like to reach us — we typically respond within a few hours.</p>
+            <div className="flex flex-col gap-3">
+              <a
+                href="mailto:imad.alhaj.saad@gmail.com?subject=Interested%20in%20Cashent%20Pro&body=Hi%2C%0A%0AI%27m%20interested%20in%20the%20Pro%20plan.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600/30 transition-colors group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                  <Mail size={17} className="text-white" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white">Email us</div>
+                  <div className="text-xs text-slate-400">imad.alhaj.saad@gmail.com</div>
+                </div>
+              </a>
+              <a
+                href="https://wa.me/96181360613?text=Hi%2C%0A%0AI%27m%20interested%20in%20Cashent%20Pro.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-600/20 border border-emerald-500/30 hover:bg-emerald-600/30 transition-colors group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+                  <MessageCircle size={17} className="text-white" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white">WhatsApp</div>
+                  <div className="text-xs text-slate-400">+961 81 360 613</div>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

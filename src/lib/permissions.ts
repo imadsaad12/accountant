@@ -21,7 +21,7 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   ai: "AI Assistant",
   activity_log: "Activity Log",
   tax: "Tax",
-  settings: "Settings (Org)",
+  settings: "Edit Org Settings",
 };
 
 export const DEFAULT_ADMIN_PERMISSIONS: Permissions = {

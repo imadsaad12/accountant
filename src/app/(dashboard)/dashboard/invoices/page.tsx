@@ -7,7 +7,8 @@ import autoTable from "jspdf-autotable";
 import { Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
-import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { todayInTz, formatDateInTz } from "@/lib/tz";
 
 interface Client {
   id: string;
@@ -98,6 +99,7 @@ export default function InvoicesPage() {
   const canEdit = canEditFeature("invoices");
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -110,7 +112,7 @@ export default function InvoicesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
-  const [form, setForm] = useState({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
+  const [form, setForm] = useState({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
   const [items, setItems] = useState<typeof emptyItem[]>([{ ...emptyItem }]);
   const [fees, setFees] = useState<InvoiceFee[]>([]);
 
@@ -118,7 +120,7 @@ export default function InvoicesPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentForm, setPaymentForm] = useState({ amount: "", date: new Date().toISOString().split("T")[0], method: "cash", reference: "", note: "" });
+  const [paymentForm, setPaymentForm] = useState({ amount: "", date: todayInTz(tz), method: "cash", reference: "", note: "" });
   const [savingPayment, setSavingPayment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export default function InvoicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(paymentForm),
       });
-      setPaymentForm({ amount: "", date: new Date().toISOString().split("T")[0], method: "cash", reference: "", note: "" });
+      setPaymentForm({ amount: "", date: todayInTz(tz), method: "cash", reference: "", note: "" });
       setShowPaymentForm(false);
       // Reload payments + invoice list
       const [paymentsRes] = await Promise.all([
@@ -284,8 +286,8 @@ export default function InvoicesPage() {
       doc.setFontSize(10); doc.setTextColor(60, 60, 60);
       let y = 45;
       doc.setFont("helvetica", "bold"); doc.text(`${pdfT.invoiceNumber}: ${fullInvoice.number}`, 20, y); y += 6;
-      doc.setFont("helvetica", "normal"); doc.text(`${pdfT.date}: ${new Date(fullInvoice.date).toLocaleDateString("en-GB")}`, 20, y); y += 6;
-      if (fullInvoice.dueDate) { doc.text(`${pdfT.dueDate}: ${new Date(fullInvoice.dueDate).toLocaleDateString("en-GB")}`, 20, y); y += 6; }
+      doc.setFont("helvetica", "normal"); doc.text(`${pdfT.date}: ${formatDateInTz(fullInvoice.date, tz)}`, 20, y); y += 6;
+      if (fullInvoice.dueDate) { doc.text(`${pdfT.dueDate}: ${formatDateInTz(fullInvoice.dueDate, tz)}`, 20, y); y += 6; }
       doc.text(`${pdfT.status}: ${fullInvoice.status.toUpperCase()}`, 20, y);
       y = 45;
       doc.setFont("helvetica", "bold"); doc.text(pdfT.billTo, pageWidth - 20, y, { align: "right" }); y += 6;
@@ -370,7 +372,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: new Date().toISOString().split("T")[0], dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> {t("invoices.add")}
           </button>
         )}
@@ -434,11 +436,11 @@ export default function InvoicesPage() {
                 </div>
                 <div>
                   <p className="text-xs text-text-muted mb-0.5">{t("field.date")}</p>
-                  <p className="text-sm text-text-primary">{new Date(viewInvoice.date).toLocaleDateString("en-GB")}</p>
+                  <p className="text-sm text-text-primary">{formatDateInTz(viewInvoice.date, tz)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-text-muted mb-0.5">{t("invoices.due_date")}</p>
-                  <p className="text-sm text-text-primary">{viewInvoice.dueDate ? new Date(viewInvoice.dueDate).toLocaleDateString("en-GB") : "-"}</p>
+                  <p className="text-sm text-text-primary">{viewInvoice.dueDate ? formatDateInTz(viewInvoice.dueDate, tz) : "-"}</p>
                 </div>
               </div>
 
@@ -583,7 +585,7 @@ export default function InvoicesPage() {
                       <div key={p.id} className="flex items-center justify-between bg-dark-bg/50 border border-dark-border rounded-lg px-3 py-2 text-sm">
                         <div className="flex items-center gap-3">
                           <span className="font-semibold text-text-primary">{currencySymbol}{fmtAmt(p.amount)}</span>
-                          <span className="text-text-muted text-xs">{new Date(p.date).toLocaleDateString("en-GB")}</span>
+                          <span className="text-text-muted text-xs">{formatDateInTz(p.date, tz)}</span>
                           <span className="text-xs px-2 py-0.5 rounded bg-accent/10 text-accent font-medium">{t(`payments.method.${p.method}`)}</span>
                           {p.reference && <span className="text-text-muted text-xs">#{p.reference}</span>}
                         </div>
@@ -809,10 +811,10 @@ export default function InvoicesPage() {
               <tr key={inv.id} className="hover:bg-dark-card-hover">
                 <td className="px-4 py-3 text-sm font-mono font-medium text-text-primary">{inv.number}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
-                <td className="px-4 py-3 text-sm text-text-secondary">{new Date(inv.date).toLocaleDateString("en-GB")}</td>
+                <td className="px-4 py-3 text-sm text-text-secondary">{formatDateInTz(inv.date, tz)}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">
                   <div className="flex items-center gap-1.5">
-                    {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "-"}
+                    {inv.dueDate ? formatDateInTz(inv.dueDate, tz) : "-"}
                     {agingBadge(inv)}
                   </div>
                 </td>

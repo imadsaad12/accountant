@@ -4,7 +4,8 @@ import { useState } from "react";
 import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
-import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { formatDateInTz, todayInTz, currentYearInTz } from "@/lib/tz";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -42,22 +43,14 @@ const EXPENSE_CATEGORIES: Record<string, string> = {
   travel: "Travel", marketing: "Marketing", insurance: "Insurance", maintenance: "Maintenance", other: "Other",
 };
 
-function getDefaultRange() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return { from: `${year}-01-01`, to: `${year}-${month}-${day}` };
-}
-
 export default function ReportsPage() {
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
-  const defaultRange = getDefaultRange();
   const [activeTab, setActiveTab] = useState<"pl" | "bs" | "aging">("pl");
-  const [from, setFrom] = useState(defaultRange.from);
-  const [to, setTo] = useState(defaultRange.to);
+  const [from, setFrom] = useState(() => `${currentYearInTz(tz)}-01-01`);
+  const [to, setTo] = useState(() => todayInTz(tz));
   const [report, setReport] = useState<Report>(null);
   const [loading, setLoading] = useState(false);
 
@@ -76,7 +69,7 @@ export default function ReportsPage() {
     if (!report) return;
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const now = new Date().toLocaleDateString("en-GB");
+    const now = formatDateInTz(new Date(), tz);
 
     // Header
     doc.setFontSize(18); doc.setTextColor(37, 99, 235);
@@ -84,7 +77,7 @@ export default function ReportsPage() {
     doc.setFontSize(9); doc.setTextColor(120, 120, 120);
     if (report.type === "pl") {
       const pl = report as PLReport;
-      doc.text(`Period: ${new Date(pl.period.from).toLocaleDateString("en-GB")} – ${new Date(pl.period.to).toLocaleDateString("en-GB")}`, 14, 28);
+      doc.text(`Period: ${formatDateInTz(pl.period.from, tz)} – ${formatDateInTz(pl.period.to, tz)}`, 14, 28);
     }
     doc.text(`Generated: ${now}`, pageWidth - 14, 28, { align: "right" });
 

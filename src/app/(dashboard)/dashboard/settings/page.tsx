@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2 } from "lucide-react";
+import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2 } from "lucide-react";
+import { TIMEZONES } from "@/lib/tz";
 import { COUNTRIES } from "@/components/PhoneInput";
 import { useTranslation, useSetLang } from "@/components/LanguageProvider";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -21,6 +22,7 @@ const CURRENCIES = [
 interface OrgSettings {
   defaultPhoneCountry: string;
   defaultCurrency: string;
+  timezone: string;
 }
 interface UserPrefs {
   theme: "dark" | "light";
@@ -40,12 +42,13 @@ export default function SettingsPage() {
   const t = useTranslation();
   const setLang = useSetLang();
   const { updateOrgSettings } = useOrgSettings();
-  const [orgSettings, setOrgSettings] = useState<OrgSettings>({ defaultPhoneCountry: "LB", defaultCurrency: "USD" });
+  const [orgSettings, setOrgSettings] = useState<OrgSettings>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC" });
   const [orgName, setOrgName] = useState("");
-  const [orgNameDraft, setOrgNameDraft] = useState("");
+  const [draft, setDraft] = useState<OrgSettings & { orgName: string }>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC", orgName: "" });
   const [userPrefs, setUserPrefs] = useState<UserPrefs>({ theme: "dark", language: "en" });
   const [canEditOrg, setCanEditOrg] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [orgSaving, setOrgSaving] = useState(false);
   const [orgSaved, setOrgSaved] = useState(false);
   const [userSaved, setUserSaved] = useState(false);
 
@@ -55,33 +58,43 @@ export default function SettingsPage() {
       .then((data) => {
         setOrgSettings(data.orgSettings);
         setOrgName(data.orgName ?? "");
-        setOrgNameDraft(data.orgName ?? "");
+        setDraft({ ...data.orgSettings, orgName: data.orgName ?? "" });
         setUserPrefs(data.userPrefs);
         setCanEditOrg(data.canEditOrg);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  async function saveOrg(updated: OrgSettings) {
-    setOrgSettings(updated);
-    updateOrgSettings(updated);
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "org", data: updated }),
-    });
-    setOrgSaved(true);
-    setTimeout(() => setOrgSaved(false), 2000);
-  }
+  const orgDirty =
+    draft.orgName !== orgName ||
+    draft.defaultPhoneCountry !== orgSettings.defaultPhoneCountry ||
+    draft.defaultCurrency !== orgSettings.defaultCurrency ||
+    draft.timezone !== orgSettings.timezone;
 
-  async function saveOrgName() {
-    if (!orgNameDraft.trim() || orgNameDraft === orgName) return;
-    setOrgName(orgNameDraft);
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "org", data: { orgName: orgNameDraft } }),
-    });
+  async function saveOrg() {
+    setOrgSaving(true);
+    const { orgName: draftName, ...settings } = draft;
+    const promises: Promise<unknown>[] = [
+      fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "org", data: settings }),
+      }),
+    ];
+    if (draftName.trim() && draftName !== orgName) {
+      promises.push(
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "org", data: { orgName: draftName } }),
+        })
+      );
+    }
+    await Promise.all(promises);
+    setOrgSettings(settings);
+    setOrgName(draftName);
+    updateOrgSettings(settings);
+    setOrgSaving(false);
     setOrgSaved(true);
     setTimeout(() => setOrgSaved(false), 2000);
   }
@@ -125,7 +138,19 @@ export default function SettingsPage() {
             </h2>
             <p className="text-xs text-text-muted mt-0.5">{t("settings.org_note")}</p>
           </div>
-          <SavedBadge show={orgSaved} label={t("settings.saved")} />
+          {orgSaved ? (
+            <SavedBadge show={orgSaved} label={t("settings.saved")} />
+          ) : canEditOrg ? (
+            <button
+              type="button"
+              onClick={saveOrg}
+              disabled={!orgDirty || orgSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {orgSaving ? <Loader2 size={12} className="animate-spin" /> : null}
+              {t("common.save")}
+            </button>
+          ) : null}
         </div>
 
         {!canEditOrg ? (
@@ -141,16 +166,12 @@ export default function SettingsPage() {
                 <Building2 size={14} className="text-accent" />
                 {t("settings.org_name")}
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={orgNameDraft}
-                  onChange={(e) => setOrgNameDraft(e.target.value)}
-                  onBlur={saveOrgName}
-                  onKeyDown={(e) => e.key === "Enter" && saveOrgName()}
-                  className="flex-1 px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
-                />
-              </div>
+              <input
+                type="text"
+                value={draft.orgName}
+                onChange={(e) => setDraft({ ...draft, orgName: e.target.value })}
+                className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+              />
             </div>
 
             {/* Default Phone Country */}
@@ -160,8 +181,8 @@ export default function SettingsPage() {
                 {t("settings.phone_country")}
               </label>
               <select
-                value={orgSettings.defaultPhoneCountry}
-                onChange={(e) => saveOrg({ ...orgSettings, defaultPhoneCountry: e.target.value })}
+                value={draft.defaultPhoneCountry}
+                onChange={(e) => setDraft({ ...draft, defaultPhoneCountry: e.target.value })}
                 className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none"
               >
                 {COUNTRIES.map((c) => (
@@ -179,8 +200,8 @@ export default function SettingsPage() {
                 {t("settings.currency")}
               </label>
               <select
-                value={orgSettings.defaultCurrency}
-                onChange={(e) => saveOrg({ ...orgSettings, defaultCurrency: e.target.value })}
+                value={draft.defaultCurrency}
+                onChange={(e) => setDraft({ ...draft, defaultCurrency: e.target.value })}
                 className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none"
               >
                 {CURRENCIES.map((c) => (
@@ -189,6 +210,30 @@ export default function SettingsPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Timezone */}
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-2">
+                <Clock size={14} className="text-accent" />
+                Timezone
+              </label>
+              <select
+                value={draft.timezone || "UTC"}
+                onChange={(e) => setDraft({ ...draft, timezone: e.target.value })}
+                className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none"
+              >
+                {TIMEZONES.map((group) => (
+                  <optgroup key={group.region} label={group.region}>
+                    {group.zones.map((z) => (
+                      <option key={z.tz} value={z.tz}>{z.city}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <p className="text-xs text-text-muted mt-1.5">
+                Used for date defaults in forms, filters, and all date displays across the app.
+              </p>
             </div>
           </div>
         )}

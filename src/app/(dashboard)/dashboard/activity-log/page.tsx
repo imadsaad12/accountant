@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { ScrollText, Sparkles, User, ChevronLeft, ChevronRight, Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
+import { useOrgTimezone } from "@/components/OrgSettingsProvider";
+import { formatDateTimeInTz } from "@/lib/tz";
 
 interface AuditLog {
   id: string;
@@ -27,6 +29,7 @@ const ACTION_STYLES: Record<string, { bg: string; text: string; icon: typeof Plu
 
 export default function ActivityLogPage() {
   const t = useTranslation();
+  const tz = useOrgTimezone();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -65,9 +68,7 @@ export default function ActivityLogPage() {
   }
 
   function formatDate(dateStr: string) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
-      " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    return formatDateTimeInTz(dateStr, tz);
   }
 
   return (
@@ -203,8 +204,14 @@ export default function ActivityLogPage() {
                             {log.entity}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary max-w-[300px] truncate">
-                          {log.description}
+                        <td className="px-4 py-3 text-sm text-text-secondary max-w-[300px]">
+                          {log.description.length > 60 ? (
+                            <span className="truncate block max-w-[300px] cursor-help" title={log.description}>
+                              {log.description}
+                            </span>
+                          ) : (
+                            log.description
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {log.method === "ai" ? (
