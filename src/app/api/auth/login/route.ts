@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword, createToken } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { parsePermissions, DEFAULT_ADMIN_PERMISSIONS } from "@/lib/permissions";
 
 export async function POST(req: NextRequest) {
   try {
     const { email: input, password } = await req.json();
 
     const user = input?.includes("@")
-      ? await prisma.user.findUnique({ where: { email: input } })
-      : await prisma.user.findUnique({ where: { username: input } });
+      ? await prisma.user.findUnique({ where: { email: input }, select: { id: true, email: true, name: true, role: true, organizationId: true, password: true, username: true, permissions: true } })
+      : await prisma.user.findUnique({ where: { username: input }, select: { id: true, email: true, name: true, role: true, organizationId: true, password: true, username: true, permissions: true } });
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
@@ -35,8 +36,14 @@ export async function POST(req: NextRequest) {
       description: `User "${user.name}" logged in`,
     });
 
+    const permissions = user.role === "admin"
+      ? DEFAULT_ADMIN_PERMISSIONS
+      : parsePermissions(user.permissions);
+
     const response = NextResponse.json({
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      role: user.role,
+      permissions,
     });
     response.cookies.set("token", token, {
       httpOnly: true,
