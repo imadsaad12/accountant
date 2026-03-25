@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ScrollText, Sparkles, User, ChevronLeft, ChevronRight, Search, Plus, Pencil, Trash2 } from "lucide-react";
+import { ScrollText, Sparkles, User, ChevronLeft, ChevronRight, Search, Plus, Pencil, Trash2, X } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgTimezone } from "@/components/OrgSettingsProvider";
@@ -39,7 +39,8 @@ export default function ActivityLogPage() {
   const [methodFilter, setMethodFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+
+  const hasFilters = entityFilter || methodFilter || actionFilter || search;
 
   useEffect(() => {
     setLoading(true);
@@ -61,10 +62,12 @@ export default function ActivityLogPage() {
       .finally(() => setLoading(false));
   }, [page, entityFilter, methodFilter, actionFilter, search]);
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  function clearFilters() {
+    setEntityFilter("");
+    setMethodFilter("");
+    setActionFilter("");
+    setSearch("");
     setPage(1);
-    setSearch(searchInput);
   }
 
   function formatDate(dateStr: string) {
@@ -128,23 +131,29 @@ export default function ActivityLogPage() {
               <option value="delete">{t("activity.delete")}</option>
             </select>
           </div>
-          <form onSubmit={handleSearch} className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-medium text-text-muted mb-1">{t("common.search")}</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  placeholder={t("activity.search_placeholder")}
-                  className="w-full pl-9 pr-3 py-2 bg-dark-input border border-dark-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:ring-accent focus:border-accent"
-                />
-              </div>
-              <button type="submit" className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-                {t("common.search")}
-              </button>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                placeholder={t("activity.search_placeholder")}
+                className="w-full pl-9 pr-3 py-2 bg-dark-input border border-dark-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:ring-accent focus:border-accent"
+              />
             </div>
-          </form>
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={clearFilters}
+              disabled={!hasFilters}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-dark-border rounded-lg text-text-secondary hover:text-text-primary hover:bg-dark-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <X size={14} />
+              {t("common.clear")}
+            </button>
+          </div>
         </div>
       </div>
 
