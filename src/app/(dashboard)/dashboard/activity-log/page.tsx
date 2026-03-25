@@ -209,8 +209,8 @@ export default function ActivityLogPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-xs px-2 py-1 rounded-lg bg-dark-bg text-text-secondary font-medium capitalize">
-                            {log.entity}
+                          <span className="text-xs px-2 py-1 rounded-lg bg-dark-bg text-text-secondary font-medium">
+                            {log.entity.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-text-secondary max-w-[300px]">
