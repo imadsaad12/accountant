@@ -256,8 +256,6 @@ export default function PrivacyPage() {
                 ["Access", "Request a copy of the data we hold about you"],
                 ["Correction", "Request correction of inaccurate data"],
                 ["Deletion", "Request deletion of your account and all associated data"],
-                ["Portability", "Request your data in a machine-readable format"],
-                ["Objection", "Object to processing of your data in certain circumstances"],
               ].map(([right, desc]) => (
                 <li key={right} className="flex items-start gap-2">
                   <span className="text-accent mt-1 shrink-0">•</span>
