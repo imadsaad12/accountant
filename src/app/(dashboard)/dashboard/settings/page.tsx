@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2 } from "lucide-react";
+import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2, Percent } from "lucide-react";
 import { SettingsSkeleton } from "@/components/skeletons/SettingsSkeleton";
 import { TIMEZONES } from "@/lib/tz";
 import { COUNTRIES } from "@/components/PhoneInput";
@@ -24,6 +24,7 @@ interface OrgSettings {
   defaultPhoneCountry: string;
   defaultCurrency: string;
   timezone: string;
+  defaultTaxRate: number;
 }
 interface UserPrefs {
   theme: "dark" | "light";
@@ -43,9 +44,9 @@ export default function SettingsPage() {
   const t = useTranslation();
   const setLang = useSetLang();
   const { updateOrgSettings } = useOrgSettings();
-  const [orgSettings, setOrgSettings] = useState<OrgSettings>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC" });
+  const [orgSettings, setOrgSettings] = useState<OrgSettings>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC", defaultTaxRate: 0 });
   const [orgName, setOrgName] = useState("");
-  const [draft, setDraft] = useState<OrgSettings & { orgName: string }>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC", orgName: "" });
+  const [draft, setDraft] = useState<OrgSettings & { orgName: string }>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC", defaultTaxRate: 0, orgName: "" });
   const [userPrefs, setUserPrefs] = useState<UserPrefs>({ theme: "dark", language: "en" });
   const [canEditOrg, setCanEditOrg] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,7 +71,8 @@ export default function SettingsPage() {
     draft.orgName !== orgName ||
     draft.defaultPhoneCountry !== orgSettings.defaultPhoneCountry ||
     draft.defaultCurrency !== orgSettings.defaultCurrency ||
-    draft.timezone !== orgSettings.timezone;
+    draft.timezone !== orgSettings.timezone ||
+    draft.defaultTaxRate !== orgSettings.defaultTaxRate;
 
   async function saveOrg() {
     setOrgSaving(true);
@@ -234,6 +236,30 @@ export default function SettingsPage() {
               </select>
               <p className="text-xs text-text-muted mt-1.5">
                 Used for date defaults in forms, filters, and all date displays across the app.
+              </p>
+            </div>
+
+            {/* Default Tax Rate */}
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-2">
+                <Percent size={14} className="text-accent" />
+                {t("settings.default_tax_rate")}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={draft.defaultTaxRate}
+                  onChange={(e) => setDraft({ ...draft, defaultTaxRate: parseFloat(e.target.value) || 0 })}
+                  onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                  className="w-full px-3 py-2 pr-8 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">%</span>
+              </div>
+              <p className="text-xs text-text-muted mt-1.5">
+                {t("settings.default_tax_rate_note")}
               </p>
             </div>
           </div>

@@ -113,7 +113,8 @@ export default function InvoicesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
-  const [form, setForm] = useState({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" });
+  const defaultTaxRate = String(orgSettings.defaultTaxRate ?? 0);
+  const [form, setForm] = useState({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: "fr", notes: "", status: "draft" });
   const [items, setItems] = useState<typeof emptyItem[]>([{ ...emptyItem }]);
   const [fees, setFees] = useState<InvoiceFee[]>([]);
 
@@ -373,7 +374,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: "19", discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> {t("invoices.add")}
           </button>
         )}

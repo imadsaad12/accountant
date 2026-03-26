@@ -2,6 +2,7 @@ export interface OrgSettings {
   defaultPhoneCountry: string; // ISO code e.g. "LB"
   defaultCurrency: string;     // e.g. "USD"
   timezone: string;            // IANA timezone e.g. "Asia/Beirut"
+  defaultTaxRate: number;      // default invoice tax % e.g. 0
 }
 
 export interface UserPrefs {
@@ -13,6 +14,7 @@ export const DEFAULT_ORG_SETTINGS: OrgSettings = {
   defaultPhoneCountry: "LB",
   defaultCurrency: "USD",
   timezone: "UTC",
+  defaultTaxRate: 0,
 };
 
 export const DEFAULT_USER_PREFS: UserPrefs = {
