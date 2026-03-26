@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
@@ -85,12 +85,14 @@ export default function ExpensesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterFrom, setFilterFrom] = useState("");
-  const [filterTo, setFilterTo] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(""); // "YYYY-MM" or "custom"
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [dateRangeError, setDateRangeError] = useState(false);
   const [sortField, setSortField] = useState<ExpSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
-  const [dateRangeError, setDateRangeError] = useState(false);
+  const initializedRef = useRef(false);
 
   const loadData = useCallback(async (cat = "", from = "", to = "") => {
     setLoading(true);
@@ -112,7 +114,82 @@ export default function ExpensesPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Build from/to for a month key "YYYY-MM"
+  function monthRange(key: string): { from: string; to: string } {
+    const [y, m] = key.split("-").map(Number);
+    const today = todayInTz(tz);
+    const [cy, cm] = today.split("-").map(Number);
+    const from = `${key}-01`;
+    const lastDay = new Date(y, m, 0).getDate(); // last day of month
+    const isCurrentMonth = y === cy && m === cm;
+    const to = isCurrentMonth ? today : `${key}-${String(lastDay).padStart(2, "0")}`;
+    return { from, to };
+  }
+
+  // Generate month options for current year only (Jan → current month)
+  const monthOptions = useMemo(() => {
+    if (!tz) return [];
+    const today = todayInTz(tz);
+    const [cy, cm] = today.split("-").map(Number);
+    const options: { key: string; label: string }[] = [];
+    for (let m = cm; m >= 1; m--) {
+      const key = `${cy}-${String(m).padStart(2, "0")}`;
+      const label = new Date(cy, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      options.push({ key, label });
+    }
+    return options;
+  }, [tz]);
+
+  const currentMonthKey = useMemo(() => {
+    if (!tz) return "";
+    const today = todayInTz(tz);
+    const [y, m] = today.split("-");
+    return `${y}-${m}`;
+  }, [tz]);
+
+  // Init: default to current month
+  useEffect(() => {
+    if (!tz || !currentMonthKey || initializedRef.current) return;
+    initializedRef.current = true;
+    setSelectedMonth(currentMonthKey);
+    const { from, to } = monthRange(currentMonthKey);
+    loadData(filterCategory, from, to);
+  }, [tz, currentMonthKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When selectedMonth changes (non-custom), auto-load
+  function handleMonthChange(key: string) {
+    setSelectedMonth(key);
+    setDateRangeError(false);
+    if (key !== "custom") {
+      const { from, to } = monthRange(key);
+      loadData(filterCategory, from, to);
+    }
+  }
+
+  // When category changes, re-apply current date range
+  function handleCategoryChange(cat: string) {
+    setFilterCategory(cat);
+    if (selectedMonth && selectedMonth !== "custom") {
+      const { from, to } = monthRange(selectedMonth);
+      loadData(cat, from, to);
+    } else if (selectedMonth === "custom") {
+      loadData(cat, customFrom, customTo);
+    } else {
+      loadData(cat, "", "");
+    }
+  }
+
+  function currentFrom() {
+    if (selectedMonth === "custom") return customFrom;
+    if (selectedMonth) return monthRange(selectedMonth).from;
+    return "";
+  }
+
+  function currentTo() {
+    if (selectedMonth === "custom") return customTo;
+    if (selectedMonth) return monthRange(selectedMonth).to;
+    return "";
+  }
 
   function openAdd() {
     setEditId(null);
@@ -143,7 +220,7 @@ export default function ExpensesPage() {
       const url = editId ? `/api/expenses/${editId}` : "/api/expenses";
       await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
       setShowForm(false);
-      loadData(filterCategory, filterFrom, filterTo);
+      loadData(filterCategory, currentFrom(), currentTo());
     } finally {
       setSaving(false);
     }
@@ -152,7 +229,7 @@ export default function ExpensesPage() {
   async function handleDelete(id: string) {
     if (!confirm(t("expenses.delete_confirm"))) return;
     await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    loadData(filterCategory, filterFrom, filterTo);
+    loadData(filterCategory, currentFrom(), currentTo());
   }
 
   function toggleSort(field: ExpSortField) {
@@ -188,7 +265,7 @@ export default function ExpensesPage() {
   }, [expenses, sortField, sortDir]);
 
   // Stat cards reflect filtered results when a filter is active, otherwise all-time
-  const hasFilter = !!(filterCategory || filterFrom || filterTo);
+  const hasFilter = !!(filterCategory || selectedMonth);
   const statSource = hasFilter ? expenses : allExpenses;
   const totalAmount = statSource.reduce((s, e) => s + (e._computedAmount ?? e.amount), 0);
   const byCategory: Record<string, number> = {};
@@ -255,41 +332,59 @@ export default function ExpensesPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 items-center">
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
+          <select
+            value={filterCategory}
+            onChange={e => handleCategoryChange(e.target.value)}
+            className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
+          >
             <option value="">{t("common.all_categories")}</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{t(`expenses.cat.${c}`)}</option>)}
           </select>
-          <input
-            type="date"
-            value={filterFrom}
-            max={filterTo || undefined}
-            onChange={e => { setFilterFrom(e.target.value); setDateRangeError(false); }}
-            className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
-          />
-          <input
-            type="date"
-            value={filterTo}
-            min={filterFrom || undefined}
-            onChange={e => { setFilterTo(e.target.value); setDateRangeError(false); }}
-            className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
-          />
-          <button
-            onClick={() => {
-              if (filterFrom && filterTo && filterFrom > filterTo) { setDateRangeError(true); return; }
-              setDateRangeError(false);
-              loadData(filterCategory, filterFrom, filterTo);
-            }}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover"
+
+          <select
+            value={selectedMonth}
+            onChange={e => handleMonthChange(e.target.value)}
+            className="flex-1 min-w-[160px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
           >
-            {t("common.search")}
-          </button>
-          {(filterCategory || filterFrom || filterTo) && (
-            <button onClick={() => { setFilterCategory(""); setFilterFrom(""); setFilterTo(""); setDateRangeError(false); loadData(); }} className="px-3 py-2 text-sm text-text-muted hover:text-text-primary border border-dark-border rounded-lg">
-              {t("common.clear")}
-            </button>
-          )}
-          {dateRangeError && (
-            <p className="w-full text-xs text-red-400">{t("expenses.date_range_error")}</p>
+            {monthOptions.map(({ key, label }) => (
+              <option key={key} value={key}>
+                {key === currentMonthKey ? `${label} (to date)` : label}
+              </option>
+            ))}
+            <option value="custom">Custom Range</option>
+          </select>
+
+          {selectedMonth === "custom" && (
+            <>
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo || todayInTz(tz)}
+                onChange={e => { setCustomFrom(e.target.value); setDateRangeError(false); }}
+                className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
+              />
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom || undefined}
+                max={todayInTz(tz)}
+                onChange={e => { setCustomTo(e.target.value); setDateRangeError(false); }}
+                className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
+              />
+              <button
+                onClick={() => {
+                  if (customFrom && customTo && customFrom > customTo) { setDateRangeError(true); return; }
+                  setDateRangeError(false);
+                  loadData(filterCategory, customFrom, customTo);
+                }}
+                className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover"
+              >
+                {t("common.search")}
+              </button>
+              {dateRangeError && (
+                <p className="w-full text-xs text-red-400">{t("expenses.date_range_error")}</p>
+              )}
+            </>
           )}
         </div>
 
@@ -395,7 +490,7 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3 text-sm text-text-secondary">{exp.vendor || "-"}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-danger text-right">{currencySymbol}{fmtAmt(exp._computedAmount ?? exp.amount)}</td>
                     <td className="px-4 py-3 text-right space-x-1">
-                      {canEdit && (
+                      {canEdit && !exp.id.startsWith("salary-") && (
                         <>
                           <button onClick={() => openEdit(exp)} className="text-text-muted hover:text-accent p-1"><Edit2 size={15} /></button>
                           <button onClick={() => handleDelete(exp.id)} className="text-text-muted hover:text-danger p-1"><Trash2 size={15} /></button>

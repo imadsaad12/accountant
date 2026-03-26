@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Users, DollarSign, Calendar } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
-import { useOrgSettings } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone } from "@/components/OrgSettingsProvider";
 import { useTranslation } from "@/components/LanguageProvider";
 
 interface Employee {
@@ -52,6 +52,7 @@ export default function EmployeesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("employees");
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const t = useTranslation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,6 +156,58 @@ export default function EmployeesPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
+  const activeEmployees = employees.filter(e => e.status === "active");
+
+  // Same helpers as the expenses/reports API
+  function calcDays(start: Date, end: Date) {
+    return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+  }
+  function calcMonths(start: Date, end: Date) {
+    const sd = start.getUTCDate(), ed = end.getUTCDate();
+    const lastDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+    if (sd === 1 && ed === lastDay) {
+      return (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth()) + 1;
+    }
+    return parseFloat((calcDays(start, end) / 30).toFixed(2));
+  }
+
+  // Current month range using org timezone
+  const currentMonthSalary = useMemo(() => {
+    if (!tz) return 0;
+    const nowStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); // "YYYY-MM-DD"
+    const [y, m] = nowStr.split("-").map(Number);
+    const fromDate = new Date(Date.UTC(y, m - 1, 1));
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const toDate = new Date(Date.UTC(y, m - 1, lastDay, 23, 59, 59));
+
+    let total = 0;
+    for (const emp of employees) {
+      if (emp.status !== "active") continue;
+      const hireDate = new Date(emp.hireDate);
+      if (hireDate > toDate) continue; // not yet hired
+      const empStart = hireDate > fromDate ? hireDate : fromDate;
+      const days = calcDays(empStart, toDate);
+      if (days <= 0) continue;
+      const rate = emp.salary;
+      const period = emp.salaryPeriod || "month";
+      if (period === "day") total += rate * days;
+      else if (period === "week") total += rate * (days / 7);
+      else total += rate * calcMonths(empStart, toDate);
+    }
+    return Math.round(total);
+  }, [employees, tz]); // eslint-disable-line react-hooks/exhaustive-deps
+  const byPeriod = {
+    month: employees.filter(e => e.status === "active" && e.salaryPeriod === "month").length,
+    week:  employees.filter(e => e.status === "active" && e.salaryPeriod === "week").length,
+    day:   employees.filter(e => e.status === "active" && e.salaryPeriod === "day").length,
+  };
+
+  function fmtSalary(n: number) {
+    if (n >= 1_000_000) return (n / 1_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
+    if (n >= 1_000) return (n / 1_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   if (loading) return <TablePageSkeleton rows={8} hasFilters cols={5} />;
 
   return (
@@ -167,6 +220,48 @@ export default function EmployeesPage() {
             <Plus size={16} /> {t("employees.add")}
           </button>
         )}
+      </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        {/* Total monthly salaries */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-text-muted">{t("employees.total_monthly_salaries")}</span>
+            <DollarSign size={15} className="text-emerald-400" />
+          </div>
+          <div className="text-lg sm:text-2xl font-bold text-emerald-400">{fmtSalary(currentMonthSalary)}</div>
+          <div className="text-xs text-text-muted mt-0.5">{activeEmployees.length} {t("employees.active_employees")}</div>
+        </div>
+
+        {/* Total employees */}
+        <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-text-muted">{t("employees.total_employees")}</span>
+            <Users size={15} className="text-blue-400" />
+          </div>
+          <div className="text-lg sm:text-2xl font-bold text-blue-400">{employees.length}</div>
+          <div className="text-xs text-text-muted mt-0.5">
+            {employees.filter(e => e.status === "inactive").length} {t("status.inactive")}
+            {employees.filter(e => e.status === "on_leave").length > 0 && ` · ${employees.filter(e => e.status === "on_leave").length} ${t("status.on_leave")}`}
+          </div>
+        </div>
+
+        {/* Pay period breakdown */}
+        <div className="col-span-2 sm:col-span-1 bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-text-muted">{t("employees.pay_schedule")}</span>
+            <Calendar size={15} className="text-purple-400" />
+          </div>
+          <div className="space-y-1.5">
+            {([["month", t("employees.period.month")], ["week", t("employees.period.week")], ["day", t("employees.period.day")]] as [keyof typeof byPeriod, string][]).map(([period, label]) => (
+              <div key={period} className="flex items-center justify-between text-xs">
+                <span className="text-text-secondary">{label}</span>
+                <span className="font-semibold text-text-primary">{byPeriod[period]} {t("employees.people")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}

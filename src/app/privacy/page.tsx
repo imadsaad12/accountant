@@ -265,7 +265,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="text-sm mt-3">
               To exercise any of these rights, contact us at{" "}
-              <a href="mailto:privacy@cashent.com" className="text-accent hover:underline">privacy@cashent.com</a>.
+              <a href="mailto:info@cashent.app" className="text-accent hover:underline">info@cashent.app</a>.
             </p>
           </section>
 
@@ -292,9 +292,9 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          {/* 12 */}
+          {/* 11 */}
           <section>
-            <h2 className="text-lg font-semibold text-text-primary mb-3">12. Changes to This Policy</h2>
+            <h2 className="text-lg font-semibold text-text-primary mb-3">11. Changes to This Policy</h2>
             <p className="text-sm">
               We may update this policy as the platform evolves. When we make significant changes, we will notify
               administrators by email or via an in-app notice. Continued use of the platform after changes constitutes
@@ -302,12 +302,12 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          {/* 13 */}
+          {/* 12 */}
           <section>
-            <h2 className="text-lg font-semibold text-text-primary mb-3">13. Contact</h2>
+            <h2 className="text-lg font-semibold text-text-primary mb-3">12. Contact</h2>
             <p className="text-sm mb-3">For privacy-related questions, data requests, or concerns:</p>
             <div className="bg-dark-card border border-dark-border rounded-xl p-4 text-sm space-y-1">
-              <p><strong className="text-text-primary">Email:</strong> <a href="mailto:privacy@cashent.com" className="text-accent hover:underline">privacy@cashent.com</a></p>
+              <p><strong className="text-text-primary">Email:</strong> <a href="mailto:info@cashent.app" className="text-accent hover:underline">info@cashent.app</a></p>
               <p><strong className="text-text-primary">Platform:</strong> Cashent</p>
             </div>
           </section>
