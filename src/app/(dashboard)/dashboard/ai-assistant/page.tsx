@@ -5,7 +5,9 @@ import { Mic, MicOff, Send, Bot, User, Download, Loader2, ShieldCheck, ShieldX, 
 import { PermissionGuard } from "@/components/PermissionGuard";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface ActionData { type: string; confirmMessage?: string; [key: string]: any; }
+interface ActionData { type: string; confirmMessage?: string; actions?: ActionData[]; [key: string]: any; }
+
+interface BulkResult { action: ActionData; success: boolean; message: string; }
 
 interface Message {
   role: "user" | "assistant";
@@ -13,6 +15,7 @@ interface Message {
   action?: ActionData | null;
   actionStatus?: "pending" | "confirmed" | "cancelled" | "executed" | "failed";
   actionResult?: string;
+  bulkResults?: BulkResult[];
 }
 
 export default function AIAssistantPage() {
@@ -229,16 +232,28 @@ export default function AIAssistantPage() {
         body: JSON.stringify({ action: msg.action }),
       });
       const data = await res.json();
+      const isBulk = msg.action.type === "bulk_actions";
 
       setMessages(prev => prev.map((m, i) => {
         if (i === msgIndex) {
-          return { ...m, actionStatus: data.success ? "executed" as const : "failed" as const, actionResult: data.message || data.error };
+          return {
+            ...m,
+            actionStatus: data.success ? "executed" as const : "failed" as const,
+            actionResult: data.message || data.error,
+            bulkResults: isBulk ? data.results : undefined,
+          };
         }
         return m;
       }));
 
       if (data.success) {
         setMessages(prev => [...prev, { role: "assistant", content: `✅ ${data.message}` }]);
+      } else if (isBulk && data.results) {
+        const failedItems = (data.results as BulkResult[]).filter(r => !r.success);
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: `⚠️ ${data.message}\n\nFailed:\n${failedItems.map(r => `• ${r.message}`).join("\n")}`,
+        }]);
       } else {
         setMessages(prev => [...prev, { role: "assistant", content: `❌ ${data.error || "Action failed"}` }]);
       }
@@ -320,9 +335,23 @@ export default function AIAssistantPage() {
                 <div className="mt-3 pt-3 border-t border-dark-border/50 -mx-4 -mb-3 px-4 pb-3 bg-amber-500/5 rounded-b-xl">
                   <div className="flex items-start gap-2 mb-3">
                     <AlertTriangle size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-amber-400 mb-1">Action requires confirmation</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-amber-400 mb-1">
+                        {msg.action.type === "bulk_actions"
+                          ? `Bulk action — ${msg.action.actions?.length ?? 0} operations will run simultaneously`
+                          : "Action requires confirmation"}
+                      </p>
                       <p className="text-xs text-text-secondary">{msg.action.confirmMessage || `Execute: ${msg.action.type}`}</p>
+                      {msg.action.type === "bulk_actions" && msg.action.actions && msg.action.actions.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {msg.action.actions.map((a: ActionData, idx: number) => (
+                            <li key={idx} className="text-xs text-text-muted flex items-start gap-1.5">
+                              <span className="text-amber-500 mt-px">•</span>
+                              <span>{a.confirmMessage || a.type}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -332,7 +361,7 @@ export default function AIAssistantPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/30 disabled:opacity-50 transition-colors"
                     >
                       {executing ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-                      Confirm
+                      {msg.action.type === "bulk_actions" ? `Confirm all ${msg.action.actions?.length ?? ""} actions` : "Confirm"}
                     </button>
                     <button
                       onClick={() => cancelAction(i)}
@@ -348,9 +377,21 @@ export default function AIAssistantPage() {
 
               {/* Action executed successfully */}
               {msg.action && msg.actionStatus === "executed" && (
-                <div className="mt-2 pt-2 border-t border-dark-border/50 flex items-center gap-2 text-xs -mx-4 -mb-3 px-4 py-2 rounded-b-xl bg-emerald-500/10 text-emerald-400">
-                  <ShieldCheck size={14} />
-                  <span>{msg.actionResult || `Action executed: ${msg.action.type}`}</span>
+                <div className="mt-2 pt-2 border-t border-dark-border/50 -mx-4 -mb-3 px-4 py-2 rounded-b-xl bg-emerald-500/10">
+                  <div className="flex items-center gap-2 text-xs text-emerald-400">
+                    <ShieldCheck size={14} />
+                    <span>{msg.actionResult || `Action executed: ${msg.action.type}`}</span>
+                  </div>
+                  {msg.bulkResults && msg.bulkResults.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {msg.bulkResults.map((r, idx) => (
+                        <li key={idx} className={`text-xs flex items-start gap-1.5 ${r.success ? "text-emerald-400/80" : "text-red-400"}`}>
+                          <span className="mt-px">{r.success ? "✓" : "✗"}</span>
+                          <span>{r.message}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
 

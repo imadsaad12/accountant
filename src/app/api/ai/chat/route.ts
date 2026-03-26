@@ -279,14 +279,29 @@ Add salary advance:
 {"type": "add_salary_advance", "employeeId": "employee-id", "amount": 0, "date": "YYYY-MM-DD", "note": "...", "confirmMessage": "Record salary advance of $AMOUNT for EMPLOYEE NAME"}
 \`\`\`
 
+BULK ACTIONS — When the user asks to update/delete/create MULTIPLE records at once (e.g., "update all employees", "delete all overdue invoices", "give everyone a raise"):
+Use a SINGLE bulk_actions block containing an array of individual actions.
+The confirmMessage must summarize ALL changes clearly.
+
+\`\`\`action
+{"type": "bulk_actions", "confirmMessage": "Update 4 employees: increase salary by 10% for John ($1000→$1100), Jane ($2000→$2200), ...", "actions": [
+  {"type": "edit_employee", "data": {"id": "emp-id-1", "salary": 1100}},
+  {"type": "edit_employee", "data": {"id": "emp-id-2", "salary": 2200}},
+  {"type": "edit_employee", "data": {"id": "emp-id-3", "salary": 3300}}
+]}
+\`\`\`
+
+All actions in a bulk block execute simultaneously in parallel — the user confirms once and all run at once.
+
 RULES:
 - ALWAYS include confirmMessage in every action block
 - Make confirmMessage clear and specific (names, amounts, what changes)
 - For delete actions, warn it cannot be undone
-- Only ONE action block per response
+- Only ONE action block per response (use bulk_actions to bundle multiple)
 - If unsure which record the user means, ASK before generating an action
 - For payment actions, verify the amount doesn't exceed the invoice remaining balance
 - For stock-related invoice creation, note if a product has 0 stock (it cannot be used)
+- For bulk operations, list each affected record in the confirmMessage so the user knows exactly what will change
 - Be concise, helpful, and professional`;
 
   const messages = [
