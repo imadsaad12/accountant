@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  Truck,
   Package,
   UserCog,
   FileText,
@@ -30,6 +31,7 @@ import CashentLogo from "@/components/CashentLogo";
 const NAV_ITEMS = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, feature: "dashboard" as const },
   { href: "/dashboard/clients", labelKey: "nav.clients", icon: Users, feature: "clients" as const },
+  { href: "/dashboard/suppliers", labelKey: "nav.suppliers", icon: Truck, feature: "suppliers" as const },
   { href: "/dashboard/stock", labelKey: "nav.stock", icon: Package, feature: "products" as const },
   { href: "/dashboard/employees", labelKey: "nav.employees", icon: UserCog, feature: "employees" as const },
   { href: "/dashboard/invoices", labelKey: "nav.invoices", icon: FileText, feature: "invoices" as const },

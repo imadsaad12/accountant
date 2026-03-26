@@ -18,10 +18,17 @@ interface Expense {
   vendor: string | null;
   reference: string | null;
   note: string | null;
+  supplierId: string | null;
+  supplier: { id: string; name: string } | null;
   createdBy: { name: string } | null;
   account: { name: string; code: string } | null;
   _computedAmount?: number;
   _computedDescription?: string;
+}
+
+interface Supplier {
+  id: string;
+  name: string;
 }
 
 const RECURRENCE_OPTIONS = [
@@ -46,6 +53,7 @@ const emptyForm = {
   vendor: "",
   reference: "",
   note: "",
+  supplierId: "",
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -58,6 +66,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   insurance: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   maintenance: "bg-red-500/10 text-red-400 border-red-500/20",
   other: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  supplier_bill: "bg-violet-500/10 text-violet-400 border-violet-500/20",
 };
 
 const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -80,6 +89,7 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [lastMonthExpenses, setLastMonthExpenses] = useState<Expense[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -114,6 +124,10 @@ export default function ExpensesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    fetch("/api/suppliers").then(r => r.ok ? r.json() : []).then(setSuppliers).catch(() => {});
+  }, []);
+
   function openAdd() {
     setEditId(null);
     setForm({ ...emptyForm, date: todayInTz(tz) });
@@ -131,6 +145,7 @@ export default function ExpensesPage() {
       vendor: exp.vendor || "",
       reference: exp.reference || "",
       note: exp.note || "",
+      supplierId: exp.supplierId || "",
     });
     setShowForm(true);
   }
@@ -166,7 +181,7 @@ export default function ExpensesPage() {
   }
 
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
 
   // Reset to page 1 when data or sort changes
   useEffect(() => { setPage(1); }, [expenses, sortField, sortDir]);
@@ -330,6 +345,22 @@ export default function ExpensesPage() {
                     </select>
                   </div>
                 </div>
+                {suppliers.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">{t("nav.suppliers")}</label>
+                    <select
+                      value={form.supplierId}
+                      onChange={e => {
+                        const sup = suppliers.find(s => s.id === e.target.value);
+                        setForm({ ...form, supplierId: e.target.value, vendor: sup ? sup.name : form.vendor });
+                      }}
+                      className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
+                    >
+                      <option value="">— {t("expenses.vendor")} (manual) —</option>
+                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("expenses.vendor")}</label>
                   <input value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" placeholder="Vendor name" />
@@ -392,10 +423,16 @@ export default function ExpensesPage() {
                         {t(`expenses.cat.${exp.category}`)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{exp.vendor || "-"}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">
+                      {exp.supplier ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent border border-accent/20">
+                          {exp.supplier.name}
+                        </span>
+                      ) : exp.vendor || "-"}
+                    </td>
                     <td className="px-4 py-3 text-sm font-semibold text-danger text-right">{currencySymbol}{fmtAmt(exp._computedAmount ?? exp.amount)}</td>
                     <td className="px-4 py-3 text-right space-x-1">
-                      {canEdit && (
+                      {canEdit && !exp.id.startsWith("salary-") && !exp.id.startsWith("bill-") && (
                         <>
                           <button onClick={() => openEdit(exp)} className="text-text-muted hover:text-accent p-1"><Edit2 size={15} /></button>
                           <button onClick={() => handleDelete(exp.id)} className="text-text-muted hover:text-danger p-1"><Trash2 size={15} /></button>

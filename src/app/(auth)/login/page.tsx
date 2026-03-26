@@ -11,6 +11,7 @@ import type { Feature, Permissions } from "@/lib/permissions";
 const FEATURE_ROUTES: { feature: Feature; route: string }[] = [
   { feature: "dashboard", route: "/dashboard" },
   { feature: "clients", route: "/dashboard/clients" },
+  { feature: "suppliers", route: "/dashboard/suppliers" },
   { feature: "products", route: "/dashboard/products" },
   { feature: "employees", route: "/dashboard/employees" },
   { feature: "invoices", route: "/dashboard/invoices" },

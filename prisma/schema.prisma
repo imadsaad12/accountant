@@ -22,6 +22,8 @@ model Organization {
 
   users           User[]
   clients         Client[]
+  suppliers       Supplier[]
+  supplierBills   SupplierBill[]
   categories      Category[]
   products        Product[]
   employees       Employee[]
@@ -51,6 +53,27 @@ model User {
   expenses       Expense[]
 
   @@index([organizationId])
+}
+
+model SupplierBill {
+  id             String       @id @default(cuid())
+  supplierId     String
+  supplier       Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  amount         Float
+  description    String
+  reference      String?
+  date           DateTime
+  dueDate        DateTime?
+  status         String       @default("pending")   // pending | paid
+  note           String?      @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([supplierId])
+  @@index([organizationId])
+  @@index([status])
 }
 
 model Client {
@@ -219,6 +242,8 @@ model Expense {
   note           String?      @db.Text
   accountId      String?
   account        Account?     @relation(fields: [accountId], references: [id])
+  supplierId     String?
+  supplier       Supplier?    @relation(fields: [supplierId], references: [id])
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdById    String?
@@ -331,4 +356,26 @@ model PlatformConfig {
   defaultTrialDays     Int      @default(15)
   defaultMaxUsers      Int      @default(5)
   updatedAt            DateTime @updatedAt
+}
+
+model Supplier {
+  id             String       @id @default(cuid())
+  name           String
+  contactName    String?
+  email          String?
+  phone          String?
+  address        String?      @db.Text
+  city           String?
+  country        String?
+  taxId          String?
+  paymentTerms   Int?         // days e.g. 30, 60, 90
+  notes          String?      @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  expenses       Expense[]
+  bills          SupplierBill[]
+
+  @@index([organizationId])
 }

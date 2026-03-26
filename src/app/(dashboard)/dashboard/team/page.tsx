@@ -158,6 +158,8 @@ export default function TeamPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [sortField, setSortField] = useState<TeamSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -170,6 +172,7 @@ export default function TeamPage() {
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { setPage(1); }, [sortField, sortDir]);
 
   useEffect(() => {
     fetch("/api/employees")
@@ -316,7 +319,7 @@ export default function TeamPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-border">
-              {sortedUsers.map((user) => (
+              {sortedUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((user) => (
                 <tr key={user.id} className="hover:bg-dark-input/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -367,6 +370,18 @@ export default function TeamPage() {
           </table>
         )}
       </div>
+      {sortedUsers.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <span className="text-xs text-text-muted">
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedUsers.length)} {t("common.of")} {sortedUsers.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.prev")}</button>
+            <span className="px-3 py-1.5 text-xs text-text-muted">{page} / {Math.ceil(sortedUsers.length / PAGE_SIZE)}</span>
+            <button onClick={() => setPage(p => Math.min(Math.ceil(sortedUsers.length / PAGE_SIZE), p + 1))} disabled={page * PAGE_SIZE >= sortedUsers.length} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.next")}</button>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (

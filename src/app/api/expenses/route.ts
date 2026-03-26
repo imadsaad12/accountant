@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
   const storedExpenses = await prisma.expense.findMany({
     where: nonRecurringWhere,
     orderBy: { date: "desc" },
-    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } } },
+    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } }, supplier: { select: { id: true, name: true } } },
   });
 
   // 2. Recurring expenses — fetch all that started on or before toDate, compute for the filter range
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 
   const recurringExpenses = await prisma.expense.findMany({
     where: recurringWhere,
-    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } } },
+    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } }, supplier: { select: { id: true, name: true } } },
   });
 
   type StoredExpense = typeof storedExpenses[number];
@@ -155,17 +155,55 @@ export async function GET(req: NextRequest) {
         reference: emp.id,
         note: null,
         accountId: null,
+        supplierId: null,
         organizationId: session.organizationId,
         createdById: null,
         createdAt: empStart,
         updatedAt: empStart,
         createdBy: null,
         account: null,
+        supplier: null,
       });
     }
   }
 
-  return NextResponse.json([...salaryRows, ...recurringRows, ...storedExpenses]);
+  // 4. Paid supplier bills — virtual rows, only paid, filtered by date range
+  const billRows: StoredExpense[] = [];
+  if (!category || category === "supplier_bill") {
+    const paidBills = await prisma.supplierBill.findMany({
+      where: {
+        organizationId: session.organizationId,
+        status: "paid",
+        date: { gte: fromDate, lte: toDate },
+      },
+      include: { supplier: { select: { id: true, name: true } } },
+    });
+
+    for (const bill of paidBills) {
+      billRows.push({
+        id: `bill-${bill.id}`,
+        date: new Date(bill.date),
+        amount: bill.amount,
+        description: `Bill — ${bill.supplier.name}: ${bill.description}`,
+        category: "supplier_bill",
+        recurrence: "none",
+        vendor: bill.supplier.name,
+        reference: bill.reference,
+        note: bill.note,
+        accountId: null,
+        supplierId: bill.supplierId,
+        organizationId: session.organizationId,
+        createdById: null,
+        createdAt: new Date(bill.createdAt),
+        updatedAt: new Date(bill.updatedAt),
+        createdBy: null,
+        account: null,
+        supplier: bill.supplier,
+      });
+    }
+  }
+
+  return NextResponse.json([...salaryRows, ...billRows, ...recurringRows, ...storedExpenses]);
 }
 
 export async function POST(req: NextRequest) {
@@ -185,10 +223,11 @@ export async function POST(req: NextRequest) {
       reference: data.reference || null,
       note: data.note || null,
       accountId: data.accountId || null,
+      supplierId: data.supplierId || null,
       organizationId: session.organizationId,
       createdById: session.userId,
     },
-    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } } },
+    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } }, supplier: { select: { id: true, name: true } } },
   });
 
   await logAudit({

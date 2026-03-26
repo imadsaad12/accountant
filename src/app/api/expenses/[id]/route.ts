@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const expense = await prisma.expense.findFirst({
     where: { id, organizationId: session.organizationId },
-    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } } },
+    include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } }, supplier: { select: { id: true, name: true } } },
   });
   if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(expense);
@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       reference: data.reference || null,
       note: data.note || null,
       accountId: data.accountId || null,
+      supplierId: data.supplierId || null,
     },
   });
 

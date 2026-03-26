@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   if (type === "pl") {
     // Profit & Loss
-    const [invoices, allExpenses, employees] = await Promise.all([
+    const [invoices, allExpenses, employees, paidBills] = await Promise.all([
       prisma.invoice.findMany({
         where: {
           organizationId: orgId,
@@ -82,6 +82,10 @@ export async function GET(req: NextRequest) {
       prisma.employee.findMany({
         where: { organizationId: orgId, hireDate: { lte: toDate } },
         select: { salary: true, salaryPeriod: true, hireDate: true },
+      }),
+      prisma.supplierBill.findMany({
+        where: { organizationId: orgId, status: "paid", date: { gte: fromDate, lte: toDate } },
+        select: { amount: true },
       }),
     ]);
 
@@ -153,6 +157,11 @@ export async function GET(req: NextRequest) {
       if (salaryAmount > 0) {
         expensesByCategory["salaries"] = (expensesByCategory["salaries"] ?? 0) + salaryAmount;
       }
+    }
+
+    // Add paid supplier bills
+    for (const bill of paidBills) {
+      expensesByCategory["supplier_bill"] = (expensesByCategory["supplier_bill"] ?? 0) + bill.amount;
     }
 
     const totalExpenses = Object.values(expensesByCategory).reduce((s, v) => s + v, 0);
@@ -240,6 +249,7 @@ export async function GET(req: NextRequest) {
         number: true,
         total: true,
         dueDate: true,
+        status: true,
         client: { select: { name: true } },
         payments: { select: { amount: true } },
       },
@@ -258,7 +268,7 @@ export async function GET(req: NextRequest) {
       else if (daysOverdue > 0) bucket = "days1_30";
 
       buckets[bucket] += balance;
-      return { invoiceId: inv.id, number: inv.number, client: inv.client.name, total: inv.total, paid, balance, daysOverdue, bucket };
+      return { invoiceId: inv.id, number: inv.number, client: inv.client.name, total: inv.total, paid, balance, daysOverdue, bucket, status: inv.status };
     });
 
     return NextResponse.json({ type: "aging", buckets, rows });
