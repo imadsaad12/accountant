@@ -11,7 +11,7 @@ export async function GET() {
   const [org, user] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: session.organizationId },
-      select: { settings: true, name: true },
+      select: { settings: true, name: true, deletionRequestedAt: true, dataExportRequestedAt: true },
     }),
     prisma.user.findUnique({
       where: { id: session.userId },
@@ -27,6 +27,8 @@ export async function GET() {
       language: user?.language ?? "en",
     },
     canEditOrg: canEdit(session.permissions, "settings"),
+    deletionRequestedAt: org?.deletionRequestedAt ?? null,
+    dataExportRequestedAt: org?.dataExportRequestedAt ?? null,
   });
 }
 

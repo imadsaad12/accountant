@@ -11,12 +11,14 @@ model Organization {
   id            String    @id @default(cuid())
   name          String
   settings      String?   @db.Text
-  status        String    @default("trial")   // trial | active | inactive
+  status        String    @default("trial")   // trial | active | inactive | pending_deletion
   plan          String    @default("trial")   // trial | starter | pro | enterprise
   trialEndsAt   DateTime?
   maxUsers      Int       @default(5)
   aiTokensLimit Int       @default(10000)
   aiTokensUsed  Int       @default(0)
+  deletionRequestedAt   DateTime?
+  dataExportRequestedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

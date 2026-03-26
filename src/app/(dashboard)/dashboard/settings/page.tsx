@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2, Percent } from "lucide-react";
+import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2, Percent, Trash2, Database, AlertTriangle, X } from "lucide-react";
 import { SettingsSkeleton } from "@/components/skeletons/SettingsSkeleton";
 import { TIMEZONES } from "@/lib/tz";
 import { COUNTRIES } from "@/components/PhoneInput";
@@ -53,6 +53,12 @@ export default function SettingsPage() {
   const [orgSaving, setOrgSaving] = useState(false);
   const [orgSaved, setOrgSaved] = useState(false);
   const [userSaved, setUserSaved] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleteSending, setDeleteSending] = useState(false);
+  const [deleteRequested, setDeleteRequested] = useState(false);
+  const [dataRequesting, setDataRequesting] = useState(false);
+  const [dataRequested, setDataRequested] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -63,6 +69,8 @@ export default function SettingsPage() {
         setDraft({ ...data.orgSettings, orgName: data.orgName ?? "" });
         setUserPrefs(data.userPrefs);
         setCanEditOrg(data.canEditOrg);
+        if (data.deletionRequestedAt) setDeleteRequested(true);
+        if (data.dataExportRequestedAt) setDataRequested(true);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -330,6 +338,137 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      {/* ── Danger Zone ── */}
+      {canEditOrg && (
+        <div className="bg-dark-card border border-red-500/20 rounded-xl overflow-hidden mt-6">
+          <div className="px-5 py-4 border-b border-red-500/20">
+            <h2 className="text-sm font-semibold text-red-400 flex items-center gap-2">
+              <AlertTriangle size={16} />
+              Danger Zone
+            </h2>
+            <p className="text-xs text-text-muted mt-0.5">Irreversible actions — proceed with caution</p>
+          </div>
+          <div className="p-5 space-y-4">
+
+            {/* Request Data Export */}
+            <div className="flex items-center justify-between gap-4 py-3 border-b border-dark-border">
+              <div className="flex items-start gap-3">
+                <Database size={16} className="text-text-muted mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Request Data Export</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Request a full export of all your organization&apos;s data. Our team will prepare it and send it to you.
+                  </p>
+                  {dataRequested && (
+                    <p className="text-xs text-emerald-400 mt-1">✓ Request sent — our team will contact you shortly.</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (dataRequested) return;
+                  setDataRequesting(true);
+                  await fetch("/api/settings/request-data", { method: "POST" });
+                  setDataRequesting(false);
+                  setDataRequested(true);
+                }}
+                disabled={dataRequesting || dataRequested}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dark-border text-text-secondary rounded-lg hover:bg-dark-card-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {dataRequesting ? <Loader2 size={12} className="animate-spin" /> : <Database size={12} />}
+                {dataRequested ? "Requested" : "Request Data"}
+              </button>
+            </div>
+
+            {/* Delete Organization */}
+            <div className="flex items-center justify-between gap-4 py-3">
+              <div className="flex items-start gap-3">
+                <Trash2 size={16} className="text-red-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-400">Delete Organization</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Mark your organization for deletion. You have 30 days to recover your account by contacting support.
+                    After 30 days, all data is permanently deleted.
+                  </p>
+                  {deleteRequested && (
+                    <p className="text-xs text-amber-400 mt-1">⚠ Deletion requested — contact support within 30 days to recover your account.</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => { setDeleteConfirmName(""); setShowDeleteModal(true); }}
+                disabled={deleteRequested}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 size={12} />
+                {deleteRequested ? "Deletion Requested" : "Delete Organization"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-red-500/30 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-red-500/15 flex items-center justify-center">
+                  <AlertTriangle size={16} className="text-red-400" />
+                </div>
+                <h2 className="text-base font-semibold text-text-primary">Delete Organization</h2>
+              </div>
+              <button onClick={() => setShowDeleteModal(false)} className="text-text-muted hover:text-text-primary">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-5 space-y-2 text-sm text-text-secondary">
+              <p>Your account will be <strong className="text-red-400">marked for deletion</strong>.</p>
+              <p>You can contact support to recover your account within <strong className="text-text-primary">30 days</strong>.</p>
+              <p>After 30 days, <strong className="text-red-400">all your data will be permanently and irreversibly deleted</strong> — including clients, invoices, employees, expenses, and all reports.</p>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-text-secondary mb-2">
+                Type your organization name <strong className="text-text-primary">&quot;{orgName}&quot;</strong> to confirm
+              </label>
+              <input
+                value={deleteConfirmName}
+                onChange={e => setDeleteConfirmName(e.target.value)}
+                placeholder={orgName}
+                className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deleteConfirmName !== orgName || deleteSending}
+                onClick={async () => {
+                  setDeleteSending(true);
+                  await fetch("/api/settings/delete-org", { method: "POST" });
+                  setDeleteSending(false);
+                  setShowDeleteModal(false);
+                  setDeleteRequested(true);
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {deleteSending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Request Deletion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
