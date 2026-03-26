@@ -292,15 +292,6 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          {/* 11 */}
-          <section>
-            <h2 className="text-lg font-semibold text-text-primary mb-3">11. Children&apos;s Privacy</h2>
-            <p className="text-sm">
-              Cashent is a business management tool intended for use by adults and businesses. We do not knowingly
-              collect data from anyone under the age of 16.
-            </p>
-          </section>
-
           {/* 12 */}
           <section>
             <h2 className="text-lg font-semibold text-text-primary mb-3">12. Changes to This Policy</h2>
