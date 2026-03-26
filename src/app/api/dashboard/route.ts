@@ -54,7 +54,15 @@ export async function GET() {
       where: { invoice: { organizationId: orgId, status: { in: ["paid", "partially_paid"] } } },
       select: { quantity: true, unitCost: true, invoiceId: true },
     }),
-    prisma.product.findMany({ where: { organizationId: orgId }, select: { id: true, name: true, quantity: true, minStock: true } }),
+    prisma.product.findMany({
+      where: { organizationId: orgId },
+      select: {
+        id: true, name: true, quantity: true, minStock: true, type: true,
+        components: {
+          select: { quantity: true, component: { select: { quantity: true } } },
+        },
+      },
+    }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, take: 5, orderBy: { createdAt: "desc" }, include: { client: true } }),
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
     prisma.expense.findMany({ where: { organizationId: orgId }, select: { amount: true, recurrence: true, date: true } }),
@@ -63,8 +71,15 @@ export async function GET() {
     prisma.invoice.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
   ]);
 
-  // Filter low stock
-  const lowStock = lowStockProducts.filter(p => p.quantity <= (p.minStock ?? 0));
+  // Filter low stock — compute effective quantity for composite products
+  const lowStock = lowStockProducts
+    .map(p => {
+      const effectiveQty = p.type === "composite" && p.components.length > 0
+        ? Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)))
+        : p.quantity;
+      return { id: p.id, name: p.name, quantity: effectiveQty, minStock: p.minStock };
+    })
+    .filter(p => p.quantity <= (p.minStock ?? 0));
 
   // Build payments map
   const paymentsByInvoice: Record<string, number> = {};
