@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale, Filter, ChevronDown, Check } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -53,10 +53,30 @@ export default function ReportsPage() {
   const [to, setTo] = useState(() => todayInTz(tz));
   const [report, setReport] = useState<Report>(null);
   const [loading, setLoading] = useState(false);
+  const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set());
+  const [excludeOpen, setExcludeOpen] = useState(false);
+  const excludeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (excludeRef.current && !excludeRef.current.contains(e.target as Node)) setExcludeOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function toggleCategory(cat: string) {
+    setExcludedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  }
 
   async function generate() {
     setLoading(true);
     const params = new URLSearchParams({ type: activeTab, from, to });
+    if (excludedCategories.size > 0) params.set("exclude", Array.from(excludedCategories).join(","));
     const res = await fetch(`/api/reports?${params}`);
     setReport(res.ok ? await res.json() : null);
     setLoading(false);
@@ -75,9 +95,16 @@ export default function ReportsPage() {
     doc.setFontSize(18); doc.setTextColor(37, 99, 235);
     doc.text(report.type === "pl" ? "Profit & Loss Report" : report.type === "aging" ? "Accounts Receivable Aging" : "Balance Sheet", 14, 20);
     doc.setFontSize(9); doc.setTextColor(120, 120, 120);
+    let headerY = 28;
     if (report.type === "pl") {
       const pl = report as PLReport;
       doc.text(`Period: ${formatDateInTz(pl.period.from, tz)} – ${formatDateInTz(pl.period.to, tz)}`, 14, 28);
+      if (excludedCategories.size > 0) {
+        headerY += 6;
+        doc.setTextColor(200, 100, 0);
+        doc.text(`Excluded: ${Array.from(excludedCategories).map(c => EXPENSE_CATEGORIES[c] || c).join(", ")}`, 14, headerY);
+        doc.setTextColor(120, 120, 120);
+      }
     }
     doc.text(`Generated: ${now}`, pageWidth - 14, 28, { align: "right" });
 
@@ -85,7 +112,7 @@ export default function ReportsPage() {
       const pl = report as PLReport;
       // Summary table
       autoTable(doc, {
-        startY: 35,
+        startY: headerY + 7,
         head: [["", "Amount"]],
         body: [
           ["Revenue", fmt(pl.revenue)],
@@ -186,6 +213,37 @@ export default function ReportsPage() {
               <input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
             </div>
           </div>
+          {activeTab === "pl" && (
+            <div className="relative" ref={excludeRef}>
+              <button onClick={() => setExcludeOpen(!excludeOpen)}
+                className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-medium transition-all ${excludedCategories.size > 0 ? "bg-orange-500/10 border-orange-500/30 text-orange-400" : "bg-dark-card border-dark-border text-text-muted hover:text-text-primary"}`}>
+                <Filter size={14} />
+                Exclude{excludedCategories.size > 0 && ` (${excludedCategories.size})`}
+                <ChevronDown size={14} className={`transition-transform ${excludeOpen ? "rotate-180" : ""}`} />
+              </button>
+              {excludeOpen && (
+                <div className="absolute z-50 mt-1 w-56 bg-dark-card border border-dark-border rounded-xl shadow-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-dark-border text-xs text-text-muted font-medium">Exclude categories from report</div>
+                  <div className="max-h-60 overflow-y-auto py-1">
+                    {Object.entries(EXPENSE_CATEGORIES).map(([key, label]) => (
+                      <button key={key} onClick={() => toggleCategory(key)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-dark-card-hover text-left transition-colors">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${excludedCategories.has(key) ? "bg-orange-500 border-orange-500" : "border-dark-border"}`}>
+                          {excludedCategories.has(key) && <Check size={10} className="text-white" />}
+                        </div>
+                        <span className={excludedCategories.has(key) ? "text-orange-400 line-through" : "text-text-primary"}>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {excludedCategories.size > 0 && (
+                    <div className="px-3 py-2 border-t border-dark-border">
+                      <button onClick={() => setExcludedCategories(new Set())} className="text-xs text-accent hover:underline">Clear all</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={generate} disabled={loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60">
               {loading ? <Loader2 size={15} className="animate-spin" /> : <BarChart2 size={15} />}
@@ -217,6 +275,12 @@ export default function ReportsPage() {
           const isProfit = pl.netProfit >= 0;
           return (
             <div className="space-y-4">
+              {excludedCategories.size > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-500/10 border border-orange-500/20 rounded-lg text-sm text-orange-400">
+                  <Filter size={14} />
+                  <span>Excluding: {Array.from(excludedCategories).map(c => EXPENSE_CATEGORIES[c] || c).join(", ")}</span>
+                </div>
+              )}
               {/* Summary KPIs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">

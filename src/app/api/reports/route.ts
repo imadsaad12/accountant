@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get("type") || "pl"; // pl | bs
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const excludeParam = searchParams.get("exclude") || "";
+  const excludedCategories = new Set(excludeParam.split(",").map(c => c.trim()).filter(Boolean));
 
   const fromDate = from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1);
   const toDate = to ? new Date(to) : new Date();
@@ -119,6 +121,7 @@ export async function GET(req: NextRequest) {
     // - Recurring: pro-rate over the period (same logic as expenses page)
     const expensesByCategory: Record<string, number> = {};
     for (const exp of allExpenses) {
+      if (excludedCategories.has(exp.category)) continue;
       const recurrence = exp.recurrence || "none";
       const expDate = new Date(exp.date);
       let amount = 0;
@@ -134,7 +137,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Add dynamically computed salary rows
+    // Add dynamically computed salary rows (skip if salaries excluded)
+    if (!excludedCategories.has("salaries"))
     for (const emp of employees) {
       const hireDate = new Date(emp.hireDate);
       const empStart = hireDate > fromDate ? hireDate : fromDate;
