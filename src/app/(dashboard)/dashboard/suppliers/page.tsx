@@ -358,17 +358,6 @@ export default function SuppliersPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">{t("suppliers.payment_terms")}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.paymentTerms}
-                  onChange={e => setForm({ ...form, paymentTerms: e.target.value })}
-                  placeholder={t("suppliers.payment_terms_placeholder")}
-                  className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.notes")}</label>
                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               </div>
