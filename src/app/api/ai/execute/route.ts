@@ -32,9 +32,12 @@ async function executeSingleAction(
     }
 
     case "edit_client": {
-      const { id, ...updateData } = action.data;
+      const { id } = action.data;
       const existing = await prisma.client.findFirst({ where: { id, organizationId: orgId } });
       if (!existing) return { success: false, message: "Client not found" };
+      const allowed = ["name", "email", "phone", "address", "city", "country", "taxId"] as const;
+      const updateData: Record<string, unknown> = {};
+      for (const key of allowed) { if (action.data[key] !== undefined) updateData[key] = action.data[key]; }
       const client = await prisma.client.update({ where: { id }, data: updateData });
       await logAudit({ session, action: "update", entity: "client", entityId: client.id, description: `Updated client "${client.name}"`, method: "ai", metadata: action });
       return { success: true, message: `Client "${client.name}" updated successfully`, data: client };
@@ -68,9 +71,12 @@ async function executeSingleAction(
     }
 
     case "edit_product": {
-      const { id: prodId, ...prodData } = action.data;
+      const { id: prodId } = action.data;
       const existingProd = await prisma.product.findFirst({ where: { id: prodId, organizationId: orgId } });
       if (!existingProd) return { success: false, message: "Product not found" };
+      const allowedProd = ["name", "sku", "description", "price", "cost", "quantity", "minStock", "unit", "categoryId"] as const;
+      const prodData: Record<string, unknown> = {};
+      for (const key of allowedProd) { if (action.data[key] !== undefined) prodData[key] = action.data[key]; }
       const product = await prisma.product.update({ where: { id: prodId }, data: prodData });
       await logAudit({ session, action: "update", entity: "product", entityId: product.id, description: `Updated product "${product.name}"`, method: "ai", metadata: action });
       return { success: true, message: `Product "${product.name}" updated successfully`, data: product };
@@ -104,10 +110,13 @@ async function executeSingleAction(
     }
 
     case "edit_employee": {
-      const { id: empId, ...empData } = action.data;
+      const { id: empId } = action.data;
       const existingEmp = await prisma.employee.findFirst({ where: { id: empId, organizationId: orgId } });
       if (!existingEmp) return { success: false, message: "Employee not found" };
-      if (empData.hireDate) empData.hireDate = new Date(empData.hireDate);
+      const allowedEmp = ["firstName", "lastName", "email", "phone", "position", "department", "salary", "salaryPeriod", "hireDate", "status"] as const;
+      const empData: Record<string, unknown> = {};
+      for (const key of allowedEmp) { if (action.data[key] !== undefined) empData[key] = action.data[key]; }
+      if (empData.hireDate) empData.hireDate = new Date(empData.hireDate as string);
       const employee = await prisma.employee.update({ where: { id: empId }, data: empData });
       await logAudit({ session, action: "update", entity: "employee", entityId: employee.id, description: `Updated employee "${employee.firstName} ${employee.lastName}"`, method: "ai", metadata: action });
       return { success: true, message: `Employee "${employee.firstName} ${employee.lastName}" updated successfully`, data: employee };
@@ -199,10 +208,13 @@ async function executeSingleAction(
     }
 
     case "edit_expense": {
-      const { id: expId, ...expData } = action.data;
+      const { id: expId } = action.data;
       const existingExp = await prisma.expense.findFirst({ where: { id: expId, organizationId: orgId } });
       if (!existingExp) return { success: false, message: "Expense not found" };
-      if (expData.date) expData.date = new Date(expData.date);
+      const allowedExp = ["date", "amount", "description", "category", "recurrence", "vendor"] as const;
+      const expData: Record<string, unknown> = {};
+      for (const key of allowedExp) { if (action.data[key] !== undefined) expData[key] = action.data[key]; }
+      if (expData.date) expData.date = new Date(expData.date as string);
       const expense = await prisma.expense.update({ where: { id: expId }, data: expData });
       await logAudit({ session, action: "update", entity: "expense", entityId: expense.id, description: `Updated expense "${expense.description}"`, method: "ai", metadata: action });
       return { success: true, message: `Expense "${expense.description}" updated successfully`, data: expense };
