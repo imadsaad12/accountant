@@ -31,9 +31,14 @@ export async function GET(req: NextRequest) {
       client: { select: { id: true, name: true, email: true, phone: true, address: true } },
       items: { include: { product: { select: { id: true, name: true, unit: true } } } },
       fees: true,
+      payments: { select: { amount: true } },
     },
   });
-  return NextResponse.json(invoices);
+  return NextResponse.json(invoices.map(inv => ({
+    ...inv,
+    amountPaid: inv.payments.reduce((s, p) => s + p.amount, 0),
+    payments: undefined,
+  })));
 }
 
 export async function POST(req: NextRequest) {

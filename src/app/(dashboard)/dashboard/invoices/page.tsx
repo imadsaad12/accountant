@@ -62,6 +62,7 @@ interface Invoice {
   tax: number;
   taxRate: number;
   total: number;
+  amountPaid: number;
   language: string;
   notes: string | null;
   client: Client;
@@ -386,8 +387,8 @@ export default function InvoicesPage() {
       {/* Stats */}
       {invoices.length > 0 && (() => {
         const totalValue   = invoices.reduce((s, i) => s + i.total, 0);
-        const paidValue    = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
-        const pendingValue = invoices.filter(i => i.status === "sent" || i.status === "overdue" || i.status === "partially_paid").reduce((s, i) => s + i.total, 0);
+        const paidValue    = invoices.reduce((s, i) => s + (i.status === "paid" ? i.total : (i.amountPaid ?? 0)), 0);
+        const pendingValue = invoices.filter(i => i.status === "sent" || i.status === "overdue" || i.status === "partially_paid").reduce((s, i) => s + (i.total - (i.amountPaid ?? 0)), 0);
         return (
           <div className="grid grid-cols-3 gap-3 mb-4 sm:mb-6">
             <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
@@ -823,7 +824,12 @@ export default function InvoicesPage() {
                     {agingBadge(inv)}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">{currencySymbol}{fmtAmt(inv.total)}</td>
+                <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">
+                  {currencySymbol}{fmtAmt(inv.total)}
+                  {inv.status === "partially_paid" && inv.amountPaid > 0 && (
+                    <div className="text-xs text-amber-400 font-normal">{currencySymbol}{fmtAmt(inv.amountPaid)} paid</div>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-center">
                   {!canEdit ? (
                     <span className={`text-xs px-2 py-1 rounded-full font-medium border ${
