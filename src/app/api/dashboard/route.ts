@@ -45,7 +45,7 @@ export async function GET() {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [clientCount, productCount, employeeCount, invoices, paidInvoiceItems, lowStockProducts, recentInvoices, allPayments, allExpenses, employees, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
+  const [clientCount, productCount, employeeCount, invoices, paidInvoiceItems, lowStockProducts, recentInvoices, allPayments, allExpenses, employees, paidBills, newClientsThisMonth, newInvoicesThisMonth] = await Promise.all([
     prisma.client.count({ where: { organizationId: orgId } }),
     prisma.product.count({ where: { organizationId: orgId } }),
     prisma.employee.count({ where: { organizationId: orgId } }),
@@ -67,6 +67,7 @@ export async function GET() {
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
     prisma.expense.findMany({ where: { organizationId: orgId }, select: { amount: true, recurrence: true, date: true } }),
     prisma.employee.findMany({ where: { organizationId: orgId }, select: { salary: true, salaryPeriod: true, hireDate: true } }),
+    prisma.supplierBill.aggregate({ where: { organizationId: orgId, status: "paid" }, _sum: { amount: true } }),
     prisma.client.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
     prisma.invoice.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
   ]);
@@ -134,6 +135,9 @@ export async function GET() {
     else if (period === "week")  totalExpenses += parseFloat((rate * (days / 7)).toFixed(2));
     else                         totalExpenses += parseFloat((rate * calcMonths(hireDate, now)).toFixed(2));
   }
+
+  // Paid supplier bills
+  totalExpenses += paidBills._sum.amount ?? 0;
 
   const netEarning = grossEarning - cogs - totalExpenses;
 

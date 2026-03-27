@@ -33,7 +33,7 @@ interface BSReport {
 interface AgingReport {
   type: "aging";
   buckets: { current: number; days1_30: number; days31_60: number; days61_90: number; days90plus: number };
-  rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string }[];
+  rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string }[];
 }
 
 type Report = PLReport | BSReport | AgingReport | null;
@@ -162,7 +162,7 @@ export default function ReportsPage() {
         head: [["Invoice #", "Client", "Total", "Paid", "Balance", "Days Overdue"]],
         body: aging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(row => [
           row.number, row.client, fmt(row.total), fmt(row.paid), fmt(row.balance),
-          row.daysOverdue <= 0 ? "Current" : `${row.daysOverdue}d`,
+          row.daysOverdue <= 0 ? (row.status === "partially_paid" ? "On Time (Partially Paid)" : "On Time") : `${row.daysOverdue}d`,
         ]),
         theme: "striped",
         headStyles: { fillColor: [37, 99, 235] },
@@ -502,7 +502,9 @@ export default function ReportsPage() {
                           <td className="px-4 py-2.5 text-right font-bold text-text-primary">{fmt(row.balance)}</td>
                           <td className="px-4 py-2.5 text-center">
                             <span className={`text-xs font-medium ${color}`}>
-                              {row.daysOverdue <= 0 ? "Current" : `${row.daysOverdue}d`}
+                              {row.daysOverdue <= 0
+                              ? row.status === "partially_paid" ? "On Time (Partially Paid)" : "On Time"
+                              : `${row.daysOverdue}d`}
                             </span>
                           </td>
                         </tr>

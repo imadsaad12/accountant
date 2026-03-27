@@ -65,8 +65,11 @@ export default function EmployeesPage() {
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => { loadEmployees(); }, []);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterDept, sortField, sortDir]);
 
   async function loadEmployees() {
     setLoading(true);
@@ -404,7 +407,7 @@ export default function EmployeesPage() {
           <tbody className="divide-y divide-dark-border/50">
             {filtered.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-8 text-center text-text-muted">{search || filterStatus || filterDept ? t("common.no_results") : t("employees.empty")}</td></tr>
-            ) : filtered.map(emp => (
+            ) : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(emp => (
               <tr key={emp.id} className="hover:bg-dark-card-hover">
                 <td className="px-4 py-3 text-sm font-medium text-text-primary">{emp.firstName} {emp.lastName}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.position}</td>
@@ -438,6 +441,18 @@ export default function EmployeesPage() {
           </tbody>
         </table>
       </div>
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <span className="text-xs text-text-muted">
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} {t("common.of")} {filtered.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.prev")}</button>
+            <span className="px-3 py-1.5 text-xs text-text-muted">{page} / {Math.ceil(filtered.length / PAGE_SIZE)}</span>
+            <button onClick={() => setPage(p => Math.min(Math.ceil(filtered.length / PAGE_SIZE), p + 1))} disabled={page * PAGE_SIZE >= filtered.length} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.next")}</button>
+          </div>
+        </div>
+      )}
     </div>
     </PermissionGuard>
   );

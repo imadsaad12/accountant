@@ -126,8 +126,11 @@ export default function InvoicesPage() {
   const [savingPayment, setSavingPayment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { setPage(1); }, [sortField, sortDir]);
 
   async function loadData() {
     setLoading(true);
@@ -809,7 +812,7 @@ export default function InvoicesPage() {
           <tbody className="divide-y divide-dark-border/50">
             {sortedInvoices.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-text-muted">{t("invoices.empty")}</td></tr>
-            ) : sortedInvoices.map(inv => (
+            ) : sortedInvoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(inv => (
               <tr key={inv.id} className="hover:bg-dark-card-hover">
                 <td className="px-4 py-3 text-sm font-mono font-medium text-text-primary">{inv.number}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
@@ -869,6 +872,18 @@ export default function InvoicesPage() {
           </tbody>
         </table>
       </div>
+      {sortedInvoices.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <span className="text-xs text-text-muted">
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedInvoices.length)} {t("common.of")} {sortedInvoices.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.prev")}</button>
+            <span className="px-3 py-1.5 text-xs text-text-muted">{page} / {Math.ceil(sortedInvoices.length / PAGE_SIZE)}</span>
+            <button onClick={() => setPage(p => Math.min(Math.ceil(sortedInvoices.length / PAGE_SIZE), p + 1))} disabled={page * PAGE_SIZE >= sortedInvoices.length} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.next")}</button>
+          </div>
+        </div>
+      )}
     </div>
     </PermissionGuard>
   );

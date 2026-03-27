@@ -57,6 +57,8 @@ export default function SalaryAdvancesPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -252,7 +254,7 @@ export default function SalaryAdvancesPage() {
               <tbody className="divide-y divide-dark-border/50">
                 {advances.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">{t("salary_advances.empty")}</td></tr>
-                ) : advances.map(adv => (
+                ) : advances.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(adv => (
                   <tr key={adv.id} className="hover:bg-dark-card-hover">
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-text-primary">{adv.employee.firstName} {adv.employee.lastName}</p>
@@ -304,6 +306,18 @@ export default function SalaryAdvancesPage() {
             </table>
           )}
         </div>
+        {advances.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between px-2 py-3">
+            <span className="text-xs text-text-muted">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, advances.length)} {t("common.of")} {advances.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.prev")}</button>
+              <span className="px-3 py-1.5 text-xs text-text-muted">{page} / {Math.ceil(advances.length / PAGE_SIZE)}</span>
+              <button onClick={() => setPage(p => Math.min(Math.ceil(advances.length / PAGE_SIZE), p + 1))} disabled={page * PAGE_SIZE >= advances.length} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.next")}</button>
+            </div>
+          </div>
+        )}
       </div>
     </PermissionGuard>
   );

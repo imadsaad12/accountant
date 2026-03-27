@@ -47,6 +47,8 @@ export default function TaxPage() {
   const [invoices, setInvoices] = useState<TaxInvoice[]>([]);
   const [totalTaxCollected, setTotalTaxCollected] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     fetch("/api/tax")
@@ -119,7 +121,7 @@ export default function TaxPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-border">
-                {invoices.map((inv) => (
+                {invoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((inv) => (
                   <tr key={inv.id} className="hover:bg-dark-input/30 transition-colors">
                     <td className="px-4 py-3 text-sm font-medium text-text-primary">{inv.number}</td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{inv.client.name}</td>
@@ -158,6 +160,18 @@ export default function TaxPage() {
             </table>
           )}
         </div>
+        {invoices.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between px-2 py-3">
+            <span className="text-xs text-text-muted">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, invoices.length)} {t("common.of")} {invoices.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.prev")}</button>
+              <span className="px-3 py-1.5 text-xs text-text-muted">{page} / {Math.ceil(invoices.length / PAGE_SIZE)}</span>
+              <button onClick={() => setPage(p => Math.min(Math.ceil(invoices.length / PAGE_SIZE), p + 1))} disabled={page * PAGE_SIZE >= invoices.length} className="px-3 py-1.5 text-xs rounded-lg border border-dark-border text-text-secondary hover:bg-dark-card-hover disabled:opacity-40">{t("common.next")}</button>
+            </div>
+          </div>
+        )}
       </div>
     </PermissionGuard>
   );
