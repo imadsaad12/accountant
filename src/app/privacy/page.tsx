@@ -6,6 +6,18 @@ export const metadata: Metadata = {
   description: "How Cashent collects, uses, and protects your business data.",
 };
 
+function BackButton({ label }: { label: string }) {
+  "use client";
+  return (
+    <button
+      onClick={() => window.history.back()}
+      className="text-sm text-text-muted hover:text-text-primary transition-colors"
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-dark-bg text-text-primary">
@@ -15,9 +27,7 @@ export default function PrivacyPage() {
           <Link href="/login" className="font-bold text-lg text-accent tracking-tight">
             Cashent
           </Link>
-          <Link href="/login" className="text-sm text-text-muted hover:text-text-primary transition-colors">
-            ← Back to Login
-          </Link>
+          <BackButton label="← Back" />
         </div>
       </div>
 
@@ -318,7 +328,7 @@ export default function PrivacyPage() {
         <div className="mt-12 pt-6 border-t border-dark-border text-center text-xs text-text-muted">
           <p>This policy was last reviewed on March 26, 2026.</p>
           <p className="mt-2">
-            <Link href="/login" className="text-accent hover:underline">Back to Login</Link>
+            <BackButton label="← Go back" />
           </p>
         </div>
       </div>
