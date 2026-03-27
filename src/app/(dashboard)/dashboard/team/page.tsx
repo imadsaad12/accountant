@@ -217,13 +217,23 @@ export default function TeamPage() {
     setSaving(true);
     setError("");
 
+    if (form.password && form.password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      setSaving(false);
+      return;
+    }
+    if (!editing && !form.password) {
+      setError("Password is required.");
+      setSaving(false);
+      return;
+    }
+
     const body: Record<string, unknown> = {
       name: form.name,
       username: form.username,
       permissions: form.permissions,
     };
     if (form.password) body.password = form.password;
-    if (!editing) body.password = form.password;
 
     const res = await fetch(editing ? `/api/users/${editing.id}` : "/api/users", {
       method: editing ? "PUT" : "POST",

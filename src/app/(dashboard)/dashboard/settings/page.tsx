@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2, Percent, Trash2, Database, AlertTriangle, X } from "lucide-react";
+import { Check, Globe, Palette, Phone, DollarSign, Lock, Building2, Clock, Loader2, Percent, Trash2, Database, AlertTriangle, X, Mail } from "lucide-react";
 import { SettingsSkeleton } from "@/components/skeletons/SettingsSkeleton";
 import { TIMEZONES } from "@/lib/tz";
 import { COUNTRIES } from "@/components/PhoneInput";
@@ -48,6 +48,17 @@ export default function SettingsPage() {
   const [orgName, setOrgName] = useState("");
   const [draft, setDraft] = useState<OrgSettings & { orgName: string }>({ defaultPhoneCountry: "LB", defaultCurrency: "USD", timezone: "UTC", defaultTaxRate: 0, orgName: "" });
   const [userPrefs, setUserPrefs] = useState<UserPrefs>({ theme: "dark", language: "en" });
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [canEditOrg, setCanEditOrg] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orgSaving, setOrgSaving] = useState(false);
@@ -68,6 +79,10 @@ export default function SettingsPage() {
         setOrgName(data.orgName ?? "");
         setDraft({ ...data.orgSettings, orgName: data.orgName ?? "" });
         setUserPrefs(data.userPrefs);
+        if (data.userEmail != null) {
+          setUserEmail(data.userEmail);
+          setEmailDraft(data.userEmail);
+        }
         setCanEditOrg(data.canEditOrg);
         if (data.deletionRequestedAt) setDeleteRequested(true);
         if (data.dataExportRequestedAt) setDataRequested(true);
@@ -108,6 +123,49 @@ export default function SettingsPage() {
     setOrgSaving(false);
     setOrgSaved(true);
     setTimeout(() => setOrgSaved(false), 2000);
+  }
+
+  async function savePassword() {
+    setPasswordError("");
+    if (!currentPassword) { setPasswordError("Current password is required."); return; }
+    if (newPassword.length < 6) { setPasswordError("New password must be at least 6 characters."); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match."); return; }
+    setPasswordSaving(true);
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "account", data: { currentPassword, password: newPassword } }),
+    });
+    if (res.ok) {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSaved(true);
+      setTimeout(() => setPasswordSaved(false), 2000);
+    } else {
+      const data = await res.json();
+      setPasswordError(data.error || "Failed to update password");
+    }
+    setPasswordSaving(false);
+  }
+
+  async function saveEmail() {
+    setEmailError("");
+    setEmailSaving(true);
+    const res = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "account", data: { email: emailDraft } }),
+    });
+    if (res.ok) {
+      setUserEmail(emailDraft);
+      setEmailSaved(true);
+      setTimeout(() => setEmailSaved(false), 2000);
+    } else {
+      const data = await res.json();
+      setEmailError(data.error || "Failed to update email");
+    }
+    setEmailSaving(false);
   }
 
   async function saveUser(updated: UserPrefs) {
@@ -273,6 +331,99 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Account (admin only) ── */}
+      {userEmail != null && (
+        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden mb-6">
+          <div className="px-5 py-4 border-b border-dark-border">
+            <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <Mail size={16} className="text-accent" />
+              Account
+            </h2>
+            <p className="text-xs text-text-muted mt-0.5">Your login email and password</p>
+          </div>
+          <div className="p-5 space-y-5">
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Email address</label>
+              {emailError && (
+                <div className="mb-2 bg-red-500/10 text-red-400 border border-red-500/20 p-3 rounded-lg text-sm">{emailError}</div>
+              )}
+              <div className="flex gap-3 items-center">
+                <input
+                  type="email"
+                  value={emailDraft}
+                  onChange={(e) => { setEmailDraft(e.target.value); setEmailError(""); }}
+                  autoComplete="off"
+                  className="flex-1 px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+                />
+                {emailSaved ? (
+                  <SavedBadge show={emailSaved} label={t("settings.saved")} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={saveEmail}
+                    disabled={emailSaving || emailDraft === userEmail || !emailDraft}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {emailSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {t("common.save")}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Change password</label>
+              {passwordError && (
+                <div className="mb-2 bg-red-500/10 text-red-400 border border-red-500/20 p-3 rounded-lg text-sm">{passwordError}</div>
+              )}
+              <div className="space-y-2">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); }}
+                  placeholder="Current password"
+                  autoComplete="current-password"
+                  className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
+                  placeholder="New password"
+                  autoComplete="new-password"
+                  className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
+                />
+              </div>
+              <div className="flex justify-end mt-3">
+                {passwordSaved ? (
+                  <SavedBadge show={passwordSaved} label={t("settings.saved")} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={savePassword}
+                    disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {passwordSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {t("common.save")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Personal Preferences ── */}
       <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
