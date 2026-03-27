@@ -1,22 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { BackButton } from "./BackButton";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Cashent",
   description: "How Cashent collects, uses, and protects your business data.",
 };
-
-function BackButton({ label }: { label: string }) {
-  "use client";
-  return (
-    <button
-      onClick={() => window.history.back()}
-      className="text-sm text-text-muted hover:text-text-primary transition-colors"
-    >
-      {label}
-    </button>
-  );
-}
 
 export default function PrivacyPage() {
   return (
