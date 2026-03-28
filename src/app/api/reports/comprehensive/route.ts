@@ -287,7 +287,24 @@ export async function GET(req: NextRequest) {
     const remaining = bill.amount - (bill.amountPaid ?? 0);
     const daysOverdue = bill.dueDate ? Math.max(0, Math.floor((Date.now() - new Date(bill.dueDate).getTime()) / 86400000)) : 0;
     const bucket = daysOverdue === 0 ? "current" : daysOverdue <= 30 ? "1-30" : daysOverdue <= 60 ? "31-60" : daysOverdue <= 90 ? "61-90" : "90+";
-    return { billId: bill.id, supplier: bill.supplier.name, description: bill.description, amount: bill.amount, amountPaid: bill.amountPaid ?? 0, remaining, daysOverdue, bucket, status: bill.status, dueDate: bill.dueDate ? bill.dueDate.toISOString().split("T")[0] : null };
+    // Calculate today's payment (payment on the report end date)
+    const todayPayment = supplierPaymentsInPeriod
+      .filter(sp => sp.billId === bill.id && sp.date.toISOString().split("T")[0] === toStr)
+      .reduce((s, sp) => s + sp.amount, 0);
+    return {
+      billId: bill.id,
+      supplier: bill.supplier.name,
+      description: bill.description,
+      amount: bill.amount,
+      amountPaid: bill.amountPaid ?? 0,
+      remaining,
+      daysOverdue,
+      bucket,
+      status: bill.status,
+      dueDate: bill.dueDate ? bill.dueDate.toISOString().split("T")[0] : null,
+      todayPayment: parseFloat(todayPayment.toFixed(2)),
+      totalPaidToDate: parseFloat((bill.amountPaid ?? 0).toFixed(2)),
+    };
   });
 
   const totalPayable = payableRows.filter(r => r.remaining > 0).reduce((s, r) => s + r.remaining, 0);
@@ -351,16 +368,24 @@ export async function GET(req: NextRequest) {
       total: parseFloat(totalPayable.toFixed(2)),
     },
     receivedPayments: {
-      rows: receivedPayments.map(p => ({
-        id: p.id,
-        date: p.date.toISOString().split("T")[0],
-        amount: p.amount,
-        method: p.method,
-        reference: p.reference,
-        invoiceNumber: p.invoice.number,
-        invoiceTotal: p.invoice.total,
-        client: p.invoice.client.name,
-      })),
+      rows: receivedPayments.map(p => {
+        // Get the specific invoice to get all its payments
+        const invoice = invoices.find(inv => inv.id === p.invoiceId);
+        const totalPaidToDate = invoice ? invoice.payments.reduce((s, pay) => s + pay.amount, 0) : p.amount;
+        const todayPayment = p.date.toISOString().split("T")[0] === toStr ? p.amount : 0;
+        return {
+          id: p.id,
+          date: p.date.toISOString().split("T")[0],
+          amount: p.amount,
+          method: p.method,
+          reference: p.reference,
+          invoiceNumber: p.invoice.number,
+          invoiceTotal: p.invoice.total,
+          client: p.invoice.client.name,
+          todayPayment: parseFloat(todayPayment.toFixed(2)),
+          totalPaidToDate: parseFloat(totalPaidToDate.toFixed(2)),
+        };
+      }),
       total: parseFloat(receivedPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)),
     },
   });
