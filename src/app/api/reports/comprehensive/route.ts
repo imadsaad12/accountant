@@ -145,7 +145,7 @@ export async function GET(req: NextRequest) {
   const grossProfit = parseFloat((totalRevenue - totalCogs).toFixed(2));
 
   // ── Expenses ────────────────────────────────────────────────────────────────
-  const expenseRows: { category: string; description: string; amount: number; recurrence: string; vendor: string | null; date: string }[] = [];
+  const expenseRows: { category: string; description: string; amount: number; recurrence: string; vendor: string | null; date: string; salary?: number; salaryAdvance?: number; amountPaid?: number }[] = [];
 
   // Stored one-time & recurring expenses
   for (const e of expenses) {
@@ -185,6 +185,8 @@ export async function GET(req: NextRequest) {
     else if (emp.salaryPeriod === "week") salary = emp.salary * (days / 7);
     else if (emp.salaryPeriod === "day") salary = emp.salary * days;
     else if (emp.salaryPeriod === "year") salary = emp.salary * (days / 365);
+    salary = parseFloat(salary.toFixed(2));
+
     // Deduct each advance pro-rated over remaining days in its pay period from advance date
     let deduction = 0;
     for (const adv of (advancesByEmployee[emp.id] ?? [])) {
@@ -206,13 +208,24 @@ export async function GET(req: NextRequest) {
       deduction += (adv.amount / remainingDays) * calcDays(overlapStart, overlapEnd);
     }
     deduction = parseFloat(deduction.toFixed(2));
-    if (deduction > 0) {
-      salary = parseFloat((salary - deduction).toFixed(2));
-    }
+    const amountPaid = parseFloat((salary - deduction).toFixed(2));
+
     const desc = deduction > 0
       ? `${emp.firstName} ${emp.lastName} salary (−${deduction} advance)`
       : `${emp.firstName} ${emp.lastName} salary`;
-    if (salary > 0) expenseRows.push({ category: "salaries", description: desc, amount: parseFloat(salary.toFixed(2)), recurrence: emp.salaryPeriod, vendor: null, date: fromDate.toISOString().split("T")[0] });
+    if (amountPaid > 0) {
+      expenseRows.push({
+        category: "salaries",
+        description: desc,
+        amount: amountPaid,
+        recurrence: emp.salaryPeriod,
+        vendor: null,
+        date: fromDate.toISOString().split("T")[0],
+        salary,
+        salaryAdvance: deduction,
+        amountPaid,
+      });
+    }
   }
   void daysInPeriod;
 

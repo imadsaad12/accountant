@@ -50,7 +50,7 @@ interface ComprehensiveReport {
     byStatus: Record<string, number>;
   };
   cogs: { total: number; explanation: string; byInvoice: { number: string; client: string; total: number; totalPaid: number; cogs: number; grossProfit: number }[] };
-  expenses: { rows: { category: string; description: string; amount: number; date: string }[]; byCategory: Record<string, number>; total: number };
+  expenses: { rows: { category: string; description: string; amount: number; date: string; salary?: number; salaryAdvance?: number; amountPaid?: number }[]; byCategory: Record<string, number>; total: number };
   receivableAging: { rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; totals: Record<string, number>; totalOutstanding: number };
   payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; total: number };
   receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string }[]; total: number };
@@ -252,6 +252,26 @@ export default function ReportsPage() {
             r.daysOverdue <= 0 ? "Current" : `${r.daysOverdue}d`,
           ]),
           theme: "striped", headStyles: { fillColor: [220, 38, 38] }, styles: { fontSize: 8 },
+        });
+      }
+      // 6. Expenses Detail
+      if (cr.expenses.rows.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const expY = (doc as any).lastAutoTable?.finalY ?? 220;
+        doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+        doc.text(`Expenses Detail — Total: ${fmt(cr.expenses.total)}`, 14, expY + 8);
+        const hasSalaries = cr.expenses.rows.some(r => r.category === "salaries");
+        autoTable(doc, {
+          startY: expY + 12,
+          head: hasSalaries
+            ? [["Category", "Description", "Date", "Salary", "Advance Deduction", "Amount Paid"]]
+            : [["Category", "Description", "Date", "Amount"]],
+          body: cr.expenses.rows.map(r =>
+            r.category === "salaries" && r.salary !== undefined && hasSalaries
+              ? [r.category.replace(/_/g, " "), r.description, r.date, fmt(r.salary), fmt(r.salaryAdvance ?? 0), fmt(r.amountPaid ?? r.amount)]
+              : [r.category.replace(/_/g, " "), r.description, r.date, fmt(r.amount)]
+          ),
+          theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
         });
       }
     } else if (report.type === "aging") {
@@ -747,13 +767,21 @@ export default function ReportsPage() {
                   <Eg text="One-time rent $600 appears once. Recurring rent of $1,000/month is pro-rated by actual days (e.g. Jan 1–15 in a 31-day month = $484). A monthly salary of $1,000 with a $200 advance = $800 shown. Supplier bill expenses reflect only actual payments made in the period." />
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[500px]">
+                  <table className="w-full text-sm min-w-[700px]">
                     <thead className="bg-dark-bg/50">
                       <tr>
                         <th className="text-left px-4 py-2 text-xs text-text-muted">Category</th>
                         <th className="text-left px-4 py-2 text-xs text-text-muted">Description</th>
                         <th className="text-right px-4 py-2 text-xs text-text-muted">Date</th>
-                        <th className="text-right px-4 py-2 text-xs text-text-muted">Amount</th>
+                        {cr.expenses.rows.some(r => r.category === "salaries") ? (
+                          <>
+                            <th className="text-right px-4 py-2 text-xs text-text-muted">Salary</th>
+                            <th className="text-right px-4 py-2 text-xs text-text-muted">Advance Deduction</th>
+                            <th className="text-right px-4 py-2 text-xs text-text-muted">Amount Paid</th>
+                          </>
+                        ) : (
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Amount</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-dark-border/50">
@@ -764,11 +792,19 @@ export default function ReportsPage() {
                           </td>
                           <td className="px-4 py-2 text-xs text-text-secondary">{row.description}</td>
                           <td className="px-4 py-2 text-right text-xs text-text-muted">{row.date}</td>
-                          <td className="px-4 py-2 text-right text-xs font-medium text-text-primary">{fmt(row.amount)}</td>
+                          {row.category === "salaries" && row.salary !== undefined ? (
+                            <>
+                              <td className="px-4 py-2 text-right text-xs font-medium text-text-primary">{fmt(row.salary)}</td>
+                              <td className="px-4 py-2 text-right text-xs font-medium text-orange-400">{fmt(row.salaryAdvance ?? 0)}</td>
+                              <td className="px-4 py-2 text-right text-xs font-medium text-text-primary">{fmt(row.amountPaid ?? row.amount)}</td>
+                            </>
+                          ) : (
+                            <td className="px-4 py-2 text-right text-xs font-medium text-text-primary">{fmt(row.amount)}</td>
+                          )}
                         </tr>
                       ))}
                       {cr.expenses.rows.length === 0 && (
-                        <tr><td colSpan={4} className="px-4 py-6 text-center text-text-muted text-xs">No expenses in this period</td></tr>
+                        <tr><td colSpan={cr.expenses.rows.some(r => r.category === "salaries") ? 6 : 4} className="px-4 py-6 text-center text-text-muted text-xs">No expenses in this period</td></tr>
                       )}
                     </tbody>
                   </table>
