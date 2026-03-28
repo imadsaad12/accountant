@@ -52,8 +52,8 @@ interface ComprehensiveReport {
   cogs: { total: number; explanation: string; byInvoice: { number: string; client: string; total: number; totalPaid: number; cogs: number; grossProfit: number }[] };
   expenses: { rows: { category: string; description: string; amount: number; date: string; salary?: number; salaryAdvance?: number; amountPaid?: number }[]; byCategory: Record<string, number>; total: number };
   receivableAging: { rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; totals: Record<string, number>; totalOutstanding: number };
-  payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null; todayPayment: number; totalPaidToDate: number }[]; total: number };
-  receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string; todayPayment: number; totalPaidToDate: number }[]; total: number };
+  payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null; periodPayment: number; totalPaidToDate: number }[]; total: number };
+  receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string; periodPayment: number; totalPaidToDate: number }[]; total: number };
 }
 
 type Report = PLReport | BSReport | AgingReport | ComprehensiveReport | null;
@@ -219,10 +219,17 @@ export default function ReportsPage() {
       const rpY = (doc as any).lastAutoTable.finalY + 8;
       doc.setFontSize(11); doc.setTextColor(5, 150, 105);
       doc.text(`Received Payments — Total Collected: ${fmt(cr.receivedPayments.total)}`, 14, rpY);
+      // Get unique invoices to avoid duplicate period payment rows
+      const uniqueInvoices = new Map<string, typeof cr.receivedPayments.rows[0]>();
+      cr.receivedPayments.rows.forEach(p => {
+        if (!uniqueInvoices.has(p.invoiceNumber)) {
+          uniqueInvoices.set(p.invoiceNumber, p);
+        }
+      });
       autoTable(doc, {
         startY: rpY + 4,
-        head: [["Date", "Client", "Invoice #", "Invoice Total", "Method", "This Payment", "Total Paid to Date"]],
-        body: cr.receivedPayments.rows.map(p => [p.date, p.client, p.invoiceNumber, fmt(p.invoiceTotal), p.method, fmt(p.amount), fmt(p.totalPaidToDate)]),
+        head: [["Client", "Invoice #", "Invoice Total", "Period Payment", "Total Paid to Date"]],
+        body: Array.from(uniqueInvoices.values()).map(p => [p.client, p.invoiceNumber, fmt(p.invoiceTotal), fmt(p.periodPayment), fmt(p.totalPaidToDate)]),
         theme: "striped", headStyles: { fillColor: [5, 150, 105] }, styles: { fontSize: 8 },
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,9 +253,9 @@ export default function ReportsPage() {
         doc.text(`Accounts Payable (Unpaid Bills) — Total Owed: ${fmt(cr.payableAging.total)}`, 14, apY);
         autoTable(doc, {
           startY: apY + 4,
-          head: [["Supplier", "Description", "Total", "Today's Payment", "Total Paid to Date", "Remaining", "Due Date", "Age"]],
+          head: [["Supplier", "Description", "Total", "Period Payment", "Total Paid to Date", "Remaining", "Due Date", "Age"]],
           body: cr.payableAging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(r => [
-            r.supplier, r.description, fmt(r.amount), fmt(r.todayPayment), fmt(r.totalPaidToDate), fmt(r.remaining), r.dueDate ?? "—",
+            r.supplier, r.description, fmt(r.amount), fmt(r.periodPayment), fmt(r.totalPaidToDate), fmt(r.remaining), r.dueDate ?? "—",
             r.daysOverdue <= 0 ? "Current" : `${r.daysOverdue}d`,
           ]),
           theme: "striped", headStyles: { fillColor: [220, 38, 38] }, styles: { fontSize: 8 },
@@ -687,7 +694,7 @@ export default function ReportsPage() {
                         <th className="text-right px-4 py-2 text-xs text-text-muted">Invoice Total</th>
                         <th className="text-left px-4 py-2 text-xs text-text-muted">Method</th>
                         <th className="text-left px-4 py-2 text-xs text-text-muted">Reference</th>
-                        <th className="text-right px-4 py-2 text-xs text-text-muted">This Payment</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Period Payment</th>
                         <th className="text-right px-4 py-2 text-xs text-text-muted">Total Paid to Date</th>
                       </tr>
                     </thead>
@@ -702,7 +709,7 @@ export default function ReportsPage() {
                           <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(p.invoiceTotal)}</td>
                           <td className="px-4 py-2.5 text-xs text-text-muted capitalize">{p.method}</td>
                           <td className="px-4 py-2.5 text-xs text-text-muted">{p.reference ?? "—"}</td>
-                          <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(p.amount)}</td>
+                          <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(p.periodPayment)}</td>
                           <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-300">{fmt(p.totalPaidToDate)}</td>
                         </tr>
                       ))}
@@ -710,7 +717,7 @@ export default function ReportsPage() {
                     {cr.receivedPayments.rows.length > 0 && (
                       <tfoot>
                         <tr className="bg-dark-bg/30 border-t border-dark-border">
-                          <td colSpan={6} className="px-4 py-2.5 text-xs font-semibold text-text-primary">Total Payments This Period</td>
+                          <td colSpan={6} className="px-4 py-2.5 text-xs font-semibold text-text-primary">Total Period Payments</td>
                           <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(cr.receivedPayments.total)}</td>
                           <td className="px-4 py-2.5 text-right text-xs text-text-muted">—</td>
                         </tr>
@@ -889,7 +896,7 @@ export default function ReportsPage() {
                           <th className="text-left px-4 py-2 text-xs text-text-muted">Supplier</th>
                           <th className="text-left px-4 py-2 text-xs text-text-muted">Description</th>
                           <th className="text-right px-4 py-2 text-xs text-text-muted">Total</th>
-                          <th className="text-right px-4 py-2 text-xs text-text-muted">Today's Payment</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Period Payment</th>
                           <th className="text-right px-4 py-2 text-xs text-text-muted">Total Paid to Date</th>
                           <th className="text-right px-4 py-2 text-xs text-text-muted">Remaining</th>
                           <th className="text-center px-4 py-2 text-xs text-text-muted">Due Date</th>
@@ -904,7 +911,7 @@ export default function ReportsPage() {
                               <td className="px-4 py-2.5 text-xs font-medium text-text-primary">{row.supplier}</td>
                               <td className="px-4 py-2.5 text-xs text-text-secondary">{row.description}</td>
                               <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(row.amount)}</td>
-                              <td className="px-4 py-2.5 text-right text-xs font-medium text-emerald-400">{fmt(row.todayPayment)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-medium text-emerald-400">{fmt(row.periodPayment)}</td>
                               <td className="px-4 py-2.5 text-right text-xs font-medium text-emerald-300">{fmt(row.totalPaidToDate)}</td>
                               <td className="px-4 py-2.5 text-right text-xs font-bold text-red-400">{fmt(row.remaining)}</td>
                               <td className="px-4 py-2.5 text-center text-xs text-text-muted">{row.dueDate ?? "—"}</td>
