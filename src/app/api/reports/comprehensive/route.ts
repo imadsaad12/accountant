@@ -339,18 +339,19 @@ export async function GET(req: NextRequest) {
       total: parseFloat(totalCogs.toFixed(2)),
       explanation: "COGS (Cost of Goods Sold) is the full unit cost of all items on each invoice that received a payment in this period. Even if an invoice is only partially paid, the full product cost is recognised. Each invoice's COGS is counted once regardless of how many payments it received.",
       byInvoice: (() => {
-        const map: Record<string, { number: string; client: string; total: number; totalPaid: number; cogs: number }> = {};
+        const map: Record<string, { number: string; client: string; total: number; periodPayment: number; totalPaidToDate: number; cogs: number }> = {};
         for (const payment of receivedPayments) {
           const inv = payment.invoice;
           const key = inv.number;
           if (!map[key]) {
             const fullCogs = inv.items.reduce((s, item) => s + (item.unitCost ?? 0) * item.quantity, 0);
             if (fullCogs === 0) continue;
-            map[key] = { number: inv.number, client: inv.client.name, total: inv.total, totalPaid: 0, cogs: fullCogs };
+            const totalPayments = invoices.find(i => i.number === inv.number)?.payments.reduce((s, p) => s + p.amount, 0) ?? 0;
+            map[key] = { number: inv.number, client: inv.client.name, total: inv.total, periodPayment: 0, totalPaidToDate: totalPayments, cogs: fullCogs };
           }
-          map[key].totalPaid += payment.amount;
+          map[key].periodPayment += payment.amount;
         }
-        return Object.values(map).map(r => ({ ...r, totalPaid: parseFloat(r.totalPaid.toFixed(2)), cogs: parseFloat(r.cogs.toFixed(2)), grossProfit: parseFloat((r.totalPaid - r.cogs).toFixed(2)) }));
+        return Object.values(map).map(r => ({ ...r, periodPayment: parseFloat(r.periodPayment.toFixed(2)), totalPaidToDate: parseFloat(r.totalPaidToDate.toFixed(2)), cogs: parseFloat(r.cogs.toFixed(2)), grossProfit: parseFloat((r.periodPayment - r.cogs).toFixed(2)) }));
       })(),
     },
     expenses: {
