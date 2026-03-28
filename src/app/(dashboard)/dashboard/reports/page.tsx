@@ -874,7 +874,7 @@ export default function ReportsPage() {
                     <h2 className="text-sm font-semibold text-text-primary">Accounts Payable (Unpaid Bills)</h2>
                     <span className="text-xs text-text-muted">Total Owed: <strong className="text-red-400">{fmt(cr.payableAging.total)}</strong></span>
                   </div>
-                  <Eg text="Supplier bill for $1,000 — you paid $300, so $700 remaining. Due date was 20 days ago → 1–30 days bucket. Fully paid bills are excluded." />
+                  <Eg text="Shows bills created in this period OR that received a payment in this period. Example: Bill for $1,000, paid $300, remaining $700. Due 20 days ago → 1–30 days bucket. Fully paid bills excluded." />
                 </div>
                 {cr.payableAging.rows.length === 0 ? (
                   <div className="px-4 py-6 text-center text-text-muted text-xs">No outstanding payables</div>
