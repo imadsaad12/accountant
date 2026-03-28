@@ -8,14 +8,21 @@ function calcDays(start: Date, end: Date): number {
 }
 
 function calcMonths(start: Date, end: Date): number {
-  const startDay = start.getUTCDate();
-  const endDay   = end.getUTCDate();
-  const lastDayOfEndMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
-  if (startDay === 1 && endDay === lastDayOfEndMonth) {
-    return (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth()) + 1;
+  const sy = start.getUTCFullYear(), sm = start.getUTCMonth(), sd = start.getUTCDate();
+  const ey = end.getUTCFullYear(), em = end.getUTCMonth(), ed = end.getUTCDate();
+  if (sy === ey && sm === em) {
+    const dim = new Date(Date.UTC(sy, sm + 1, 0)).getUTCDate();
+    if (sd === 1 && ed === dim) return 1;
+    return (ed - sd + 1) / dim;
   }
-  const days = calcDays(start, end);
-  return parseFloat((days / 30).toFixed(2));
+  const dimFirst = new Date(Date.UTC(sy, sm + 1, 0)).getUTCDate();
+  let total = (dimFirst - sd + 1) / dimFirst;
+  let y = sy, m = sm + 1;
+  if (m > 11) { m = 0; y++; }
+  while (y < ey || (y === ey && m < em)) { total += 1; m++; if (m > 11) { m = 0; y++; } }
+  const dimLast = new Date(Date.UTC(ey, em + 1, 0)).getUTCDate();
+  total += ed / dimLast;
+  return parseFloat(total.toFixed(4));
 }
 
 /** Compute the pro-rated amount of a recurring expense for the period [fromDate, toDate]. */
@@ -53,27 +60,28 @@ export async function GET(req: NextRequest) {
   const excludeParam = searchParams.get("exclude") || "";
   const excludedCategories = new Set(excludeParam.split(",").map(c => c.trim()).filter(Boolean));
 
-  const fromDate = from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1);
-  const toDate = to ? new Date(to) : new Date();
-  toDate.setHours(23, 59, 59, 999);
+  const fromStr = (from ?? `${new Date().getUTCFullYear()}-01-01`).split("T")[0];
+  const toStr = (to ?? new Date().toISOString().split("T")[0]).split("T")[0];
+  const fromDate = new Date(fromStr + "T00:00:00Z");
+  const toDate = new Date(toStr + "T23:59:59.999Z");
 
   const orgId = session.organizationId;
 
   if (type === "pl") {
     // Profit & Loss
-    const [invoices, allExpenses, employees, paidBills] = await Promise.all([
-      prisma.invoice.findMany({
-        where: {
-          organizationId: orgId,
-          status: { in: ["paid", "partially_paid"] },
-          date: { gte: fromDate, lte: toDate },
-        },
+    const [payments, allExpenses, employees, paidBills] = await Promise.all([
+      prisma.payment.findMany({
+        where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
         select: {
-          id: true,
-          total: true,
-          tax: true,
-          items: { select: { unitCost: true, quantity: true } },
-          payments: { select: { amount: true } },
+          invoiceId: true,
+          amount: true,
+          invoice: {
+            select: {
+              total: true,
+              tax: true,
+              items: { select: { unitCost: true, quantity: true } },
+            },
+          },
         },
       }),
       prisma.expense.findMany({
@@ -83,40 +91,40 @@ export async function GET(req: NextRequest) {
       }),
       prisma.employee.findMany({
         where: { organizationId: orgId, hireDate: { lte: toDate } },
-        select: { salary: true, salaryPeriod: true, hireDate: true },
+        select: {
+          id: true, salary: true, salaryPeriod: true, hireDate: true,
+          salaryAdvances: {
+            where: { organizationId: orgId, status: { in: ["pending", "paid"] } },
+            select: { amount: true, date: true },
+          },
+        },
       }),
-      prisma.supplierBill.findMany({
-        where: { organizationId: orgId, status: "paid", date: { gte: fromDate, lte: toDate } },
+      prisma.supplierBillPayment.findMany({
+        where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
         select: { amount: true },
       }),
     ]);
 
-    // Revenue = cash actually received:
-    //   - "paid" invoices: sum of their payments (= full invoice total)
-    //   - "partially_paid" invoices: sum of payments received so far
+    // Revenue = all payments received within the period (cash basis)
+    // COGS = full unit cost per invoice, counted once even with multiple payments
     let revenue = 0;
     let taxCollected = 0;
     let cogs = 0;
+    const seenInvoices = new Set<string>();
 
-    for (const inv of invoices) {
-      const totalPaid = inv.payments.reduce((s, p) => s + p.amount, 0);
-      revenue += totalPaid;
-
-      // Tax portion: prorate tax by (paid / total)
-      if (inv.total > 0) {
-        taxCollected += (totalPaid / inv.total) * inv.tax;
-      }
-
-      // COGS: prorate product costs by the paid fraction (use unitCost snapshot from invoice time)
-      const paidRatio = inv.total > 0 ? Math.min(totalPaid / inv.total, 1) : 0;
-      for (const item of inv.items) {
-        if (item.unitCost > 0) {
-          cogs += item.unitCost * item.quantity * paidRatio;
+    for (const payment of payments) {
+      revenue += payment.amount;
+      const inv = payment.invoice;
+      if (inv.total > 0) taxCollected += (payment.amount / inv.total) * inv.tax;
+      if (!seenInvoices.has(payment.invoiceId)) {
+        seenInvoices.add(payment.invoiceId);
+        for (const item of inv.items) {
+          cogs += (item.unitCost ?? 0) * item.quantity;
         }
       }
     }
 
-    const invoiceCount = invoices.length;
+    const invoiceCount = seenInvoices.size;
 
     const grossProfit = revenue - cogs;
 
@@ -158,14 +166,38 @@ export async function GET(req: NextRequest) {
       } else {
         salaryAmount = parseFloat((rate * calcMonths(empStart, toDate)).toFixed(2));
       }
+      // Deduct each advance pro-rated over remaining days in its pay period from advance date
+      let totalDeduction = 0;
+      for (const adv of emp.salaryAdvances) {
+        const advDate = new Date(adv.date);
+        let periodEnd: Date;
+        if (period === "month") {
+          periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+        } else if (period === "week") {
+          const satDate = advDate.getUTCDate() + (6 - advDate.getUTCDay());
+          periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), satDate, 23, 59, 59, 999));
+        } else {
+          periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), advDate.getUTCDate(), 23, 59, 59, 999));
+        }
+        const remainingDays = calcDays(advDate, periodEnd);
+        if (remainingDays <= 0) continue;
+        const overlapStart = advDate > fromDate ? advDate : fromDate;
+        const overlapEnd = periodEnd < toDate ? periodEnd : toDate;
+        if (overlapStart > overlapEnd) continue;
+        totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(overlapStart, overlapEnd);
+      }
+      totalDeduction = parseFloat(totalDeduction.toFixed(2));
+      if (totalDeduction > 0) {
+        salaryAmount = parseFloat((salaryAmount - totalDeduction).toFixed(2));
+      }
       if (salaryAmount > 0) {
         expensesByCategory["salaries"] = (expensesByCategory["salaries"] ?? 0) + salaryAmount;
       }
     }
 
-    // Add paid supplier bills
-    for (const bill of paidBills) {
-      expensesByCategory["supplier_bill"] = (expensesByCategory["supplier_bill"] ?? 0) + bill.amount;
+    // Add supplier bill payments made in period
+    for (const bp of paidBills) {
+      expensesByCategory["supplier_bill"] = (expensesByCategory["supplier_bill"] ?? 0) + bp.amount;
     }
 
     const totalExpenses = Object.values(expensesByCategory).reduce((s, v) => s + v, 0);

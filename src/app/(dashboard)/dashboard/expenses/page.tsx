@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown, Loader2, Settings2 } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
@@ -102,6 +102,11 @@ export default function ExpensesPage() {
   const [sortField, setSortField] = useState<ExpSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showManageCats, setShowManageCats] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [catSaving, setCatSaving] = useState(false);
+  const [deletingCat, setDeletingCat] = useState<string | null>(null);
   const initializedRef = useRef(false);
 
   const loadData = useCallback(async (cat = "", from = "", to = "") => {
@@ -203,7 +208,25 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     fetch("/api/suppliers").then(r => r.ok ? r.json() : []).then(setSuppliers).catch(() => {});
+    fetch("/api/expense-categories").then(r => r.ok ? r.json() : { categories: [] }).then(d => setCustomCategories(d.categories ?? [])).catch(() => {});
   }, []);
+
+  const allCategories = useMemo(() => [...CATEGORIES, ...customCategories], [customCategories]);
+
+  async function addCustomCategory() {
+    if (!newCatName.trim()) return;
+    setCatSaving(true);
+    const res = await fetch("/api/expense-categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCatName }) });
+    if (res.ok) { const d = await res.json(); setCustomCategories(d.categories); setNewCatName(""); }
+    setCatSaving(false);
+  }
+
+  async function deleteCustomCategory(slug: string) {
+    setDeletingCat(slug);
+    const res = await fetch(`/api/expense-categories?name=${slug}`, { method: "DELETE" });
+    if (res.ok) { const d = await res.json(); setCustomCategories(d.categories); }
+    setDeletingCat(null);
+  }
 
   function openAdd() {
     setEditId(null);
@@ -306,11 +329,18 @@ export default function ExpensesPage() {
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("expenses.title")}</h1>
             <p className="text-xs sm:text-sm text-text-muted mt-0.5">{t("expenses.subtitle")}</p>
           </div>
-          {canEdit && (
-            <button onClick={openAdd} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-              <Plus size={16} /> {t("expenses.add")}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <button onClick={() => setShowManageCats(true)} className="flex items-center gap-1.5 px-3 py-2 border border-dark-border text-text-secondary rounded-lg hover:bg-dark-card-hover text-sm">
+                <Settings2 size={15} /> Categories
+              </button>
+            )}
+            {canEdit && (
+              <button onClick={openAdd} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+                <Plus size={16} /> {t("expenses.add")}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats */}
@@ -353,7 +383,7 @@ export default function ExpensesPage() {
             className="flex-1 min-w-[140px] sm:flex-none px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
           >
             <option value="">{t("common.all_categories")}</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{t(`expenses.cat.${c}`)}</option>)}
+            {allCategories.map(c => <option key={c} value={c}>{CATEGORIES.includes(c) ? t(`expenses.cat.${c}`) : c.replace(/_/g, " ")}</option>)}
           </select>
 
           <select
@@ -430,7 +460,7 @@ export default function ExpensesPage() {
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">{t("expenses.category")} *</label>
                     <select required value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
-                      {CATEGORIES.map(c => <option key={c} value={c}>{t(`expenses.cat.${c}`)}</option>)}
+                      {allCategories.map(c => <option key={c} value={c}>{CATEGORIES.includes(c) ? t(`expenses.cat.${c}`) : c.replace(/_/g, " ")}</option>)}
                     </select>
                   </div>
                   <div>
@@ -557,6 +587,51 @@ export default function ExpensesPage() {
           </div>
         )}
       </div>
+
+      {/* Manage Categories Modal */}
+      {showManageCats && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-text-primary">Manage Categories</h2>
+              <button onClick={() => setShowManageCats(false)} className="text-text-muted hover:text-text-primary"><X size={18} /></button>
+            </div>
+            <p className="text-xs text-text-muted mb-3">Default categories cannot be removed. Add your own below.</p>
+            <div className="space-y-1 mb-4 max-h-48 overflow-y-auto">
+              {CATEGORIES.map(c => (
+                <div key={c} className="flex items-center justify-between px-3 py-1.5 bg-dark-input rounded-lg">
+                  <span className="text-sm text-text-secondary">{t(`expenses.cat.${c}`)}</span>
+                  <span className="text-xs text-text-muted">default</span>
+                </div>
+              ))}
+              {customCategories.map(c => (
+                <div key={c} className="flex items-center justify-between px-3 py-1.5 bg-dark-input rounded-lg">
+                  <span className="text-sm text-text-primary capitalize">{c.replace(/_/g, " ")}</span>
+                  <button onClick={() => deleteCustomCategory(c)} disabled={deletingCat === c} className="text-text-muted hover:text-danger p-0.5 disabled:opacity-40">
+                    {deletingCat === c ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addCustomCategory()}
+                placeholder="New category name..."
+                className="flex-1 px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
+              />
+              <button
+                onClick={addCustomCategory}
+                disabled={catSaving || !newCatName.trim()}
+                className="flex items-center gap-1 px-3 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover disabled:opacity-40"
+              >
+                {catSaving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PermissionGuard>
   );
 }

@@ -5,15 +5,36 @@ import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
 
 // Shared helper: compute calendar-accurate months between two UTC dates
+// Uses actual days-in-month (28/29/30/31) instead of fixed 30
 function calcMonths(start: Date, end: Date): number {
-  const startDay = start.getUTCDate();
-  const endDay   = end.getUTCDate();
-  const lastDayOfEndMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
-  if (startDay === 1 && endDay === lastDayOfEndMonth) {
-    return (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth()) + 1;
+  const sy = start.getUTCFullYear(), sm = start.getUTCMonth(), sd = start.getUTCDate();
+  const ey = end.getUTCFullYear(), em = end.getUTCMonth(), ed = end.getUTCDate();
+
+  // Same month
+  if (sy === ey && sm === em) {
+    const dim = new Date(Date.UTC(sy, sm + 1, 0)).getUTCDate();
+    if (sd === 1 && ed === dim) return 1;
+    return (ed - sd + 1) / dim;
   }
-  const days = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  return parseFloat((days / 30).toFixed(2));
+
+  // Fraction of first month
+  const dimFirst = new Date(Date.UTC(sy, sm + 1, 0)).getUTCDate();
+  let total = (dimFirst - sd + 1) / dimFirst;
+
+  // Full months in between
+  let y = sy, m = sm + 1;
+  if (m > 11) { m = 0; y++; }
+  while (y < ey || (y === ey && m < em)) {
+    total += 1;
+    m++;
+    if (m > 11) { m = 0; y++; }
+  }
+
+  // Fraction of last month
+  const dimLast = new Date(Date.UTC(ey, em + 1, 0)).getUTCDate();
+  total += ed / dimLast;
+
+  return parseFloat(total.toFixed(4));
 }
 
 function calcDays(start: Date, end: Date): number {
@@ -84,7 +105,8 @@ export async function GET(req: NextRequest) {
     } else if (exp.recurrence === "monthly") {
       const months = calcMonths(effectiveStart, toDate);
       computedAmount = parseFloat((rate * months).toFixed(2));
-      computedDescription = `${exp.description} (${rate}/month × ${months} month${months === 1 ? "" : "s"})`;
+      const monthsDisplay = parseFloat(months.toFixed(2));
+      computedDescription = `${exp.description} (${rate}/month × ${monthsDisplay} month${months === 1 ? "" : "s"})`;
     } else if (exp.recurrence === "quarterly") {
       const months = calcMonths(effectiveStart, toDate);
       const quarters = parseFloat((months / 3).toFixed(2));
@@ -113,12 +135,51 @@ export async function GET(req: NextRequest) {
   // 3. Salary rows — dynamically computed from employees
   const salaryRows: StoredExpense[] = [];
   if (!category || category === "salaries") {
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const startOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    // Start of current week (Sunday)
+    const startOfCurrentWeek = new Date(today);
+    startOfCurrentWeek.setUTCDate(startOfCurrentWeek.getUTCDate() - startOfCurrentWeek.getUTCDay());
+
     const employees = await prisma.employee.findMany({
       where: {
         organizationId: session.organizationId,
         hireDate: { lte: toDate },
       },
+      include: {
+        salaryAdvances: {
+          where: {
+            organizationId: session.organizationId,
+            status: { in: ["pending", "paid"] },
+          },
+        },
+      },
     });
+
+    // Auto-mark pending advances as "paid" once the employee's pay period has passed
+    const advancesToMarkPaid: string[] = [];
+    for (const emp of employees) {
+      const period = emp.salaryPeriod || "month";
+      for (const adv of emp.salaryAdvances) {
+        if (adv.status !== "pending") continue;
+        const advDate = new Date(adv.date);
+        let periodPassed = false;
+        if (period === "month") {
+          periodPassed = advDate < startOfCurrentMonth;
+        } else if (period === "week") {
+          periodPassed = advDate < startOfCurrentWeek;
+        } else if (period === "day") {
+          periodPassed = advDate < today;
+        }
+        if (periodPassed) advancesToMarkPaid.push(adv.id);
+      }
+    }
+    if (advancesToMarkPaid.length > 0) {
+      await prisma.salaryAdvance.updateMany({
+        where: { id: { in: advancesToMarkPaid } },
+        data: { status: "paid" },
+      });
+    }
 
     for (const emp of employees) {
       const hireDate = new Date(emp.hireDate);
@@ -135,13 +196,41 @@ export async function GET(req: NextRequest) {
         amount = parseFloat((rate * days).toFixed(2));
         description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/day × ${days} days)`;
       } else if (period === "week") {
+        amount = parseFloat((rate * (days / 7)).toFixed(2));
         const weeks = parseFloat((days / 7).toFixed(2));
-        amount = parseFloat((rate * weeks).toFixed(2));
         description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/week × ${weeks} weeks)`;
       } else {
         const months = calcMonths(empStart, toDate);
         amount = parseFloat((rate * months).toFixed(2));
-        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/month × ${months} month${months === 1 ? "" : "s"})`;
+        const monthsDisplay = parseFloat(months.toFixed(2));
+        description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/month × ${monthsDisplay} month${months === 1 ? "" : "s"})`;
+      }
+
+      // Deduct each advance pro-rated over remaining days in its pay period from advance date
+      let totalDeduction = 0;
+      for (const adv of emp.salaryAdvances) {
+        const advDate = new Date(adv.date);
+        let periodEnd: Date;
+        if (period === "month") {
+          periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+        } else if (period === "week") {
+          const satDate = advDate.getUTCDate() + (6 - advDate.getUTCDay());
+          periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), satDate, 23, 59, 59, 999));
+        } else {
+          periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), advDate.getUTCDate(), 23, 59, 59, 999));
+        }
+        const remainingDays = calcDays(advDate, periodEnd);
+        if (remainingDays <= 0) continue;
+        const overlapStart = advDate > fromDate ? advDate : fromDate;
+        const overlapEnd = periodEnd < toDate ? periodEnd : toDate;
+        if (overlapStart > overlapEnd) continue;
+        totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(overlapStart, overlapEnd);
+      }
+      totalDeduction = parseFloat(totalDeduction.toFixed(2));
+      if (totalDeduction > 0) {
+        const netAmount = parseFloat((amount - totalDeduction).toFixed(2));
+        description = `${description} − ${totalDeduction} advance = ${netAmount}`;
+        amount = netAmount;
       }
 
       salaryRows.push({
@@ -167,38 +256,41 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 4. Paid supplier bills — virtual rows, only paid, filtered by date range
+  // 4. Supplier bill payments — show each payment as a separate expense entry
   const billRows: StoredExpense[] = [];
   if (!category || category === "supplier_bill") {
-    const paidBills = await prisma.supplierBill.findMany({
+    const billPayments = await prisma.supplierBillPayment.findMany({
       where: {
         organizationId: session.organizationId,
-        status: "paid",
         date: { gte: fromDate, lte: toDate },
       },
-      include: { supplier: { select: { id: true, name: true } } },
+      include: {
+        bill: {
+          include: { supplier: { select: { id: true, name: true } } },
+        },
+      },
     });
 
-    for (const bill of paidBills) {
+    for (const payment of billPayments) {
       billRows.push({
-        id: `bill-${bill.id}`,
-        date: new Date(bill.date),
-        amount: bill.amount,
-        description: `Bill — ${bill.supplier.name}: ${bill.description}`,
+        id: `bill-payment-${payment.id}`,
+        date: new Date(payment.date),
+        amount: payment.amount,
+        description: `Payment — ${payment.bill.supplier.name}: ${payment.bill.description}`,
         category: "supplier_bill",
         recurrence: "none",
-        vendor: bill.supplier.name,
-        reference: bill.reference,
-        note: bill.note,
+        vendor: payment.bill.supplier.name,
+        reference: payment.bill.reference,
+        note: payment.note,
         accountId: null,
-        supplierId: bill.supplierId,
+        supplierId: payment.bill.supplierId,
         organizationId: session.organizationId,
         createdById: null,
-        createdAt: new Date(bill.createdAt),
-        updatedAt: new Date(bill.updatedAt),
+        createdAt: new Date(payment.bill.createdAt),
+        updatedAt: new Date(payment.bill.updatedAt),
         createdBy: null,
         account: null,
-        supplier: bill.supplier,
+        supplier: payment.bill.supplier,
       });
     }
   }

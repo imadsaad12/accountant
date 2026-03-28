@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale, Filter, ChevronDown, Check } from "lucide-react";
+import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale, Filter, ChevronDown, Check, BookOpen, Info } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -36,11 +36,32 @@ interface AgingReport {
   rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string }[];
 }
 
-type Report = PLReport | BSReport | AgingReport | null;
+interface ComprehensiveReport {
+  type: "comprehensive";
+  period: { from: string; to: string };
+  summary: {
+    periodInvoiceRevenue: number; oldInvoiceRevenue: number;
+    totalRevenue: number; totalCogs: number; grossProfit: number;
+    totalExpenses: number; netProfit: number; invoiceCount: number;
+    cogsMargin: number; grossMargin: number; netMargin: number;
+  };
+  revenue: {
+    invoices: { id: string; number: string; client: string; date: string; dueDate: string | null; status: string; total: number; totalPaid: number; balance: number; cogs: number; grossProfit: number; daysOverdue: number }[];
+    byStatus: Record<string, number>;
+  };
+  cogs: { total: number; explanation: string; byInvoice: { number: string; client: string; total: number; totalPaid: number; cogs: number; grossProfit: number }[] };
+  expenses: { rows: { category: string; description: string; amount: number; date: string }[]; byCategory: Record<string, number>; total: number };
+  receivableAging: { rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; totals: Record<string, number>; totalOutstanding: number };
+  payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; total: number };
+  receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string }[]; total: number };
+}
+
+type Report = PLReport | BSReport | AgingReport | ComprehensiveReport | null;
 
 const EXPENSE_CATEGORIES: Record<string, string> = {
   rent: "Rent", utilities: "Utilities", salaries: "Salaries", office: "Office Supplies",
-  travel: "Travel", marketing: "Marketing", insurance: "Insurance", maintenance: "Maintenance", other: "Other",
+  travel: "Travel", marketing: "Marketing", insurance: "Insurance", maintenance: "Maintenance",
+  supplier_bill: "Supplier Bill", other: "Other",
 };
 
 export default function ReportsPage() {
@@ -48,7 +69,7 @@ export default function ReportsPage() {
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
-  const [activeTab, setActiveTab] = useState<"pl" | "bs" | "aging">("pl");
+  const [activeTab, setActiveTab] = useState<"pl" | "bs" | "aging" | "comprehensive">("pl");
   const [from, setFrom] = useState(() => `${currentYearInTz(tz)}-01-01`);
   const [to, setTo] = useState(() => todayInTz(tz));
   const [report, setReport] = useState<Report>(null);
@@ -75,10 +96,18 @@ export default function ReportsPage() {
 
   async function generate() {
     setLoading(true);
-    const params = new URLSearchParams({ type: activeTab, from, to });
-    if (excludedCategories.size > 0) params.set("exclude", Array.from(excludedCategories).join(","));
-    const res = await fetch(`/api/reports?${params}`);
-    setReport(res.ok ? await res.json() : null);
+    if (activeTab === "comprehensive") {
+      const params = new URLSearchParams({ from, to });
+      if (excludedCategories.size > 0) params.set("exclude", Array.from(excludedCategories).join(","));
+      const res = await fetch(`/api/reports/comprehensive?${params}`);
+      const data = res.ok ? await res.json() : null;
+      setReport(data ? { ...data, type: "comprehensive" } : null);
+    } else {
+      const params = new URLSearchParams({ type: activeTab, from, to });
+      if (excludedCategories.size > 0) params.set("exclude", Array.from(excludedCategories).join(","));
+      const res = await fetch(`/api/reports?${params}`);
+      setReport(res.ok ? await res.json() : null);
+    }
     setLoading(false);
   }
 
@@ -93,12 +122,21 @@ export default function ReportsPage() {
 
     // Header
     doc.setFontSize(18); doc.setTextColor(37, 99, 235);
-    doc.text(report.type === "pl" ? "Profit & Loss Report" : report.type === "aging" ? "Accounts Receivable Aging" : "Balance Sheet", 14, 20);
+    doc.text(report.type === "pl" ? "Profit & Loss Report" : report.type === "aging" ? "Accounts Receivable Aging" : report.type === "comprehensive" ? "Comprehensive Report" : "Balance Sheet", 14, 20);
     doc.setFontSize(9); doc.setTextColor(120, 120, 120);
     let headerY = 28;
     if (report.type === "pl") {
       const pl = report as PLReport;
       doc.text(`Period: ${formatDateInTz(pl.period.from, tz)} – ${formatDateInTz(pl.period.to, tz)}`, 14, 28);
+      if (excludedCategories.size > 0) {
+        headerY += 6;
+        doc.setTextColor(200, 100, 0);
+        doc.text(`Excluded: ${Array.from(excludedCategories).map(c => EXPENSE_CATEGORIES[c] || c).join(", ")}`, 14, headerY);
+        doc.setTextColor(120, 120, 120);
+      }
+    } else if (report.type === "comprehensive") {
+      const cr = report as ComprehensiveReport;
+      doc.text(`Period: ${formatDateInTz(cr.period.from, tz)} – ${formatDateInTz(cr.period.to, tz)}`, 14, 28);
       if (excludedCategories.size > 0) {
         headerY += 6;
         doc.setTextColor(200, 100, 0);
@@ -136,6 +174,86 @@ export default function ReportsPage() {
           }
         },
       });
+    } else if (report.type === "comprehensive") {
+      const cr = report as ComprehensiveReport;
+      // 1. P&L Summary
+      autoTable(doc, {
+        startY: headerY + 7,
+        head: [["Profit & Loss", "Amount"]],
+        body: [
+          ["Total Revenue (Collected)", fmt(cr.summary.totalRevenue)],
+          ["  Invoices Issued in Period", fmt(cr.summary.periodInvoiceRevenue)],
+          ["  Payments from Older Invoices", fmt(cr.summary.oldInvoiceRevenue)],
+          ["Cost of Goods Sold (COGS)", `(${fmt(cr.summary.totalCogs)})`],
+          ["Gross Profit", fmt(cr.summary.grossProfit)],
+          ["", ""],
+          ...Object.entries(cr.expenses.byCategory).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => [`  ${cat.replace(/_/g, " ")}`, `(${fmt(amt)})`]),
+          ["Total Operating Expenses", `(${fmt(cr.summary.totalExpenses)})`],
+          ["", ""],
+          ["Net Profit", fmt(cr.summary.netProfit)],
+        ],
+        theme: "striped",
+        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 9 },
+        didParseCell: (data) => {
+          const label = (data.row.raw as string[])[0];
+          if (["Net Profit", "Gross Profit", "Total Operating Expenses"].includes(label)) data.cell.styles.fontStyle = "bold";
+        },
+      });
+      // 2. COGS breakdown
+      if (cr.cogs.byInvoice.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cogsY = (doc as any).lastAutoTable.finalY + 8;
+        doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+        doc.text("COGS by Invoice", 14, cogsY);
+        autoTable(doc, {
+          startY: cogsY + 4,
+          head: [["Invoice #", "Client", "Invoice Total", "Amount Paid", "COGS", "Gross Profit"]],
+          body: cr.cogs.byInvoice.map(r => [r.number, r.client, fmt(r.total), fmt(r.totalPaid), fmt(r.cogs), fmt(r.grossProfit)]),
+          theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
+        });
+      }
+      // 3. Receivable Aging
+      // Received Payments
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rpY = (doc as any).lastAutoTable.finalY + 8;
+      doc.setFontSize(11); doc.setTextColor(5, 150, 105);
+      doc.text(`Received Payments — Total Collected: ${fmt(cr.receivedPayments.total)}`, 14, rpY);
+      autoTable(doc, {
+        startY: rpY + 4,
+        head: [["Date", "Client", "Invoice #", "Invoice Total", "Method", "Reference", "Amount Received"]],
+        body: cr.receivedPayments.rows.map(p => [p.date, p.client, p.invoiceNumber, fmt(p.invoiceTotal), p.method, p.reference ?? "—", fmt(p.amount)]),
+        theme: "striped", headStyles: { fillColor: [5, 150, 105] }, styles: { fontSize: 8 },
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const arY = (doc as any).lastAutoTable.finalY + 8;
+      doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+      doc.text(`Accounts Receivable Aging — Total: ${fmt(cr.receivableAging.totalOutstanding)}`, 14, arY);
+      autoTable(doc, {
+        startY: arY + 4,
+        head: [["Invoice #", "Client", "Total", "Paid", "Balance", "Due Date", "Age"]],
+        body: cr.receivableAging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(r => [
+          r.number, r.client, fmt(r.total), fmt(r.paid), fmt(r.balance), r.dueDate ?? "—",
+          r.daysOverdue <= 0 ? (r.status === "partially_paid" ? "On Time (Partial)" : "On Time") : `${r.daysOverdue}d`,
+        ]),
+        theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
+      });
+      // 5. Payable Aging
+      if (cr.payableAging.rows.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const apY = (doc as any).lastAutoTable.finalY + 8;
+        doc.setFontSize(11); doc.setTextColor(220, 38, 38);
+        doc.text(`Accounts Payable (Unpaid Bills) — Total Owed: ${fmt(cr.payableAging.total)}`, 14, apY);
+        autoTable(doc, {
+          startY: apY + 4,
+          head: [["Supplier", "Description", "Total", "Paid", "Remaining", "Due Date", "Age"]],
+          body: cr.payableAging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(r => [
+            r.supplier, r.description, fmt(r.amount), fmt(r.amountPaid), fmt(r.remaining), r.dueDate ?? "—",
+            r.daysOverdue <= 0 ? "Current" : `${r.daysOverdue}d`,
+          ]),
+          theme: "striped", headStyles: { fillColor: [220, 38, 38] }, styles: { fontSize: 8 },
+        });
+      }
     } else if (report.type === "aging") {
       const aging = report as AgingReport;
       // Bucket summary
@@ -170,7 +288,7 @@ export default function ReportsPage() {
       });
     }
 
-    const filename = report.type === "pl" ? `pl-report-${from}-to-${to}.pdf` : `aging-report-${now}.pdf`;
+    const filename = report.type === "pl" ? `pl-report-${from}-to-${to}.pdf` : report.type === "comprehensive" ? `comprehensive-report-${from}-to-${to}.pdf` : `aging-report-${now}.pdf`;
     doc.save(filename);
   }
 
@@ -178,6 +296,7 @@ export default function ReportsPage() {
     { id: "pl" as const, label: t("reports.pl"), icon: BarChart2 },
     // { id: "bs" as const, label: t("reports.bs"), icon: Scale },
     { id: "aging" as const, label: t("aging.title"), icon: FileText },
+    { id: "comprehensive" as const, label: "Comprehensive", icon: BookOpen },
   ];
 
   return (
@@ -213,7 +332,7 @@ export default function ReportsPage() {
               <input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
             </div>
           </div>
-          {activeTab === "pl" && (
+          {(activeTab === "pl" || activeTab === "comprehensive") && (
             <div className="relative" ref={excludeRef}>
               <button onClick={() => setExcludeOpen(!excludeOpen)}
                 className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-medium transition-all ${excludedCategories.size > 0 ? "bg-orange-500/10 border-orange-500/30 text-orange-400" : "bg-dark-card border-dark-border text-text-muted hover:text-text-primary"}`}>
@@ -441,6 +560,325 @@ export default function ReportsPage() {
                 <div className="text-xs text-text-muted text-center">
                   Assets ({fmt(bs.assets.total)}) = Liabilities ({fmt(bs.liabilities.total)}) + Equity ({fmt(bs.equity)})
                 </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Comprehensive Report */}
+        {!loading && report?.type === "comprehensive" && (() => {
+          const cr = report as ComprehensiveReport;
+          const isProfit = cr.summary.netProfit >= 0;
+          function Eg({ text }: { text: string }) {
+            return (
+              <div className="mt-2 px-3 py-2 bg-dark-bg/60 border border-dark-border/50 rounded-lg text-xs text-text-muted leading-relaxed">
+                <span className="font-medium text-text-secondary">Example: </span>{text}
+              </div>
+            );
+          }
+          const agingBuckets = [
+            { key: "current", label: "Current", color: "text-emerald-400" },
+            { key: "1-30", label: "1–30 Days", color: "text-yellow-400" },
+            { key: "31-60", label: "31–60 Days", color: "text-orange-400" },
+            { key: "61-90", label: "61–90 Days", color: "text-red-400" },
+            { key: "90+", label: "90+ Days", color: "text-red-600" },
+          ];
+          return (
+            <div className="space-y-6">
+              {excludedCategories.size > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-500/10 border border-orange-500/20 rounded-lg text-sm text-orange-400">
+                  <Filter size={14} />
+                  <span>Excluding: {Array.from(excludedCategories).map(c => EXPENSE_CATEGORIES[c] || c).join(", ")}</span>
+                </div>
+              )}
+              {/* Executive Summary */}
+              <div>
+                <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">Executive Summary</h2>
+                <Eg text="Revenue comes from two sources: payments on invoices issued this period ($3,000 collected from new invoices) plus payments received on older invoices ($1,000 from last month's invoice) = $4,000 total. Products cost $800 to source (COGS, full cost even if invoice is only partially paid). Gross Profit = $4,000 − $800 = $3,200. After $1,200 in salaries (minus any advances) and rent, Net Profit = $2,000." />
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+                    <div className="text-xs text-text-muted mb-1">Revenue</div>
+                    <div className="text-lg font-bold text-emerald-400">{fmt(cr.summary.totalRevenue)}</div>
+                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.invoiceCount} invoices</div>
+                  </div>
+                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+                    <div className="text-xs text-text-muted mb-1">COGS</div>
+                    <div className="text-lg font-bold text-red-400">{fmt(cr.summary.totalCogs)}</div>
+                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.cogsMargin}% of revenue</div>
+                  </div>
+                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+                    <div className="text-xs text-text-muted mb-1">Gross Profit</div>
+                    <div className="text-lg font-bold text-blue-400">{fmt(cr.summary.grossProfit)}</div>
+                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.grossMargin}% margin</div>
+                  </div>
+                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
+                    <div className="text-xs text-text-muted mb-1">Expenses</div>
+                    <div className="text-lg font-bold text-orange-400">{fmt(cr.summary.totalExpenses)}</div>
+                  </div>
+                  <div className={`rounded-xl border p-4 col-span-2 sm:col-span-1 ${isProfit ? "bg-emerald-500/5 border-emerald-500/20" : "bg-red-500/5 border-red-500/20"}`}>
+                    <div className="text-xs text-text-muted mb-1">Net Profit</div>
+                    <div className={`text-lg font-bold flex items-center gap-1 ${isProfit ? "text-emerald-400" : "text-red-400"}`}>
+                      {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                      {fmt(cr.summary.netProfit)}
+                    </div>
+                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.netMargin}% net margin</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* P&L Waterfall */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border bg-blue-500/5">
+                  <h2 className="text-sm font-semibold text-blue-400">Profit & Loss Statement</h2>
+                  <Eg text="Revenue has two parts: $3,000 from invoices issued in this period (paid or partial) + $1,000 from payments on older invoices = $4,000 total. COGS $800 (full product cost, even for partially paid invoices). Gross Profit = $4,000 − $800 = $3,200. Salaries are shown after deducting any salary advances. Net Profit = Gross Profit − Total Expenses." />
+                </div>
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-dark-border/50">
+                    <tr><td className="px-4 py-2.5 text-text-secondary">Total Revenue (Collected)</td><td className="px-4 py-2.5 text-right font-medium text-emerald-400">{fmt(cr.summary.totalRevenue)}</td></tr>
+                    <tr><td className="px-4 py-2 text-text-muted pl-8 text-xs">Invoices Issued in Period</td><td className="px-4 py-2 text-right text-xs text-emerald-400/70">{fmt(cr.summary.periodInvoiceRevenue)}</td></tr>
+                    <tr><td className="px-4 py-2 text-text-muted pl-8 text-xs">Payments from Older Invoices</td><td className="px-4 py-2 text-right text-xs text-emerald-400/70">{fmt(cr.summary.oldInvoiceRevenue)}</td></tr>
+                    <tr><td className="px-4 py-2.5 text-text-secondary pl-8">Cost of Goods Sold (COGS)</td><td className="px-4 py-2.5 text-right text-red-400">({fmt(cr.summary.totalCogs)})</td></tr>
+                    <tr className="bg-dark-bg/30"><td className="px-4 py-2.5 font-semibold text-text-primary">Gross Profit</td><td className="px-4 py-2.5 text-right font-bold text-blue-400">{fmt(cr.summary.grossProfit)}</td></tr>
+                    {Object.entries(cr.expenses.byCategory).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+                      <tr key={cat}><td className="px-4 py-2 text-text-muted pl-8 text-xs capitalize">{cat.replace(/_/g, " ")}</td><td className="px-4 py-2 text-right text-xs text-text-secondary">({fmt(amt)})</td></tr>
+                    ))}
+                    <tr><td className="px-4 py-2.5 text-text-secondary pl-8">Total Operating Expenses</td><td className="px-4 py-2.5 text-right text-orange-400">({fmt(cr.summary.totalExpenses)})</td></tr>
+                    <tr className={`${isProfit ? "bg-emerald-500/5" : "bg-red-500/5"}`}><td className="px-4 py-3 font-bold text-text-primary text-base">Net Profit</td><td className={`px-4 py-3 text-right font-bold text-base ${isProfit ? "text-emerald-400" : "text-red-400"}`}>{fmt(cr.summary.netProfit)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Received Payments */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-emerald-400">Received Payments</h2>
+                    <span className="text-xs text-text-muted">Total Collected: <strong className="text-emerald-400">{fmt(cr.receivedPayments.total)}</strong></span>
+                  </div>
+                  <Eg text="Client paid $500 on Jan 15 against Invoice #007 ($1,200 total). That $500 appears here on Jan 15. Payments from any invoice — even ones issued before the period — are included as long as the payment date falls within the selected range." />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[560px]">
+                    <thead className="bg-dark-bg/50">
+                      <tr>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Date</th>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Client</th>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Invoice #</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Invoice Total</th>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Method</th>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Reference</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Amount Received</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-border/50">
+                      {cr.receivedPayments.rows.length === 0 ? (
+                        <tr><td colSpan={7} className="px-4 py-6 text-center text-text-muted text-xs">No payments received in this period</td></tr>
+                      ) : cr.receivedPayments.rows.map(p => (
+                        <tr key={p.id} className="hover:bg-dark-card-hover">
+                          <td className="px-4 py-2.5 text-xs text-text-muted">{p.date}</td>
+                          <td className="px-4 py-2.5 text-xs text-text-secondary">{p.client}</td>
+                          <td className="px-4 py-2.5 font-mono text-xs text-text-primary">{p.invoiceNumber}</td>
+                          <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(p.invoiceTotal)}</td>
+                          <td className="px-4 py-2.5 text-xs text-text-muted capitalize">{p.method}</td>
+                          <td className="px-4 py-2.5 text-xs text-text-muted">{p.reference ?? "—"}</td>
+                          <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(p.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {cr.receivedPayments.rows.length > 0 && (
+                      <tfoot>
+                        <tr className="bg-dark-bg/30 border-t border-dark-border">
+                          <td colSpan={6} className="px-4 py-2.5 text-xs font-semibold text-text-primary">Total</td>
+                          <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(cr.receivedPayments.total)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+
+              {/* COGS Explanation */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border flex items-start gap-2">
+                  <Info size={15} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h2 className="text-sm font-semibold text-text-primary">COGS Explanation</h2>
+                    <p className="text-xs text-text-muted mt-0.5">{cr.cogs.explanation}</p>
+                    <Eg text="Invoice $1,000 · product unit cost $300 · client paid $500 (partially paid). Full COGS = $300 is recognised regardless of how much has been paid. Gross Profit = Amount Paid − COGS = $500 − $300 = $200." />
+                  </div>
+                </div>
+                {cr.cogs.byInvoice.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[500px]">
+                      <thead className="bg-dark-bg/50">
+                        <tr>
+                          <th className="text-left px-4 py-2 text-xs text-text-muted">Invoice #</th>
+                          <th className="text-left px-4 py-2 text-xs text-text-muted">Client</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Invoice Total</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Amount Paid</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">COGS</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Gross Profit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-dark-border/50">
+                        {cr.cogs.byInvoice.map(row => (
+                          <tr key={row.number} className="hover:bg-dark-card-hover">
+                            <td className="px-4 py-2.5 font-mono text-xs text-text-primary">{row.number}</td>
+                            <td className="px-4 py-2.5 text-text-secondary text-xs">{row.client}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(row.total)}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-emerald-400">{fmt(row.totalPaid)}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-red-400">{fmt(row.cogs)}</td>
+                            <td className={`px-4 py-2.5 text-right text-xs font-medium ${row.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(row.grossProfit)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Expense Breakdown */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border bg-orange-500/5">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-orange-400">Expense Breakdown</h2>
+                    <span className="text-xs text-text-muted">Total: <strong className="text-text-primary">{fmt(cr.expenses.total)}</strong></span>
+                  </div>
+                  <Eg text="One-time rent $600 appears once. Recurring rent of $1,000/month is pro-rated by actual days (e.g. Jan 1–15 in a 31-day month = $484). A monthly salary of $1,000 with a $200 advance = $800 shown. Supplier bill expenses reflect only actual payments made in the period." />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[500px]">
+                    <thead className="bg-dark-bg/50">
+                      <tr>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Category</th>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Description</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Date</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-border/50">
+                      {cr.expenses.rows.map((row, i) => (
+                        <tr key={i} className="hover:bg-dark-card-hover">
+                          <td className="px-4 py-2 text-xs">
+                            <span className="px-1.5 py-0.5 rounded bg-dark-bg text-text-muted capitalize">{row.category.replace(/_/g, " ")}</span>
+                          </td>
+                          <td className="px-4 py-2 text-xs text-text-secondary">{row.description}</td>
+                          <td className="px-4 py-2 text-right text-xs text-text-muted">{row.date}</td>
+                          <td className="px-4 py-2 text-right text-xs font-medium text-text-primary">{fmt(row.amount)}</td>
+                        </tr>
+                      ))}
+                      {cr.expenses.rows.length === 0 && (
+                        <tr><td colSpan={4} className="px-4 py-6 text-center text-text-muted text-xs">No expenses in this period</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Receivable Aging */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-text-primary">Accounts Receivable Aging</h2>
+                    <span className="text-xs text-text-muted">Total Outstanding: <strong className="text-text-primary">{fmt(cr.receivableAging.totalOutstanding)}</strong></span>
+                  </div>
+                  <Eg text="Shows ALL unpaid/partially-paid invoices regardless of period. Invoice #003 due 45 days ago with $600 balance → falls in the 31–60 days bucket. Current = not yet overdue." />
+                </div>
+                <div className="grid grid-cols-5 gap-px bg-dark-border/50 border-b border-dark-border">
+                  {agingBuckets.map(b => (
+                    <div key={b.key} className="bg-dark-card px-3 py-2.5 text-center">
+                      <div className="text-xs text-text-muted">{b.label}</div>
+                      <div className={`text-sm font-bold ${b.color}`}>{fmt(cr.receivableAging.totals[b.key] ?? 0)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[560px]">
+                    <thead className="bg-dark-bg/50">
+                      <tr>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Invoice #</th>
+                        <th className="text-left px-4 py-2 text-xs text-text-muted">Client</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Total</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Paid</th>
+                        <th className="text-right px-4 py-2 text-xs text-text-muted">Balance</th>
+                        <th className="text-center px-4 py-2 text-xs text-text-muted">Due Date</th>
+                        <th className="text-center px-4 py-2 text-xs text-text-muted">Age</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-border/50">
+                      {cr.receivableAging.rows.length === 0 ? (
+                        <tr><td colSpan={7} className="px-4 py-6 text-center text-text-muted text-xs">No outstanding receivables</td></tr>
+                      ) : cr.receivableAging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(row => {
+                        const color = row.daysOverdue > 90 ? "text-red-600" : row.daysOverdue > 60 ? "text-red-400" : row.daysOverdue > 30 ? "text-orange-400" : row.daysOverdue > 0 ? "text-yellow-400" : "text-emerald-400";
+                        return (
+                          <tr key={row.invoiceId} className="hover:bg-dark-card-hover">
+                            <td className="px-4 py-2.5 font-mono text-xs text-text-primary">{row.number}</td>
+                            <td className="px-4 py-2.5 text-xs text-text-secondary">{row.client}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(row.total)}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-emerald-400">{fmt(row.paid)}</td>
+                            <td className="px-4 py-2.5 text-right text-xs font-bold text-text-primary">{fmt(row.balance)}</td>
+                            <td className="px-4 py-2.5 text-center text-xs text-text-muted">{row.dueDate ?? "—"}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              <span className={`text-xs font-medium ${color}`}>
+                                {row.daysOverdue <= 0 ? (row.status === "partially_paid" ? "On Time (Partial)" : "On Time") : `${row.daysOverdue}d`}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Payable Aging */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-text-primary">Accounts Payable (Unpaid Bills)</h2>
+                    <span className="text-xs text-text-muted">Total Owed: <strong className="text-red-400">{fmt(cr.payableAging.total)}</strong></span>
+                  </div>
+                  <Eg text="Supplier bill for $1,000 — you paid $300, so $700 remaining. Due date was 20 days ago → 1–30 days bucket. Fully paid bills are excluded." />
+                </div>
+                {cr.payableAging.rows.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-text-muted text-xs">No outstanding payables</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[560px]">
+                      <thead className="bg-dark-bg/50">
+                        <tr>
+                          <th className="text-left px-4 py-2 text-xs text-text-muted">Supplier</th>
+                          <th className="text-left px-4 py-2 text-xs text-text-muted">Description</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Total</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Paid</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Remaining</th>
+                          <th className="text-center px-4 py-2 text-xs text-text-muted">Due Date</th>
+                          <th className="text-center px-4 py-2 text-xs text-text-muted">Age</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-dark-border/50">
+                        {cr.payableAging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(row => {
+                          const color = row.daysOverdue > 90 ? "text-red-600" : row.daysOverdue > 60 ? "text-red-400" : row.daysOverdue > 30 ? "text-orange-400" : row.daysOverdue > 0 ? "text-yellow-400" : "text-text-muted";
+                          return (
+                            <tr key={row.billId} className="hover:bg-dark-card-hover">
+                              <td className="px-4 py-2.5 text-xs font-medium text-text-primary">{row.supplier}</td>
+                              <td className="px-4 py-2.5 text-xs text-text-secondary">{row.description}</td>
+                              <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(row.amount)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs text-emerald-400">{fmt(row.amountPaid)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-red-400">{fmt(row.remaining)}</td>
+                              <td className="px-4 py-2.5 text-center text-xs text-text-muted">{row.dueDate ?? "—"}</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <span className={`text-xs font-medium ${color}`}>
+                                  {row.daysOverdue <= 0 ? "Current" : `${row.daysOverdue}d`}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           );

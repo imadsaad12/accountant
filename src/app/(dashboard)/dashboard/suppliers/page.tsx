@@ -5,8 +5,9 @@ import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Recei
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
-import { useOrgSettings, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
+import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 import { useTranslation } from "@/components/LanguageProvider";
+import { todayInTz } from "@/lib/tz";
 
 interface Supplier {
   id: string;
@@ -21,17 +22,27 @@ interface Supplier {
   notes: string | null;
 }
 
+interface BillPayment {
+  id: string;
+  amount: number;
+  date: string;
+  method: string;
+  note: string | null;
+}
+
 interface SupplierBill {
   id: string;
   supplierId: string;
   amount: number;
+  amountPaid: number;
   description: string;
   reference: string | null;
   date: string;
   dueDate: string | null;
-  status: "pending" | "paid";
+  status: "pending" | "partially_paid" | "paid";
   note: string | null;
   supplier?: { id: string; name: string };
+  payments?: BillPayment[];
 }
 
 type SortField = "name" | "email" | "city" | "paymentTerms" | "";
@@ -58,6 +69,7 @@ export default function SuppliersPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("suppliers");
   const { orgSettings } = useOrgSettings();
+  const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -83,6 +95,10 @@ export default function SuppliersPage() {
   const [editingBill, setEditingBill] = useState<SupplierBill | null>(null);
   const [billForm, setBillForm] = useState(emptyBill);
   const [billSaving, setBillSaving] = useState(false);
+  const [payingBill, setPayingBill] = useState<SupplierBill | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payDate, setPayDate] = useState("");
+  const [payRecording, setPayRecording] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
   useEffect(() => { setPage(1); }, [search, filterCity, sortField, sortDir]);
@@ -208,13 +224,47 @@ export default function SuppliersPage() {
 
   async function toggleBillStatus(bill: SupplierBill) {
     const newStatus = bill.status === "paid" ? "pending" : "paid";
-    await fetch(`/api/supplier-bills/${bill.id}`, {
+    const res = await fetch(`/api/supplier-bills/${bill.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
-    setSupplierBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: newStatus } : b));
-    setBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: newStatus } : b));
+    if (res.ok) {
+      const updated = await res.json();
+      setSupplierBills(prev => prev.map(b => b.id === bill.id ? updated : b));
+      setBills(prev => prev.map(b => b.id === bill.id ? updated : b));
+    }
+  }
+
+  async function recordPayment(bill: SupplierBill, amount: number) {
+    setPayRecording(true);
+    const res = await fetch(`/api/supplier-bills/${bill.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "pay", amount, date: payDate || undefined }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setSupplierBills(prev => prev.map(b => b.id === bill.id ? updated : b));
+      setBills(prev => prev.map(b => b.id === bill.id ? updated : b));
+    }
+    setPayRecording(false);
+    setPayingBill(null);
+    setPayAmount("");
+    setPayDate("");
+  }
+
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+
+  async function deletePaymentRecord(paymentId: string) {
+    setDeletingPaymentId(paymentId);
+    const res = await fetch(`/api/supplier-bill-payments/${paymentId}`, { method: "DELETE" });
+    if (res.ok) {
+      const updatedBill = await res.json();
+      setSupplierBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b));
+      setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b));
+    }
+    setDeletingPaymentId(null);
   }
 
   async function handleDeleteBill(id: string) {
@@ -254,8 +304,8 @@ export default function SuppliersPage() {
 
   // Stat aggregates
   const totalBilled = bills.reduce((s, b) => s + b.amount, 0);
-  const totalPaid = bills.filter(b => b.status === "paid").reduce((s, b) => s + b.amount, 0);
-  const totalPending = bills.filter(b => b.status === "pending").reduce((s, b) => s + b.amount, 0);
+  const totalPaid = bills.reduce((s, b) => s + (b.amountPaid ?? 0), 0);
+  const totalPending = bills.filter(b => b.status !== "paid").reduce((s, b) => s + (b.amount - (b.amountPaid ?? 0)), 0);
 
   function SortIcon({ field }: { field: SortField }) {
     if (sortField !== field) return <ChevronUp size={12} className="opacity-30" />;
@@ -284,14 +334,14 @@ export default function SuppliersPage() {
           <div className="text-[10px] text-text-muted mt-0.5">{bills.length} bill{bills.length !== 1 ? "s" : ""}</div>
         </div>
         <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
-          <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><CheckCircle2 size={13} /> Paid</div>
+          <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><CheckCircle2 size={13} /> Amount Paid</div>
           <div className="text-lg sm:text-2xl font-bold text-emerald-400">{currencySymbol}{fmtCompact(totalPaid)}</div>
-          <div className="text-[10px] text-text-muted mt-0.5">{bills.filter(b => b.status === "paid").length} bill{bills.filter(b => b.status === "paid").length !== 1 ? "s" : ""}</div>
+          <div className="text-[10px] text-text-muted mt-0.5">{bills.filter(b => b.status === "paid").length} fully · {bills.filter(b => b.status === "partially_paid").length} partial</div>
         </div>
         <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
-          <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><Clock size={13} /> Pending</div>
+          <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><Clock size={13} /> Remaining</div>
           <div className="text-lg sm:text-2xl font-bold text-amber-400">{currencySymbol}{fmtCompact(totalPending)}</div>
-          <div className="text-[10px] text-text-muted mt-0.5">{bills.filter(b => b.status === "pending").length} bill{bills.filter(b => b.status === "pending").length !== 1 ? "s" : ""}</div>
+          <div className="text-[10px] text-text-muted mt-0.5">{bills.filter(b => b.status !== "paid").length} unpaid bill{bills.filter(b => b.status !== "paid").length !== 1 ? "s" : ""}</div>
         </div>
       </div>
 
@@ -458,71 +508,80 @@ export default function SuppliersPage() {
       {/* Bills panel modal */}
       {billsSupplier && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-dark-border shrink-0">
-              <div>
-                <h2 className="text-lg font-semibold text-text-primary">{billsSupplier.name} — Bills</h2>
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 sm:p-8 border-b border-dark-border shrink-0">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-text-primary">{billsSupplier.name}</h2>
+                <p className="text-sm text-text-muted mt-1">Bills & Payment History</p>
                 {(() => {
-                  const paid = supplierBills.filter(b => b.status === "paid").reduce((s, b) => s + b.amount, 0);
-                  const pending = supplierBills.filter(b => b.status === "pending").reduce((s, b) => s + b.amount, 0);
+                  const paid = supplierBills.reduce((s, b) => s + (b.amountPaid ?? (b.status === "paid" ? b.amount : 0)), 0);
+                  const pending = supplierBills.reduce((s, b) => s + (b.amount - (b.amountPaid ?? (b.status === "paid" ? b.amount : 0))), 0);
                   return (
-                    <p className="text-xs text-text-muted mt-0.5">
-                      <span className="text-emerald-400">{currencySymbol}{fmtAmt(paid)} paid</span>
-                      {pending > 0 && <span className="text-amber-400 ml-2">{currencySymbol}{fmtAmt(pending)} pending</span>}
-                    </p>
+                    <div className="flex gap-6 mt-4">
+                      <div className="bg-dark-bg/50 rounded-lg px-4 py-3 border border-dark-border">
+                        <p className="text-xs text-text-muted mb-1">Amount Paid</p>
+                        <p className="text-xl font-bold text-emerald-400">{currencySymbol}{fmtAmt(paid)}</p>
+                      </div>
+                      {pending > 0 && (
+                        <div className="bg-dark-bg/50 rounded-lg px-4 py-3 border border-dark-border">
+                          <p className="text-xs text-text-muted mb-1">Remaining Due</p>
+                          <p className="text-xl font-bold text-amber-400">{currencySymbol}{fmtAmt(pending)}</p>
+                        </div>
+                      )}
+                    </div>
                   );
                 })()}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                 {canEdit && !showBillForm && (
-                  <button onClick={openAddBill} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg hover:bg-accent-hover text-xs font-medium">
-                    <Plus size={13} /> Add Bill
+                  <button onClick={openAddBill} className="flex items-center gap-1.5 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium whitespace-nowrap">
+                    <Plus size={16} /> Add Bill
                   </button>
                 )}
-                <button onClick={() => { setBillsSupplier(null); setShowBillForm(false); }} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+                <button onClick={() => { setBillsSupplier(null); setShowBillForm(false); }} className="text-text-muted hover:text-text-primary p-1"><X size={24} /></button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8">
               {/* Add/Edit bill form */}
               {showBillForm && (
-                <form onSubmit={handleBillSubmit} className="bg-dark-bg border border-dark-border rounded-xl p-4 mb-4 space-y-3">
-                  <h3 className="text-sm font-medium text-text-primary">{editingBill ? "Edit Bill" : "New Bill"}</h3>
+                <form onSubmit={handleBillSubmit} className="bg-dark-bg border border-dark-border rounded-xl p-6 mb-6 space-y-4">
+                  <h3 className="text-lg font-semibold text-text-primary">{editingBill ? "Edit Bill" : "New Bill"}</h3>
                   <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1">{t("field.description")} *</label>
-                    <input required value={billForm.description} onChange={e => setBillForm({ ...billForm, description: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" placeholder="e.g. Office supplies invoice" />
+                    <label className="block text-sm font-medium text-text-secondary mb-2">{t("field.description")} *</label>
+                    <input required value={billForm.description} onChange={e => setBillForm({ ...billForm, description: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Office supplies invoice" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1">Amount *</label>
-                      <input type="number" step="0.01" min="0.01" required value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="0.00" />
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Amount *</label>
+                      <input type="number" step="0.01" min="0.01" required value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="0.00" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1">Reference</label>
-                      <input value={billForm.reference} onChange={e => setBillForm({ ...billForm, reference: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" placeholder="Invoice #" />
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Reference</label>
+                      <input value={billForm.reference} onChange={e => setBillForm({ ...billForm, reference: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Invoice #" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1">Bill Date *</label>
-                      <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Bill Date *</label>
+                      <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1">Due Date</label>
-                      <input type="date" value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Due Date</label>
+                      <input type="date" value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1">Status</label>
-                    <select value={billForm.status} onChange={e => setBillForm({ ...billForm, status: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
+                    <select value={billForm.status} onChange={e => setBillForm({ ...billForm, status: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
                       <option value="pending">Pending</option>
                       <option value="paid">Paid</option>
                     </select>
                   </div>
-                  <div className="flex gap-2 justify-end">
-                    <button type="button" onClick={() => setShowBillForm(false)} className="px-3 py-1.5 text-xs text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                    <button type="submit" disabled={billSaving} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
-                      {billSaving && <Loader2 size={12} className="animate-spin" />}
+                  <div className="flex gap-3 justify-end pt-4">
+                    <button type="button" onClick={() => setShowBillForm(false)} className="px-5 py-2 text-sm font-medium text-text-secondary bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-card-hover transition-colors">{t("common.cancel")}</button>
+                    <button type="submit" disabled={billSaving} className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors">
+                      {billSaving && <Loader2 size={14} className="animate-spin" />}
                       {t("common.save")}
                     </button>
                   </div>
@@ -531,41 +590,145 @@ export default function SuppliersPage() {
 
               {/* Bills list */}
               {billsLoading ? (
-                <div className="flex items-center justify-center h-24"><Loader2 size={20} className="animate-spin text-text-muted" /></div>
+                <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin text-text-muted" /></div>
               ) : supplierBills.length === 0 ? (
-                <p className="text-center text-text-muted text-sm py-8">No bills yet. Add the first bill.</p>
+                <p className="text-center text-text-muted text-base py-16">No bills yet. Add the first bill.</p>
               ) : (
-                <div className="space-y-2">
-                  {supplierBills.map(bill => (
-                    <div key={bill.id} className="flex items-center justify-between bg-dark-bg border border-dark-border rounded-lg px-3 py-2.5 gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-text-primary truncate">{bill.description}</p>
-                        <p className="text-xs text-text-muted">
-                          {new Date(bill.date).toLocaleDateString()}
-                          {bill.dueDate && <span className="ml-1.5">· due {new Date(bill.dueDate).toLocaleDateString()}</span>}
-                          {bill.reference && <span className="ml-1.5">· #{bill.reference}</span>}
-                        </p>
-                      </div>
-                      <div className="text-sm font-semibold text-text-primary shrink-0">{currencySymbol}{fmtAmt(bill.amount)}</div>
-                      <button
-                        onClick={() => toggleBillStatus(bill)}
-                        className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
-                          bill.status === "paid"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
-                        }`}
-                        title="Click to toggle status"
-                      >
-                        {bill.status === "paid" ? "Paid" : "Pending"}
-                      </button>
-                      {canEdit && (
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button onClick={() => openEditBill(bill)} className="text-text-muted hover:text-accent p-1"><Pencil size={13} /></button>
-                          <button onClick={() => handleDeleteBill(bill.id)} className="text-text-muted hover:text-danger p-1"><Trash2 size={13} /></button>
+                <div className="space-y-4">
+                  {supplierBills.map(bill => {
+                    const remaining = bill.amount - (bill.amountPaid ?? 0);
+                    const paidPct = bill.amount > 0 ? Math.min(100, ((bill.amountPaid ?? 0) / bill.amount) * 100) : 0;
+                    return (
+                      <div key={bill.id} className="bg-dark-bg border border-dark-border rounded-lg px-5 py-4">
+                        {/* Payment inline form */}
+                        {payingBill?.id === bill.id && (
+                          <div className="mb-4 p-4 bg-dark-input/30 rounded-lg border border-dark-border flex flex-col sm:flex-row flex-wrap items-center gap-3">
+                            <div className="flex-1 min-w-[120px]">
+                              <label className="block text-xs font-medium text-text-muted mb-1">Payment Date</label>
+                              <input
+                                type="date"
+                                value={payDate}
+                                onChange={e => setPayDate(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-[120px]">
+                              <label className="block text-xs font-medium text-text-muted mb-1">Amount</label>
+                              <input
+                                type="number" step="0.01" min="0.01" max={remaining}
+                                value={payAmount}
+                                onChange={e => setPayAmount(e.target.value)}
+                                placeholder={`Max ${fmtAmt(remaining)}`}
+                                className="w-full px-3 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="flex gap-2 items-end">
+                              <button
+                                onClick={() => { const a = parseFloat(payAmount); if (a > 0) recordPayment(bill, a); }}
+                                disabled={payRecording || !payAmount || parseFloat(payAmount) <= 0 || parseFloat(payAmount) > remaining + 0.01}
+                                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-40 transition-colors"
+                              >
+                                {payRecording ? <Loader2 size={14} className="animate-spin" /> : null}
+                                Record Payment
+                              </button>
+                              <button onClick={() => { setPayingBill(null); setPayAmount(""); setPayDate(""); }} className="text-text-muted hover:text-text-primary text-sm font-medium px-4 py-2.5">Cancel</button>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-base font-semibold text-text-primary">{bill.description}</p>
+                                <div className="flex flex-wrap gap-3 mt-2 text-sm text-text-muted">
+                                  <span className="flex items-center gap-1">
+                                    📅 {new Date(bill.date).toLocaleDateString()}
+                                  </span>
+                                  {bill.dueDate && (
+                                    <span className="flex items-center gap-1">
+                                      ⏰ Due {new Date(bill.dueDate).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                  {bill.reference && (
+                                    <span className="flex items-center gap-1">
+                                      🏷️ {bill.reference}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-2xl font-bold text-text-primary">{currencySymbol}{fmtAmt(bill.amount)}</p>
+                              </div>
+                            </div>
+
+                            {(bill.status === "partially_paid" || bill.status === "paid") && (
+                              <div className="mt-4 pt-4 border-t border-dark-border">
+                                <div className="flex justify-between items-center mb-2">
+                                  <div>
+                                    <span className="text-sm text-text-muted">Progress: </span>
+                                    <span className="text-sm font-semibold text-emerald-400">{currencySymbol}{fmtAmt(bill.amountPaid ?? 0)} paid</span>
+                                    {remaining > 0 && <span className="text-sm text-text-muted ml-2">({paidPct.toFixed(1)}%)</span>}
+                                  </div>
+                                  {remaining > 0 && <span className="text-sm font-semibold text-amber-400">{currencySymbol}{fmtAmt(remaining)} remaining</span>}
+                                </div>
+                                <div className="h-2 bg-dark-input rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${paidPct}%` }} />
+                                </div>
+                                {bill.payments && bill.payments.length > 0 && (
+                                  <div className="mt-3 space-y-1.5">
+                                    <p className="text-xs font-semibold text-text-secondary uppercase">Payment Records:</p>
+                                    {bill.payments.map(p => (
+                                      <div key={p.id} className="flex items-center justify-between text-sm bg-dark-input/30 rounded-lg px-3 py-2">
+                                        <span className="text-text-muted">{new Date(p.date).toLocaleDateString()} · {p.method}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-emerald-400 font-semibold">{currencySymbol}{fmtAmt(p.amount)}</span>
+                                          {canEdit && (
+                                            <button
+                                              onClick={() => deletePaymentRecord(p.id)}
+                                              disabled={deletingPaymentId === p.id}
+                                              className="text-text-muted hover:text-danger p-1 disabled:opacity-40 transition-colors"
+                                              title="Delete payment"
+                                            >
+                                              {deletingPaymentId === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {/* Bill footer with status and actions */}
+                        <div className="mt-4 pt-4 border-t border-dark-border flex items-center justify-between">
+                          <span className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${
+                            bill.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                            bill.status === "partially_paid" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                            "bg-slate-500/10 text-slate-400 border-dark-border"
+                          }`}>
+                            {bill.status === "paid" ? "✓ Paid" : bill.status === "partially_paid" ? "◐ Partially Paid" : "⏳ Pending"}
+                          </span>
+                          {canEdit && (
+                            <div className="flex items-center gap-2">
+                              {bill.status !== "paid" && (
+                                <button
+                                  onClick={() => { setPayingBill(bill); setPayAmount(""); setPayDate(todayInTz(tz)); setShowBillForm(false); }}
+                                  title="Record payment"
+                                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-colors border border-emerald-400/20"
+                                ><CheckCircle2 size={16} /> Record Payment</button>
+                              )}
+                              <button onClick={() => openEditBill(bill)} className="p-2 text-text-muted hover:text-accent hover:bg-dark-input rounded-lg transition-colors" title="Edit bill"><Pencil size={18} /></button>
+                              <button onClick={() => handleDeleteBill(bill.id)} className="p-2 text-text-muted hover:text-danger hover:bg-dark-input rounded-lg transition-colors" title="Delete bill"><Trash2 size={18} /></button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

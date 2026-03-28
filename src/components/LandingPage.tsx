@@ -612,7 +612,8 @@ export default function LandingPage() {
             <CashentLogo className="text-3xl" />
           </div>
           <p className="text-slate-500 text-sm">© 2026 Cashent. All rights reserved.</p>
-          <div className="flex gap-6 text-sm text-slate-500">
+          <div className="flex gap-6 text-sm text-slate-500 flex-wrap justify-center md:justify-end">
+            <a href="/how-it-works" className="hover:text-white transition-colors">How It Works</a>
             <a href="/privacy" className="hover:text-white transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-white transition-colors">Terms</a>
             <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>

@@ -1,0 +1,96 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [active]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - navigation [ref=e7]:
+            - button "previous" [disabled] [ref=e8]:
+              - img "previous" [ref=e9]
+            - generic [ref=e11]:
+              - generic [ref=e12]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e13]:
+              - img "next" [ref=e14]
+          - img
+        - generic [ref=e16]:
+          - link "Next.js 16.1.7 (stale) Turbopack" [ref=e17] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e18]
+            - generic "There is a newer version (16.2.1) available, upgrade recommended!" [ref=e20]: Next.js 16.1.7 (stale)
+            - generic [ref=e21]: Turbopack
+          - img
+      - dialog "Runtime PrismaClientKnownRequestError" [ref=e23]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e29]:
+                - generic [ref=e30]: Runtime PrismaClientKnownRequestError
+                - generic [ref=e31]: Server
+              - generic [ref=e32]:
+                - button "Copy Error Info" [ref=e33] [cursor=pointer]:
+                  - img [ref=e34]
+                - button "No related documentation found" [disabled] [ref=e36]:
+                  - img [ref=e37]
+                - button "Attach Node.js inspector" [ref=e39] [cursor=pointer]:
+                  - img [ref=e40]
+            - generic [ref=e48]:
+              - generic [ref=e49]: "Invalid `{imported module ./src/lib/db.ts}[\"prisma\"].organization.findUnique()` invocation in /Users/imadsaad/Desktop/accountant/.next/dev/server/chunks/ssr/[root-of-the-server]__80de3f78._.js:507:145 504 language: true 505 } 506 }), → 507 {imported module ./src/lib/db.ts}[\"prisma\"].organization.findUnique( Can't reach database server at `autorack.proxy.rlwy.net:41619` Please make sure your database server is running at `autorack.proxy.rlwy.net:41619`."
+              - button "Show More" [ref=e51] [cursor=pointer]
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - paragraph [ref=e55]:
+                - img [ref=e57]
+                - generic [ref=e60]: src/app/(dashboard)/layout.tsx (20:25) @ <unknown>
+                - button "Open in editor" [ref=e61] [cursor=pointer]:
+                  - img [ref=e63]
+              - generic [ref=e66]:
+                - generic [ref=e67]: "18 | select: { theme: true, language: true },"
+                - generic [ref=e68]: "19 | }),"
+                - generic [ref=e69]: "> 20 | prisma.organization.findUnique({"
+                - generic [ref=e70]: "| ^"
+                - generic [ref=e71]: "21 | where: { id: session.organizationId },"
+                - generic [ref=e72]: "22 | select: { status: true, plan: true, trialEndsAt: true, name: true },"
+                - generic [ref=e73]: "23 | }),"
+            - generic [ref=e74]:
+              - generic [ref=e75]:
+                - paragraph [ref=e76]:
+                  - text: Call Stack
+                  - generic [ref=e77]: "8"
+                - button "Show 5 ignore-listed frame(s)" [ref=e78] [cursor=pointer]:
+                  - text: Show 5 ignore-listed frame(s)
+                  - img [ref=e79]
+              - generic [ref=e81]:
+                - generic [ref=e82]:
+                  - text: <unknown>
+                  - button "Open <unknown> in editor" [ref=e83] [cursor=pointer]:
+                    - img [ref=e84]
+                - text: src/app/(dashboard)/layout.tsx (20:25)
+              - generic [ref=e86]:
+                - generic [ref=e87]: Function.all
+                - text: <anonymous>
+              - generic [ref=e88]:
+                - generic [ref=e89]:
+                  - text: DashboardLayout
+                  - button "Open DashboardLayout in editor" [ref=e90] [cursor=pointer]:
+                    - img [ref=e91]
+                - text: src/app/(dashboard)/layout.tsx (15:23)
+        - generic [ref=e93]: "1"
+        - generic [ref=e94]: "2"
+    - generic [ref=e99] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e100]:
+        - img [ref=e101]
+      - generic [ref=e104]:
+        - button "Open issues overlay" [ref=e105]:
+          - generic [ref=e106]:
+            - generic [ref=e107]: "0"
+            - generic [ref=e108]: "1"
+          - generic [ref=e109]: Issue
+        - button "Collapse issues badge" [ref=e110]:
+          - img [ref=e111]
+  - generic [ref=e114]:
+    - 'heading "Application error: a server-side exception has occurred while loading localhost (see the server logs for more information)." [level=2] [ref=e115]'
+    - paragraph [ref=e116]: "Digest: 2066842552"
+```

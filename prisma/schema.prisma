@@ -25,7 +25,8 @@ model Organization {
   users           User[]
   clients         Client[]
   suppliers       Supplier[]
-  supplierBills   SupplierBill[]
+  supplierBills        SupplierBill[]
+  supplierBillPayments SupplierBillPayment[]
   categories      Category[]
   products        Product[]
   employees       Employee[]
@@ -60,24 +61,42 @@ model User {
 }
 
 model SupplierBill {
-  id             String       @id @default(cuid())
+  id             String               @id @default(cuid())
   supplierId     String
-  supplier       Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier       Supplier             @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   amount         Float
   description    String
   reference      String?
   date           DateTime
   dueDate        DateTime?
-  status         String       @default("pending")   // pending | paid
-  note           String?      @db.Text
+  status         String               @default("pending")   // pending | partially_paid | paid
+  amountPaid     Float                @default(0)
+  note           String?              @db.Text
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+  payments       SupplierBillPayment[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   @@index([supplierId])
   @@index([organizationId])
   @@index([status])
+}
+
+model SupplierBillPayment {
+  id             String       @id @default(cuid())
+  billId         String
+  bill           SupplierBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  amount         Float
+  date           DateTime
+  method         String       @default("cash")
+  note           String?      @db.Text
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([billId])
+  @@index([organizationId])
 }
 
 model Client {
@@ -179,7 +198,7 @@ model SalaryAdvance {
   employee       Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   amount         Float
   date           DateTime
-  status         String       @default("pending")   // pending | returned
+  status         String       @default("pending")   // pending | returned | paid
   note           String?      @db.Text
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])

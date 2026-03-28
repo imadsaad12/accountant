@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, X, Loader2, Banknote, CheckCircle2, Clock } from "lucide-react";
+import { Plus, Trash2, X, Loader2, Banknote, CheckCircle2, Clock, CreditCard } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -21,7 +21,7 @@ interface SalaryAdvance {
   employee: { id: string; firstName: string; lastName: string; position: string };
   amount: number;
   date: string;
-  status: "pending" | "returned";
+  status: "pending" | "returned" | "paid";
   note: string | null;
   createdAt: string;
 }
@@ -91,6 +91,7 @@ export default function SalaryAdvancesPage() {
   }
 
   async function toggleStatus(adv: SalaryAdvance) {
+    if (adv.status === "paid") return;
     setTogglingId(adv.id);
     const newStatus = adv.status === "pending" ? "returned" : "pending";
     await fetch(`/api/salary-advances/${adv.id}`, {
@@ -264,7 +265,12 @@ export default function SalaryAdvancesPage() {
                     <td className="px-4 py-3 text-sm font-semibold text-right text-text-primary">{sym}{fmtAmt(adv.amount)}</td>
                     <td className="px-4 py-3 text-sm text-text-muted max-w-[160px] truncate">{adv.note || "—"}</td>
                     <td className="px-4 py-3 text-center">
-                      {canEdit ? (
+                      {adv.status === "paid" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border bg-blue-500/10 text-blue-400 border-blue-500/20">
+                          <CreditCard size={11} />
+                          {t("salary_advances.status.paid")}
+                        </span>
+                      ) : canEdit ? (
                         <button
                           onClick={() => toggleStatus(adv)}
                           disabled={togglingId === adv.id}
