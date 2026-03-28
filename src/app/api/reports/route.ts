@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   if (type === "pl") {
     // Profit & Loss
-    const [payments, allExpenses, employees, paidBills] = await Promise.all([
+    const [payments, allExpenses, employees, paidBills, periodInvoices] = await Promise.all([
       prisma.payment.findMany({
         where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
         select: {
@@ -102,6 +102,10 @@ export async function GET(req: NextRequest) {
       prisma.supplierBillPayment.findMany({
         where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
         select: { amount: true },
+      }),
+      prisma.invoice.findMany({
+        where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
+        select: { total: true, items: { select: { description: true, quantity: true, unitPrice: true, unitCost: true, total: true } } },
       }),
     ]);
 
@@ -203,6 +207,26 @@ export async function GET(req: NextRequest) {
     const totalExpenses = Object.values(expensesByCategory).reduce((s, v) => s + v, 0);
     const netProfit = grossProfit - totalExpenses;
 
+    // Total Sales in Period (all invoices regardless of status)
+    const totalSalesRevenue = periodInvoices.reduce((s, inv) => s + inv.total, 0);
+    const totalSalesCogs = periodInvoices.reduce((s, inv) => s + inv.items.reduce((is, item) => is + (item.unitCost ?? 0) * item.quantity, 0), 0);
+    const totalSalesGrossProfit = totalSalesRevenue - totalSalesCogs;
+
+    const productSalesMap: Record<string, { description: string; quantity: number; unitPrice: number; total: number }> = {};
+    for (const inv of periodInvoices) {
+      for (const item of inv.items) {
+        if (!productSalesMap[item.description]) {
+          productSalesMap[item.description] = { description: item.description, quantity: 0, unitPrice: item.unitPrice, total: 0 };
+        }
+        productSalesMap[item.description].quantity += item.quantity;
+        productSalesMap[item.description].total += item.total;
+      }
+    }
+    const mostSoldProducts = Object.values(productSalesMap)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 10)
+      .map(p => ({ description: p.description, quantity: p.quantity, unitPrice: parseFloat(p.unitPrice.toFixed(2)), total: parseFloat(p.total.toFixed(2)) }));
+
     return NextResponse.json({
       type: "pl",
       period: { from: fromDate, to: toDate },
@@ -214,6 +238,13 @@ export async function GET(req: NextRequest) {
       totalExpenses,
       netProfit,
       invoiceCount,
+      totalSalesInPeriod: {
+        revenue: parseFloat(totalSalesRevenue.toFixed(2)),
+        cogs: parseFloat(totalSalesCogs.toFixed(2)),
+        grossProfit: parseFloat(totalSalesGrossProfit.toFixed(2)),
+        invoiceCount: periodInvoices.length,
+      },
+      mostSoldProducts,
     });
   }
 

@@ -20,6 +20,8 @@ interface PLReport {
   totalExpenses: number;
   netProfit: number;
   invoiceCount: number;
+  totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number };
+  mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
 interface BSReport {
@@ -171,6 +173,34 @@ export default function ReportsPage() {
           }
         },
       });
+      // Total Sales in Period
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const salesY = (doc as any).lastAutoTable.finalY + 8;
+      doc.setFontSize(11); doc.setTextColor(51, 200, 102);
+      doc.text("Total Sales in Period", 14, salesY);
+      autoTable(doc, {
+        startY: salesY + 4,
+        head: [["Metric", "Amount"]],
+        body: [
+          ["Total Revenue (All Invoices)", fmt(pl.totalSalesInPeriod.revenue)],
+          ["Cost of Goods Sold (COGS)", `(${fmt(pl.totalSalesInPeriod.cogs)})`],
+          ["Gross Profit", fmt(pl.totalSalesInPeriod.grossProfit)],
+          ["Invoice Count", pl.totalSalesInPeriod.invoiceCount.toString()],
+        ],
+        theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
+      });
+      if (pl.mostSoldProducts.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const productsY = (doc as any).lastAutoTable.finalY + 8;
+        doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+        doc.text("Most Sold Products", 14, productsY);
+        autoTable(doc, {
+          startY: productsY + 4,
+          head: [["Product", "Quantity", "Unit Price", "Total"]],
+          body: pl.mostSoldProducts.map(p => [p.description, p.quantity.toString(), fmt(p.unitPrice), fmt(p.total)]),
+          theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
+        });
+      }
     } else if (report.type === "comprehensive") {
       const cr = report as ComprehensiveReport;
       // 1. P&L Summary
@@ -494,6 +524,64 @@ export default function ReportsPage() {
                   Revenue {fmt(pl.revenue)} − COGS {fmt(pl.cogs)} − Expenses {fmt(pl.totalExpenses)} = {fmt(pl.netProfit)}
                 </div>
               </div>
+
+              {/* Total Sales in Period */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
+                  <h3 className="text-sm font-semibold text-emerald-400">Total Sales in Period</h3>
+                  <p className="text-xs text-text-muted mt-0.5">Includes all invoices (all statuses) created in this period. COGS deducted to show gross profit.</p>
+                </div>
+                <div className="px-4 py-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Revenue</div>
+                      <div className="text-lg font-bold text-emerald-400">{fmt(pl.totalSalesInPeriod.revenue)}</div>
+                      <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.invoiceCount} invoices</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">COGS</div>
+                      <div className="text-lg font-bold text-red-400">{fmt(pl.totalSalesInPeriod.cogs)}</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Gross Profit</div>
+                      <div className={`text-lg font-bold ${pl.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(pl.totalSalesInPeriod.grossProfit)}</div>
+                      <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.revenue > 0 ? pct(pl.totalSalesInPeriod.grossProfit, pl.totalSalesInPeriod.revenue) : "—"} margin</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Most Sold Products */}
+              {pl.mostSoldProducts.length > 0 && (
+                <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-dark-border bg-blue-500/5">
+                    <h3 className="text-sm font-semibold text-blue-400">Most Sold Products</h3>
+                    <p className="text-xs text-text-muted mt-0.5">Top 10 products by quantity sold across all invoices in this period.</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[600px]">
+                      <thead className="bg-dark-bg/50">
+                        <tr>
+                          <th className="text-left px-4 py-2 text-xs text-text-muted">Product</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Quantity</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Unit Price</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-dark-border/50">
+                        {pl.mostSoldProducts.map((product, i) => (
+                          <tr key={i} className="hover:bg-dark-card-hover">
+                            <td className="px-4 py-2.5 text-xs text-text-secondary">{product.description}</td>
+                            <td className="px-4 py-2.5 text-right text-xs font-medium text-text-primary">{product.quantity}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(product.unitPrice)}</td>
+                            <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(product.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
