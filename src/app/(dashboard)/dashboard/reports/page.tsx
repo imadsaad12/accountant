@@ -30,11 +30,6 @@ interface BSReport {
   equity: number;
 }
 
-interface AgingReport {
-  type: "aging";
-  buckets: { current: number; days1_30: number; days31_60: number; days61_90: number; days90plus: number };
-  rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string }[];
-}
 
 interface ComprehensiveReport {
   type: "comprehensive";
@@ -54,9 +49,11 @@ interface ComprehensiveReport {
   receivableAging: { rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; totals: Record<string, number>; totalOutstanding: number };
   payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null; periodPayment: number; totalPaidToDate: number }[]; total: number };
   receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string; periodPayment: number; totalPaidToDate: number }[]; total: number };
+  totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number };
+  mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
-type Report = PLReport | BSReport | AgingReport | ComprehensiveReport | null;
+type Report = PLReport | BSReport | ComprehensiveReport | null;
 
 const EXPENSE_CATEGORIES: Record<string, string> = {
   rent: "Rent", utilities: "Utilities", salaries: "Salaries", office: "Office Supplies",
@@ -69,7 +66,7 @@ export default function ReportsPage() {
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
-  const [activeTab, setActiveTab] = useState<"pl" | "bs" | "aging" | "comprehensive">("pl");
+  const [activeTab, setActiveTab] = useState<"pl" | "bs" | "comprehensive">("pl");
   const [from, setFrom] = useState(() => `${currentYearInTz(tz)}-01-01`);
   const [to, setTo] = useState(() => todayInTz(tz));
   const [report, setReport] = useState<Report>(null);
@@ -268,48 +265,44 @@ export default function ReportsPage() {
           theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
         });
       }
-    } else if (report.type === "aging") {
-      const aging = report as AgingReport;
-      // Bucket summary
-      autoTable(doc, {
-        startY: 35,
-        head: [["Bucket", "Amount"]],
-        body: [
-          ["Current", fmt(aging.buckets.current)],
-          ["1–30 Days", fmt(aging.buckets.days1_30)],
-          ["31–60 Days", fmt(aging.buckets.days31_60)],
-          ["61–90 Days", fmt(aging.buckets.days61_90)],
-          ["90+ Days", fmt(aging.buckets.days90plus)],
-          ["Total Outstanding", fmt(Object.values(aging.buckets).reduce((s, v) => s + v, 0))],
-        ],
-        theme: "striped",
-        headStyles: { fillColor: [37, 99, 235] },
-        styles: { fontSize: 10 },
-      });
-      // Invoice detail table
+      // 6. Total Sales in Period
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const startY = (doc as any).lastAutoTable.finalY + 10;
+      const totalSalesY = (doc as any).lastAutoTable?.finalY ?? 220;
+      doc.setFontSize(11); doc.setTextColor(51, 200, 102);
+      doc.text(`Total Sales in Period — Revenue: ${fmt(cr.totalSalesInPeriod.revenue)}, COGS: ${fmt(cr.totalSalesInPeriod.cogs)}, Gross Profit: ${fmt(cr.totalSalesInPeriod.grossProfit)}`, 14, totalSalesY + 8);
       autoTable(doc, {
-        startY,
-        head: [["Invoice #", "Client", "Total", "Paid", "Balance", "Days Overdue"]],
-        body: aging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(row => [
-          row.number, row.client, fmt(row.total), fmt(row.paid), fmt(row.balance),
-          row.daysOverdue <= 0 ? (row.status === "partially_paid" ? "On Time (Partially Paid)" : "On Time") : `${row.daysOverdue}d`,
-        ]),
-        theme: "striped",
-        headStyles: { fillColor: [37, 99, 235] },
-        styles: { fontSize: 9 },
+        startY: totalSalesY + 12,
+        head: [["Metric", "Amount"]],
+        body: [
+          ["Total Revenue (All Invoices)", fmt(cr.totalSalesInPeriod.revenue)],
+          ["Cost of Goods Sold (COGS)", `(${fmt(cr.totalSalesInPeriod.cogs)})`],
+          ["Gross Profit", fmt(cr.totalSalesInPeriod.grossProfit)],
+          ["Invoice Count", cr.totalSalesInPeriod.invoiceCount.toString()],
+        ],
+        theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 8 },
       });
+      // 7. Most Sold Products
+      if (cr.mostSoldProducts.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const productsY = (doc as any).lastAutoTable.finalY + 8;
+        doc.setFontSize(11); doc.setTextColor(37, 99, 235);
+        doc.text("Most Sold Products", 14, productsY);
+        autoTable(doc, {
+          startY: productsY + 4,
+          head: [["Product", "Quantity", "Unit Price", "Total"]],
+          body: cr.mostSoldProducts.map(p => [p.description, p.quantity.toString(), fmt(p.unitPrice), fmt(p.total)]),
+          theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
+        });
+      }
     }
 
-    const filename = report.type === "pl" ? `pl-report-${from}-to-${to}.pdf` : report.type === "comprehensive" ? `comprehensive-report-${from}-to-${to}.pdf` : `aging-report-${now}.pdf`;
+    const filename = report.type === "pl" ? `pl-report-${from}-to-${to}.pdf` : `comprehensive-report-${from}-to-${to}.pdf`;
     doc.save(filename);
   }
 
   const tabs = [
     { id: "pl" as const, label: t("reports.pl"), icon: BarChart2 },
     // { id: "bs" as const, label: t("reports.bs"), icon: Scale },
-    { id: "aging" as const, label: t("aging.title"), icon: FileText },
     { id: "comprehensive" as const, label: "Comprehensive", icon: BookOpen },
   ];
 
@@ -861,81 +854,68 @@ export default function ReportsPage() {
                   </div>
                 )}
               </div>
-            </div>
-          );
-        })()}
 
-        {/* Aging Report */}
-        {!loading && report?.type === "aging" && (() => {
-          const aging = report as AgingReport;
-          const total = Object.values(aging.buckets).reduce((s, v) => s + v, 0);
-          const bucketLabels = [
-            { key: "current", label: t("aging.current"), color: "text-emerald-400" },
-            { key: "days1_30", label: t("aging.days_1_30"), color: "text-yellow-400" },
-            { key: "days31_60", label: t("aging.days_31_60"), color: "text-orange-400" },
-            { key: "days61_90", label: t("aging.days_61_90"), color: "text-red-400" },
-            { key: "days90plus", label: t("aging.days_90_plus"), color: "text-red-600" },
-          ] as const;
-
-          return (
-            <div className="space-y-4">
-              {/* Bucket Summary */}
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                {bucketLabels.map(b => (
-                  <div key={b.key} className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
-                    <div className="text-text-muted text-xs mb-1">{b.label}</div>
-                    <div className={`text-base sm:text-lg font-bold ${b.color}`}>{fmt(aging.buckets[b.key as keyof typeof aging.buckets])}</div>
-                    <div className="text-xs text-text-muted">{pct(aging.buckets[b.key as keyof typeof aging.buckets], total)}</div>
-                  </div>
-                ))}
-              </div>
-
+              {/* Total Sales in Period */}
               <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-dark-border flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-text-primary">{t("aging.title")}</h3>
-                  <span className="text-xs text-text-muted">Total AR: <strong className="text-text-primary">{fmt(total)}</strong></span>
+                <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
+                  <h2 className="text-sm font-semibold text-emerald-400">Total Sales in Period</h2>
+                  <Eg text="Includes all invoices (draft, sent, partially paid, paid) created in this period. COGS is deducted to show gross profit. For example: 5 invoices totaling $5,000 with COGS of $2,000 = $3,000 gross profit." />
                 </div>
-                <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[560px]">
-                  <thead className="bg-dark-bg/50">
-                    <tr>
-                      <th className="text-left px-4 py-2 text-xs text-text-muted">Invoice #</th>
-                      <th className="text-left px-4 py-2 text-xs text-text-muted">Client</th>
-                      <th className="text-right px-4 py-2 text-xs text-text-muted">Total</th>
-                      <th className="text-right px-4 py-2 text-xs text-text-muted">Paid</th>
-                      <th className="text-right px-4 py-2 text-xs text-text-muted">Balance</th>
-                      <th className="text-center px-4 py-2 text-xs text-text-muted">Age</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-dark-border/50">
-                    {aging.rows.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-6 text-center text-text-muted">No outstanding receivables</td></tr>
-                    ) : aging.rows.sort((a, b) => b.daysOverdue - a.daysOverdue).map(row => {
-                      const color = row.daysOverdue > 90 ? "text-red-400" : row.daysOverdue > 60 ? "text-red-400" : row.daysOverdue > 30 ? "text-orange-400" : row.daysOverdue > 0 ? "text-yellow-400" : "text-emerald-400";
-                      return (
-                        <tr key={row.invoiceId} className="hover:bg-dark-card-hover">
-                          <td className="px-4 py-2.5 font-mono text-sm text-text-primary">{row.number}</td>
-                          <td className="px-4 py-2.5 text-text-secondary">{row.client}</td>
-                          <td className="px-4 py-2.5 text-right text-text-secondary">{fmt(row.total)}</td>
-                          <td className="px-4 py-2.5 text-right text-emerald-400">{fmt(row.paid)}</td>
-                          <td className="px-4 py-2.5 text-right font-bold text-text-primary">{fmt(row.balance)}</td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span className={`text-xs font-medium ${color}`}>
-                              {row.daysOverdue <= 0
-                              ? row.status === "partially_paid" ? "On Time (Partially Paid)" : "On Time"
-                              : `${row.daysOverdue}d`}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="px-4 py-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Revenue</div>
+                      <div className="text-lg font-bold text-emerald-400">{fmt(cr.totalSalesInPeriod.revenue)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.invoiceCount} invoices</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">COGS</div>
+                      <div className="text-lg font-bold text-red-400">{fmt(cr.totalSalesInPeriod.cogs)}</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Gross Profit</div>
+                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.grossProfit)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Most Sold Products */}
+              {cr.mostSoldProducts.length > 0 && (
+                <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-dark-border bg-blue-500/5">
+                    <h2 className="text-sm font-semibold text-blue-400">Most Sold Products</h2>
+                    <Eg text="Top 10 products by quantity sold in this period. Includes products from all invoice statuses." />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[600px]">
+                      <thead className="bg-dark-bg/50">
+                        <tr>
+                          <th className="text-left px-4 py-2 text-xs text-text-muted">Product</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Quantity</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Unit Price</th>
+                          <th className="text-right px-4 py-2 text-xs text-text-muted">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-dark-border/50">
+                        {cr.mostSoldProducts.map((product, i) => (
+                          <tr key={i} className="hover:bg-dark-card-hover">
+                            <td className="px-4 py-2.5 text-xs text-text-secondary">{product.description}</td>
+                            <td className="px-4 py-2.5 text-right text-xs font-medium text-text-primary">{product.quantity}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-text-secondary">{fmt(product.unitPrice)}</td>
+                            <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400">{fmt(product.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
+
       </div>
     </PermissionGuard>
   );

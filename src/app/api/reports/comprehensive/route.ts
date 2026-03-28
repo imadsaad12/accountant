@@ -309,6 +309,33 @@ export async function GET(req: NextRequest) {
 
   const totalPayable = payableRows.filter(r => r.remaining > 0).reduce((s, r) => s + r.remaining, 0);
 
+  // ── Total Sales in Period (all invoices regardless of status) ──────────────
+  const totalSalesRevenue = invoices.reduce((s, inv) => s + inv.total, 0);
+  const totalSalesCogs = invoices.reduce((s, inv) => s + inv.items.reduce((item_s, item) => item_s + (item.unitCost ?? 0) * item.quantity, 0), 0);
+  const totalSalesGrossProfit = totalSalesRevenue - totalSalesCogs;
+
+  // ── Most Sold Products ──────────────────────────────────────────────────────
+  const productSalesMap: Record<string, { description: string; quantity: number; unitPrice: number; total: number }> = {};
+  for (const invoice of invoices) {
+    for (const item of invoice.items) {
+      const key = item.description; // Use description as key since we may not have productId
+      if (!productSalesMap[key]) {
+        productSalesMap[key] = { description: item.description, quantity: 0, unitPrice: item.unitPrice, total: 0 };
+      }
+      productSalesMap[key].quantity += item.quantity;
+      productSalesMap[key].total += item.total;
+    }
+  }
+  const mostSoldProducts = Object.values(productSalesMap)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 10) // Top 10 products
+    .map(p => ({
+      description: p.description,
+      quantity: p.quantity,
+      unitPrice: parseFloat(p.unitPrice.toFixed(2)),
+      total: parseFloat(p.total.toFixed(2)),
+    }));
+
   // ── Partially paid invoice summary ─────────────────────────────────────────
   return NextResponse.json({
     period: { from: fromStr, to: toStr },
@@ -392,5 +419,12 @@ export async function GET(req: NextRequest) {
       }),
       total: parseFloat(receivedPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)),
     },
+    totalSalesInPeriod: {
+      revenue: parseFloat(totalSalesRevenue.toFixed(2)),
+      cogs: parseFloat(totalSalesCogs.toFixed(2)),
+      grossProfit: parseFloat(totalSalesGrossProfit.toFixed(2)),
+      invoiceCount: invoices.length,
+    },
+    mostSoldProducts,
   });
 }
