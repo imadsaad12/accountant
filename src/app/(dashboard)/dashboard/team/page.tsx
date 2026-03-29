@@ -156,6 +156,7 @@ export default function TeamPage() {
   const [error, setError] = useState("");
   const [showPermissions, setShowPermissions] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [sortField, setSortField] = useState<TeamSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
@@ -242,8 +243,13 @@ export default function TeamPage() {
     });
 
     if (res.ok) {
+      const saved: User = await res.json();
+      if (editing) {
+        setUsers(prev => prev.map(u => u.id === saved.id ? saved : u));
+      } else {
+        setUsers(prev => [saved, ...prev]);
+      }
       setShowModal(false);
-      fetchUsers();
     } else {
       const data = await res.json();
       setError(data.error || t("team.failed_save"));
@@ -252,8 +258,10 @@ export default function TeamPage() {
   }
 
   async function handleDelete(id: string) {
+    setDeleting(true);
     const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (res.ok) fetchUsers();
+    setDeleting(false);
+    if (res.ok) setUsers(prev => prev.filter(u => u.id !== id));
     setDeleteConfirm(null);
   }
 
@@ -529,8 +537,10 @@ export default function TeamPage() {
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2 bg-danger hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-danger hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
               >
+                {deleting && <Loader2 size={14} className="animate-spin" />}
                 {t("team.remove")}
               </button>
             </div>
