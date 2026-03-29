@@ -23,6 +23,9 @@ interface DashboardData {
   pendingAmount: number;
   lowStockProducts: { id: string; name: string; quantity: number; minStock: number }[];
   recentInvoices: { id: string; number: string; total: number; status: string; date: string; client: { name: string } }[];
+  revenueTrend: { month: string; revenue: number }[];
+  newClientsThisMonth: number;
+  newInvoicesThisMonth: number;
 }
 
 const CHART_COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8"];
@@ -50,6 +53,7 @@ export default function DashboardPage() {
   const sym = currencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
   const [isLight, setIsLight] = useState(false);
+  const [trendPeriod, setTrendPeriod] = useState<1 | 3 | 6 | 12>(6);
 
   useEffect(() => {
     const check = () => setIsLight(document.documentElement.classList.contains("light"));
@@ -83,7 +87,7 @@ export default function DashboardPage() {
     { label: t("dashboard.invoices"),  value: data.invoiceCount,  tooltip: data.invoiceCount.toString(),  icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5",  iconBg: "bg-cyan-500/20",  iconColor: "text-cyan-400",  trend: data.newInvoicesThisMonth > 0 ? `+${data.newInvoicesThisMonth} this month` : null, up: true },
   ];
 
-  // Build chart data from invoices
+  // Build chart data
   const invoicesByStatus = data.recentInvoices.reduce((acc, inv) => {
     acc[inv.status] = (acc[inv.status] || 0) + 1;
     return acc;
@@ -91,28 +95,16 @@ export default function DashboardPage() {
 
   const pieData = Object.entries(invoicesByStatus).map(([name, value]) => ({ name, value }));
 
-  const revenueByDate = data.recentInvoices
-    .slice()
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .reduce((acc, inv) => {
-      const date = new Intl.DateTimeFormat("en", { timeZone: tz, month: "short", day: "numeric" }).format(new Date(inv.date));
-      const existing = acc.find(a => a.date === date);
-      if (existing) {
-        existing.revenue += inv.total;
-        existing.count += 1;
-      } else {
-        acc.push({ date, revenue: inv.total, count: 1 });
-      }
-      return acc;
-    }, [] as { date: string; revenue: number; count: number }[]);
+  // Slice trend data based on selected period
+  const areaData = data.revenueTrend.slice(-trendPeriod);
+  const currentMonthRevenue = areaData[areaData.length - 1]?.revenue ?? 0;
+  const prevMonthRevenue    = areaData[areaData.length - 2]?.revenue ?? 0;
+  const trendUp  = currentMonthRevenue >= prevMonthRevenue;
+  const trendPct = prevMonthRevenue > 0
+    ? parseFloat((((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100).toFixed(1))
+    : currentMonthRevenue > 0 ? 100 : null;
 
-  const areaData = revenueByDate.length > 0 ? revenueByDate : [
-    { date: t("dashboard.day.mon"), revenue: 0, count: 0 },
-    { date: t("dashboard.day.tue"), revenue: 0, count: 0 },
-    { date: t("dashboard.day.wed"), revenue: 0, count: 0 },
-    { date: t("dashboard.day.thu"), revenue: 0, count: 0 },
-    { date: t("dashboard.day.fri"), revenue: 0, count: 0 },
-  ];
+  const periodLabels: Record<number, string> = { 1: "Last month", 3: "3 months", 6: "6 months", 12: "1 year" };
 
   const barData = data.recentInvoices.slice(0, 8).map(inv => ({
     name: inv.number,
@@ -165,11 +157,21 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3 sm:mb-6">
             <div>
               <h2 className="text-base font-semibold text-text-primary">{t("dashboard.revenue_trend")}</h2>
-              <p className="text-xs text-text-muted mt-0.5">{t("dashboard.daily_trend")}</p>
+              <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trendUp ? "text-emerald-400" : "text-red-400"}`}>
+                {trendUp ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                {trendPct !== null ? `${trendUp ? "+" : ""}${trendPct}%` : "—"}
+                <span className="text-text-muted ml-1">vs previous month</span>
+              </div>
             </div>
-            <div className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium">
-              {sym}{fmtAmt(data.grossEarning)} {t("dashboard.gross_label")}
-            </div>
+            <select
+              value={trendPeriod}
+              onChange={e => setTrendPeriod(Number(e.target.value) as 1 | 3 | 6 | 12)}
+              className="px-2 py-1 text-xs rounded-lg bg-dark-input border border-dark-border text-text-secondary"
+            >
+              {([1, 3, 6, 12] as const).map(p => (
+                <option key={p} value={p}>{periodLabels[p]}</option>
+              ))}
+            </select>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={areaData}>
@@ -180,7 +182,7 @@ export default function DashboardPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} />
-              <XAxis dataKey="date" stroke={chartAxis} fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis dataKey="month" stroke={chartAxis} fontSize={12} tickLine={false} axisLine={false} />
               <YAxis stroke={chartAxis} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${sym}${v}`} />
               <Tooltip
                 cursor={{ fill: "transparent" }}

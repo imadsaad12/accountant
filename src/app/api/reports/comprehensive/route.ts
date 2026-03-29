@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
   const toDate = new Date(toStr + "T23:59:59Z");
   const orgId = session.organizationId;
 
-  const [invoices, expenses, employees, bills, receivedPayments] = await Promise.all([
+  const [invoices, expenses, employees, bills, receivedPayments, allInvoicePayments] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
       include: {
@@ -86,6 +86,11 @@ export async function GET(req: NextRequest) {
         },
       },
       orderBy: { date: "asc" },
+    }),
+    // All-time payments for invoices in the period (to compute true "Total Paid to Date")
+    prisma.payment.findMany({
+      where: { organizationId: orgId },
+      select: { invoiceId: true, amount: true },
     }),
   ]);
 
@@ -397,9 +402,14 @@ export async function GET(req: NextRequest) {
     },
     receivedPayments: {
       rows: receivedPayments.map(p => {
-        // Get the specific invoice to get all its payments
+        // totalPaidToDate = sum of ALL payments ever on this invoice (not just period)
+        // We use amountPaid from the invoice record itself (kept in sync by the API)
         const invoice = invoices.find(inv => inv.id === p.invoiceId);
-        const totalPaidToDate = invoice ? invoice.payments.reduce((s, pay) => s + pay.amount, 0) : p.amount;
+        const allTimePayments = invoice ? invoice.payments.reduce((s, pay) => s + pay.amount, 0) : p.amount;
+        // Also add any payments outside the period range by fetching from allInvoicePayments
+        const totalPaidToDate = allInvoicePayments
+          .filter(pay => pay.invoiceId === p.invoiceId)
+          .reduce((s, pay) => s + pay.amount, 0) || allTimePayments;
         // Period payment = sum of all payments for this invoice within the selected period
         const periodPayment = receivedPayments
           .filter(payment => payment.invoiceId === p.invoiceId)

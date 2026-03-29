@@ -102,6 +102,7 @@ export default function ExpensesPage() {
   const [sortField, setSortField] = useState<ExpSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showManageCats, setShowManageCats] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -250,15 +251,67 @@ export default function ExpensesPage() {
     setShowForm(true);
   }
 
+  // Check if an expense date falls within the last-month range
+  function isInLastMonth(dateStr: string) {
+    const { from: lmFrom, to: lmTo } = lastMonthRangeInTz(tz);
+    return dateStr >= lmFrom && dateStr <= lmTo;
+  }
+
+  // Check if an expense matches the current active filter
+  function matchesFilter(exp: { date: string; category: string }) {
+    const from = currentFrom();
+    const to = currentTo();
+    if (filterCategory && exp.category !== filterCategory) return false;
+    if (from && exp.date.slice(0, 10) < from) return false;
+    if (to && exp.date.slice(0, 10) > to) return false;
+    return true;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
       const method = editId ? "PUT" : "POST";
       const url = editId ? `/api/expenses/${editId}` : "/api/expenses";
-      await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) { setSaving(false); return; }
       setShowForm(false);
-      loadData(filterCategory, currentFrom(), currentTo());
+
+      if (!editId) {
+        // Create: response has full expense with includes
+        const created: Expense = await res.json();
+        setAllExpenses(prev => [created, ...prev]);
+        if (matchesFilter(created)) setExpenses(prev => [created, ...prev]);
+        if (isInLastMonth(created.date.slice(0, 10))) setLastMonthExpenses(prev => [created, ...prev]);
+      } else {
+        // Edit: PUT returns { ok: true }, reconstruct from form
+        const supplier = suppliers.find(s => s.id === form.supplierId) ?? null;
+        const updated: Expense = {
+          ...(expenses.find(e => e.id === editId) ?? allExpenses.find(e => e.id === editId)!),
+          date: form.date,
+          amount: parseFloat(form.amount),
+          description: form.description,
+          category: form.category,
+          recurrence: form.recurrence,
+          vendor: form.vendor || null,
+          reference: form.reference || null,
+          note: form.note || null,
+          supplierId: form.supplierId || null,
+          supplier: supplier ? { id: supplier.id, name: supplier.name } : null,
+        };
+        const patchArr = (arr: Expense[]) => arr.map(e => e.id === editId ? updated : e);
+        setAllExpenses(patchArr);
+        // In filtered list: patch if still matches, remove if no longer matches
+        setExpenses(prev => matchesFilter(updated)
+          ? prev.map(e => e.id === editId ? updated : e)
+          : prev.filter(e => e.id !== editId)
+        );
+        setLastMonthExpenses(prev =>
+          isInLastMonth(updated.date.slice(0, 10))
+            ? prev.map(e => e.id === editId ? updated : e)
+            : prev.filter(e => e.id !== editId)
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -266,8 +319,15 @@ export default function ExpensesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("expenses.delete_confirm"))) return;
-    await fetch(`/api/expenses/${id}`, { method: "DELETE" });
-    loadData(filterCategory, currentFrom(), currentTo());
+    setDeletingId(id);
+    const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    if (res.ok) {
+      const remove = (arr: Expense[]) => arr.filter(e => e.id !== id);
+      setExpenses(remove);
+      setAllExpenses(remove);
+      setLastMonthExpenses(remove);
+    }
   }
 
   function toggleSort(field: ExpSortField) {

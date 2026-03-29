@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle, ChevronUp, ChevronDown, Edit2 } from "lucide-react";
+import { Plus, Trash2, X, Download, Eye, CreditCard, AlertCircle, ChevronUp, ChevronDown, Edit2, Search } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Loader2 } from "lucide-react";
@@ -126,12 +126,19 @@ export default function InvoicesPage() {
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: todayInTz(tz), method: "cash", reference: "", note: "" });
   const [savingPayment, setSavingPayment] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Initial payment on create
+  const [showInitPayment, setShowInitPayment] = useState(false);
+  const [initPayment, setInitPayment] = useState({ amount: "", date: todayInTz(tz), method: "cash", reference: "" });
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { setPage(1); }, [sortField, sortDir]);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterFromDate, filterToDate, sortField, sortDir]);
 
   async function loadData() {
     setLoading(true);
@@ -155,27 +162,31 @@ export default function InvoicesPage() {
     setPaymentsLoading(false);
   }
 
+  // Patch a single invoice in local state (avoids full reload)
+  function patchInvoice(updated: Invoice & { amountPaid?: number }) {
+    setInvoices(prev => prev.map(inv => inv.id === updated.id ? { ...inv, ...updated } : inv));
+    if (viewInvoice?.id === updated.id) setViewInvoice(v => v ? { ...v, ...updated } : v);
+  }
+
   async function handleAddPayment(e: React.FormEvent) {
     e.preventDefault();
     if (!viewInvoice) return;
     setSavingPayment(true);
     try {
-      await fetch(`/api/invoices/${viewInvoice.id}/payments`, {
+      const payRes = await fetch(`/api/invoices/${viewInvoice.id}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(paymentForm),
       });
+      if (!payRes.ok) return;
+      const newPayment: Payment = await payRes.json();
+      setPayments(prev => [newPayment, ...prev]);
       setPaymentForm({ amount: "", date: todayInTz(tz), method: "cash", reference: "", note: "" });
       setShowPaymentForm(false);
-      // Reload payments + invoice list
-      const [paymentsRes] = await Promise.all([
-        fetch(`/api/invoices/${viewInvoice.id}/payments`),
-        loadData(),
-      ]);
-      setPayments(paymentsRes.ok ? await paymentsRes.json() : []);
-      // Refresh viewInvoice status
-      const invRes = await fetch(`/api/invoices/${viewInvoice.id}`);
-      if (invRes.ok) setViewInvoice(await invRes.json());
+      // Update amountPaid + status in local invoice state without full reload
+      const newAmountPaid = viewInvoice.amountPaid + newPayment.amount;
+      const newStatus = newAmountPaid >= viewInvoice.total ? "paid" : "partially_paid";
+      patchInvoice({ ...viewInvoice, amountPaid: newAmountPaid, status: newStatus });
     } finally {
       setSavingPayment(false);
     }
@@ -184,13 +195,12 @@ export default function InvoicesPage() {
   async function deletePayment(paymentId: string) {
     if (!viewInvoice || !confirm("Delete this payment?")) return;
     await fetch(`/api/invoices/${viewInvoice.id}/payments?paymentId=${paymentId}`, { method: "DELETE" });
-    const [paymentsRes, invRes] = await Promise.all([
-      fetch(`/api/invoices/${viewInvoice.id}/payments`),
-      fetch(`/api/invoices/${viewInvoice.id}`),
-      loadData(),
-    ]);
-    setPayments(paymentsRes.ok ? await paymentsRes.json() : []);
-    if (invRes.ok) setViewInvoice(await invRes.json());
+    const deleted = payments.find(p => p.id === paymentId);
+    const newPayments = payments.filter(p => p.id !== paymentId);
+    setPayments(newPayments);
+    const newAmountPaid = newPayments.reduce((s, p) => s + p.amount, 0);
+    const newStatus = newAmountPaid >= viewInvoice.total ? "paid" : newAmountPaid > 0 ? "partially_paid" : (viewInvoice.status === "paid" || viewInvoice.status === "partially_paid" ? "sent" : viewInvoice.status);
+    patchInvoice({ ...viewInvoice, amountPaid: newAmountPaid, status: newStatus });
   }
 
   function addItem() { setItems([...items, { ...emptyItem }]); }
@@ -219,33 +229,77 @@ export default function InvoicesPage() {
         fees: fees.filter(f => f.label.trim() && f.amount > 0),
       };
       if (editId) {
-        await fetch(`/api/invoices/${editId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const res = await fetch(`/api/invoices/${editId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (res.ok) patchInvoice(await res.json());
       } else {
-        await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const res = await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (res.ok) {
+          const invoice = await res.json();
+          let amountPaid = 0;
+          if (showInitPayment && parseFloat(initPayment.amount) > 0) {
+            const payRes = await fetch(`/api/invoices/${invoice.id}/payments`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ amount: parseFloat(initPayment.amount), date: initPayment.date, method: initPayment.method, reference: initPayment.reference || null }),
+            });
+            if (payRes.ok) amountPaid = parseFloat(initPayment.amount);
+          }
+          const status = amountPaid >= invoice.total ? "paid" : amountPaid > 0 ? "partially_paid" : invoice.status;
+          setInvoices(prev => [{ ...invoice, amountPaid, status }, ...prev]);
+        }
       }
       setShowForm(false);
       setEditId(null);
       setItems([{ ...emptyItem }]);
       setFees([]);
-      loadData();
+      setShowInitPayment(false);
+      setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" });
     } finally {
       setSaving(false);
     }
   }
 
   async function updateStatus(id: string, status: string) {
+    const inv = invoices.find(i => i.id === id);
+    if (!inv) return;
+
+    // Block partially_paid if no valid payment records exist
+    if (status === "partially_paid") {
+      if ((inv.amountPaid ?? 0) <= 0 || (inv.amountPaid ?? 0) >= inv.total) {
+        alert("Cannot set to Partially Paid: payment records must exist with a total greater than $0 and less than the invoice total.");
+        return;
+      }
+    }
+
+    // Warn before reverting to draft/sent — all payments will be deleted
+    if ((status === "draft" || status === "sent") &&
+        (inv.status === "paid" || inv.status === "partially_paid")) {
+      const ok = confirm(
+        `Changing to "${status}" will permanently delete all payment records for this invoice. Are you sure?`
+      );
+      if (!ok) return;
+    }
+
     setUpdatingStatusId(id);
-    await fetch(`/api/invoices/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-    await loadData();
+    const res = await fetch(`/api/invoices/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    if (res.ok) {
+      const updated = await res.json();
+      const amountPaid = (status === "draft" || status === "sent") ? 0 : (inv.amountPaid ?? 0);
+      patchInvoice({ ...updated, amountPaid });
+      // Clear payments list if the detail modal is open for this invoice
+      if (viewInvoice?.id === id && (status === "draft" || status === "sent")) {
+        setPayments([]);
+      }
+    }
     setUpdatingStatusId(null);
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t("invoices.delete_confirm"))) return;
     setDeletingId(id);
-    await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     setDeletingId(null);
-    loadData();
+    if (res.ok) setInvoices(prev => prev.filter(inv => inv.id !== id));
   }
 
   function openEdit(inv: Invoice) {
@@ -346,9 +400,23 @@ export default function InvoicesPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    const fromDate = filterFromDate ? new Date(filterFromDate + "T00:00:00Z") : null;
+    const toDate = filterToDate ? new Date(filterToDate + "T23:59:59Z") : null;
+
+    return invoices.filter(inv => {
+      if (q && !inv.number.toLowerCase().includes(q) && !inv.client.name.toLowerCase().includes(q)) return false;
+      if (filterStatus && inv.status !== filterStatus) return false;
+      if (fromDate && new Date(inv.date) < fromDate) return false;
+      if (toDate && new Date(inv.date) > toDate) return false;
+      return true;
+    });
+  }, [invoices, search, filterStatus, filterFromDate, filterToDate]);
+
   const sortedInvoices = useMemo(() => {
-    if (!sortField) return invoices;
-    return [...invoices].sort((a, b) => {
+    if (!sortField) return filtered;
+    return [...filtered].sort((a, b) => {
       let va: string | number = "";
       let vb: string | number = "";
       if (sortField === "number") { va = a.number.toLowerCase(); vb = b.number.toLowerCase(); }
@@ -361,7 +429,7 @@ export default function InvoicesPage() {
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [invoices, sortField, sortDir]);
+  }, [filtered, sortField, sortDir]);
 
   const subtotal = Math.max(0, items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0));
   const discountPct = parseFloat(form.discount) || 0;
@@ -378,19 +446,67 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> {t("invoices.add")}
           </button>
         )}
       </div>
 
+      {/* Search & Filter Bar */}
+      <div className="mb-4 space-y-3">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t("common.search")}
+            className="w-full pl-9 pr-3 py-2 bg-dark-card border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-accent focus:border-accent"
+          />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+            <option value="">{t("common.all_statuses")}</option>
+            <option value="draft">{t("status.draft")}</option>
+            <option value="sent">{t("status.sent")}</option>
+            <option value="partially_paid">Partially Paid</option>
+            <option value="paid">{t("status.paid")}</option>
+            <option value="overdue">{t("status.overdue")}</option>
+          </select>
+          <div>
+            <input type="date" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} title={t("reports.from")} className="w-full px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
+          </div>
+          <div>
+            <input type="date" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} title={t("reports.to")} className="w-full px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
+          </div>
+          {(search || filterStatus || filterFromDate || filterToDate) && (
+            <button
+              onClick={() => {
+                setSearch("");
+                setFilterStatus("");
+                setFilterFromDate("");
+                setFilterToDate("");
+              }}
+              className="px-3 py-2 bg-dark-card border border-dark-border text-text-secondary rounded-lg text-sm hover:bg-dark-card-hover hover:text-text-primary transition"
+            >
+              {t("common.clear")}
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Stats */}
       {invoices.length > 0 && (() => {
-        const totalValue   = invoices.reduce((s, i) => s + i.total, 0);
-        const paidValue    = invoices.reduce((s, i) => s + (i.status === "paid" ? i.total : (i.amountPaid ?? 0)), 0);
-        const pendingValue = invoices.filter(i => i.status === "sent" || i.status === "overdue" || i.status === "partially_paid").reduce((s, i) => s + (i.total - (i.amountPaid ?? 0)), 0);
+        const totalValue    = invoices.reduce((s, i) => s + i.total, 0);
+        const fullyPaid     = invoices.filter(i => i.status === "paid");
+        const partiallyPaid = invoices.filter(i => i.status === "partially_paid");
+        const fullyPaidValue     = fullyPaid.reduce((s, i) => s + i.total, 0);
+        const partiallyPaidValue = partiallyPaid.reduce((s, i) => s + (i.amountPaid ?? 0), 0);
+        // Pending = remaining balance on every invoice that is not fully paid
+        const pendingValue  = invoices
+          .filter(i => i.status !== "paid")
+          .reduce((s, i) => s + (i.total - (i.amountPaid ?? 0)), 0);
         return (
-          <div className="grid grid-cols-3 gap-3 mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 sm:mb-6">
             <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
               <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
                 {currencySymbol}{fmtAmt(totalValue)}
@@ -398,14 +514,25 @@ export default function InvoicesPage() {
               </div>
               <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("field.total")}</p>
               <p className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{fmtCompact(totalValue)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</p>
             </div>
             <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
               <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                {currencySymbol}{fmtAmt(paidValue)}
+                {currencySymbol}{fmtAmt(fullyPaidValue)}
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
               </div>
               <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("status.paid")}</p>
-              <p className="text-lg sm:text-2xl font-bold text-emerald-400">{currencySymbol}{fmtCompact(paidValue)}</p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-400">{currencySymbol}{fmtCompact(fullyPaidValue)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">{fullyPaid.length} fully paid</p>
+            </div>
+            <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                {currencySymbol}{fmtAmt(partiallyPaidValue)}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+              </div>
+              <p className="text-xs text-text-muted uppercase font-medium mb-1">Partially Paid</p>
+              <p className="text-lg sm:text-2xl font-bold text-amber-400">{currencySymbol}{fmtCompact(partiallyPaidValue)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">{partiallyPaid.length} invoice{partiallyPaid.length !== 1 ? "s" : ""}</p>
             </div>
             <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
               <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
@@ -413,7 +540,8 @@ export default function InvoicesPage() {
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
               </div>
               <p className="text-xs text-text-muted uppercase font-medium mb-1">{t("dashboard.pending")}</p>
-              <p className="text-lg sm:text-2xl font-bold text-amber-400">{currencySymbol}{fmtCompact(pendingValue)}</p>
+              <p className="text-lg sm:text-2xl font-bold text-red-400">{currencySymbol}{fmtCompact(pendingValue)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">{invoices.filter(i => i.status !== "paid").length} outstanding</p>
             </div>
           </div>
         );
@@ -784,6 +912,58 @@ export default function InvoicesPage() {
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.notes")}</label>
                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               </div>
+
+              {/* Initial Payment (create only) */}
+              {!editId && (
+                <div className="border border-dark-border rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowInitPayment(!showInitPayment)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-dark-bg/50 hover:bg-dark-card-hover text-sm font-medium text-text-primary"
+                  >
+                    <span className="flex items-center gap-2">
+                      <CreditCard size={15} className="text-accent" />
+                      {t("clients.record_payment")}
+                      {showInitPayment && parseFloat(initPayment.amount) > 0 && (
+                        <span className="text-xs text-green-400 font-semibold ml-1">{currencySymbol}{initPayment.amount}</span>
+                      )}
+                    </span>
+                    <ChevronDown size={15} className={`text-text-muted transition-transform ${showInitPayment ? "rotate-180" : ""}`} />
+                  </button>
+                  {showInitPayment && (
+                    <div className="p-4 border-t border-dark-border space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">{t("clients.bulk_payment.amount")}</label>
+                          <input
+                            type="number" min="0.01" step="0.01"
+                            value={initPayment.amount}
+                            onChange={e => setInitPayment({ ...initPayment, amount: e.target.value })}
+                            className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">{t("field.date")}</label>
+                          <input type="date" value={initPayment.date} onChange={e => setInitPayment({ ...initPayment, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">{t("clients.bulk_payment.method")}</label>
+                          <select value={initPayment.method} onChange={e => setInitPayment({ ...initPayment, method: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+                            {PAYMENT_METHODS.map(m => <option key={m} value={m}>{t(`payments.method.${m}` as Parameters<typeof t>[0])}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">{t("clients.bulk_payment.reference")}</label>
+                          <input value={initPayment.reference} onChange={e => setInitPayment({ ...initPayment, reference: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => { setShowForm(false); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">

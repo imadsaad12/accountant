@@ -99,6 +99,9 @@ export default function SuppliersPage() {
   const [payAmount, setPayAmount] = useState("");
   const [payDate, setPayDate] = useState("");
   const [payRecording, setPayRecording] = useState(false);
+  // Initial payment when creating a bill
+  const [showInitBillPayment, setShowInitBillPayment] = useState(false);
+  const [initBillPayment, setInitBillPayment] = useState({ amount: "", date: "", method: "cash" });
 
   useEffect(() => { loadAll(); }, []);
   useEffect(() => { setPage(1); }, [search, filterCity, sortField, sortDir]);
@@ -164,12 +167,15 @@ export default function SuppliersPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("suppliers.delete_confirm"))) return;
+    setDeletingId(id);
     const res = await fetch(`/api/suppliers/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json();
       alert(data.error || t("common.error"));
+      setDeletingId(null);
       return;
     }
+    setDeletingId(null);
     loadAll();
   }
 
@@ -186,6 +192,8 @@ export default function SuppliersPage() {
   function openAddBill() {
     setEditingBill(null);
     setBillForm({ ...emptyBill, date: new Date().toISOString().split("T")[0] });
+    setShowInitBillPayment(false);
+    setInitBillPayment({ amount: "", date: new Date().toISOString().split("T")[0], method: "cash" });
     setShowBillForm(true);
   }
 
@@ -210,11 +218,20 @@ export default function SuppliersPage() {
       const payload = { ...billForm, supplierId: billsSupplier!.id };
       const url = editingBill ? `/api/supplier-bills/${editingBill.id}` : "/api/supplier-bills";
       const method = editingBill ? "PUT" : "POST";
-      await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!editingBill && res.ok && showInitBillPayment && parseFloat(initBillPayment.amount) > 0) {
+        const bill = await res.json();
+        await fetch(`/api/supplier-bills/${bill.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "pay", amount: parseFloat(initBillPayment.amount), date: initBillPayment.date || undefined, method: initBillPayment.method }),
+        });
+      }
       setShowBillForm(false);
-      const res = await fetch(`/api/supplier-bills?supplierId=${billsSupplier!.id}`);
-      setSupplierBills(res.ok ? await res.json() : []);
-      // Refresh aggregate bills too
+      setShowInitBillPayment(false);
+      setInitBillPayment({ amount: "", date: new Date().toISOString().split("T")[0], method: "cash" });
+      const refreshed = await fetch(`/api/supplier-bills?supplierId=${billsSupplier!.id}`);
+      setSupplierBills(refreshed.ok ? await refreshed.json() : []);
       const allRes = await fetch("/api/supplier-bills");
       setBills(allRes.ok ? await allRes.json() : []);
     } finally {
@@ -222,19 +239,6 @@ export default function SuppliersPage() {
     }
   }
 
-  async function toggleBillStatus(bill: SupplierBill) {
-    const newStatus = bill.status === "paid" ? "pending" : "paid";
-    const res = await fetch(`/api/supplier-bills/${bill.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setSupplierBills(prev => prev.map(b => b.id === bill.id ? updated : b));
-      setBills(prev => prev.map(b => b.id === bill.id ? updated : b));
-    }
-  }
 
   async function recordPayment(bill: SupplierBill, amount: number) {
     setPayRecording(true);
@@ -255,6 +259,8 @@ export default function SuppliersPage() {
   }
 
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
 
   async function deletePaymentRecord(paymentId: string) {
     setDeletingPaymentId(paymentId);
@@ -269,7 +275,9 @@ export default function SuppliersPage() {
 
   async function handleDeleteBill(id: string) {
     if (!confirm("Delete this bill?")) return;
+    setDeletingBillId(id);
     await fetch(`/api/supplier-bills/${id}`, { method: "DELETE" });
+    setDeletingBillId(null);
     setSupplierBills(prev => prev.filter(b => b.id !== id));
     setBills(prev => prev.filter(b => b.id !== id));
   }
@@ -483,7 +491,9 @@ export default function SuppliersPage() {
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => openEdit(supplier)} className="text-text-muted hover:text-accent p-1"><Pencil size={16} /></button>
-                      <button onClick={() => handleDelete(supplier.id)} className="text-text-muted hover:text-danger p-1 ml-1"><Trash2 size={16} /></button>
+                      <button onClick={() => handleDelete(supplier.id)} disabled={deletingId === supplier.id} className="text-text-muted hover:text-danger p-1 ml-1 disabled:opacity-40">
+                        {deletingId === supplier.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      </button>
                     </td>
                   )}
                 </tr>
@@ -578,6 +588,53 @@ export default function SuppliersPage() {
                       <option value="paid">Paid</option>
                     </select>
                   </div>
+                  {/* Initial Payment (create only) */}
+                  {!editingBill && (
+                    <div className="border border-dark-border rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setShowInitBillPayment(!showInitBillPayment)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-dark-input/30 hover:bg-dark-card-hover text-sm font-medium text-text-primary"
+                      >
+                        <span className="flex items-center gap-2">
+                          <CheckCircle2 size={15} className="text-emerald-400" />
+                          Record Payment Now
+                          {showInitBillPayment && parseFloat(initBillPayment.amount) > 0 && (
+                            <span className="text-xs text-green-400 font-semibold ml-1">{currencySymbol}{initBillPayment.amount}</span>
+                          )}
+                        </span>
+                        <ChevronDown size={15} className={`text-text-muted transition-transform ${showInitBillPayment ? "rotate-180" : ""}`} />
+                      </button>
+                      {showInitBillPayment && (
+                        <div className="p-4 border-t border-dark-border space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-text-secondary mb-1">Amount</label>
+                              <input
+                                type="number" min="0.01" step="0.01"
+                                value={initBillPayment.amount}
+                                onChange={e => setInitBillPayment({ ...initBillPayment, amount: e.target.value })}
+                                className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-text-secondary mb-1">Payment Date</label>
+                              <input type="date" value={initBillPayment.date} onChange={e => setInitBillPayment({ ...initBillPayment, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-text-secondary mb-1">Method</label>
+                              <select value={initBillPayment.method} onChange={e => setInitBillPayment({ ...initBillPayment, method: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+                                {["cash", "bank_transfer", "check", "card"].map(m => (
+                                  <option key={m} value={m}>{t(`payments.method.${m}` as Parameters<typeof t>[0])}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-3 justify-end pt-4">
                     <button type="button" onClick={() => setShowBillForm(false)} className="px-5 py-2 text-sm font-medium text-text-secondary bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-card-hover transition-colors">{t("common.cancel")}</button>
                     <button type="submit" disabled={billSaving} className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors">
@@ -643,11 +700,11 @@ export default function SuppliersPage() {
                                 <p className="text-base font-semibold text-text-primary">{bill.description}</p>
                                 <div className="flex flex-wrap gap-3 mt-2 text-sm text-text-muted">
                                   <span className="flex items-center gap-1">
-                                    📅 {new Date(bill.date).toLocaleDateString()}
+                                    📅 {new Date(bill.date).toLocaleDateString("en-GB")}
                                   </span>
                                   {bill.dueDate && (
                                     <span className="flex items-center gap-1">
-                                      ⏰ Due {new Date(bill.dueDate).toLocaleDateString()}
+                                      ⏰ Due {new Date(bill.dueDate).toLocaleDateString("en-GB")}
                                     </span>
                                   )}
                                   {bill.reference && (
@@ -680,7 +737,7 @@ export default function SuppliersPage() {
                                     <p className="text-xs font-semibold text-text-secondary uppercase">Payment Records:</p>
                                     {bill.payments.map(p => (
                                       <div key={p.id} className="flex items-center justify-between text-sm bg-dark-input/30 rounded-lg px-3 py-2">
-                                        <span className="text-text-muted">{new Date(p.date).toLocaleDateString()} · {p.method}</span>
+                                        <span className="text-text-muted">{new Date(p.date).toLocaleDateString("en-GB")} · {p.method}</span>
                                         <div className="flex items-center gap-2">
                                           <span className="text-emerald-400 font-semibold">{currencySymbol}{fmtAmt(p.amount)}</span>
                                           {canEdit && (
@@ -722,7 +779,14 @@ export default function SuppliersPage() {
                                 ><CheckCircle2 size={16} /> Record Payment</button>
                               )}
                               <button onClick={() => openEditBill(bill)} className="p-2 text-text-muted hover:text-accent hover:bg-dark-input rounded-lg transition-colors" title="Edit bill"><Pencil size={18} /></button>
-                              <button onClick={() => handleDeleteBill(bill.id)} className="p-2 text-text-muted hover:text-danger hover:bg-dark-input rounded-lg transition-colors" title="Delete bill"><Trash2 size={18} /></button>
+                              <button
+                                onClick={() => handleDeleteBill(bill.id)}
+                                disabled={deletingBillId === bill.id}
+                                className="p-2 text-text-muted hover:text-danger hover:bg-dark-input rounded-lg transition-colors disabled:opacity-40"
+                                title="Delete bill"
+                              >
+                                {deletingBillId === bill.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                              </button>
                             </div>
                           )}
                         </div>

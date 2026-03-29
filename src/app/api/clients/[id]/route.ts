@@ -4,15 +4,65 @@ import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "clients")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const client = await prisma.client.findFirst({ where: { id, organizationId: session.organizationId }, include: { invoices: true } });
+  const { searchParams } = new URL(req.url);
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const fromDate = from ? new Date(from + "T00:00:00Z") : undefined;
+  const toDate = to ? new Date(to + "T23:59:59Z") : undefined;
+
+  const client = await prisma.client.findFirst({
+    where: { id, organizationId: session.organizationId },
+    include: {
+      invoices: {
+        where: {
+          ...(fromDate || toDate ? { date: { ...(fromDate && { gte: fromDate }), ...(toDate && { lte: toDate }) } } : {}),
+        },
+        orderBy: { date: "asc" },
+        select: {
+          id: true,
+          number: true,
+          date: true,
+          dueDate: true,
+          status: true,
+          total: true,
+          payments: { select: { amount: true } },
+        },
+      },
+    },
+  });
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(client);
+
+  const invoices = client.invoices.map(inv => {
+    const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+    return {
+      id: inv.id,
+      number: inv.number,
+      date: inv.date,
+      dueDate: inv.dueDate,
+      status: inv.status,
+      total: inv.total,
+      paid: parseFloat(paid.toFixed(2)),
+      pending: parseFloat((inv.total - paid).toFixed(2)),
+    };
+  });
+
+  const totalInvoiced = invoices.reduce((s, inv) => s + inv.total, 0);
+  const totalPaid = invoices.reduce((s, inv) => s + inv.paid, 0);
+
+  return NextResponse.json({
+    ...client,
+    invoices,
+    totalInvoiced: parseFloat(totalInvoiced.toFixed(2)),
+    totalPaid: parseFloat(totalPaid.toFixed(2)),
+    totalPending: parseFloat((totalInvoiced - totalPaid).toFixed(2)),
+    invoiceCount: invoices.length,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -24,6 +24,17 @@ export async function POST(req: NextRequest) {
   if (!canEdit(session.permissions, "salary_advances")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const data = await req.json();
+
+  // Validate: advance cannot exceed employee's salary
+  const employee = await prisma.employee.findFirst({
+    where: { id: data.employeeId, organizationId: session.organizationId },
+    select: { salary: true },
+  });
+  if (!employee) return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+  if (parseFloat(data.amount) > employee.salary) {
+    return NextResponse.json({ error: `Advance amount cannot exceed employee salary (${employee.salary})` }, { status: 400 });
+  }
+
   const advance = await prisma.salaryAdvance.create({
     data: {
       employeeId: data.employeeId,

@@ -13,6 +13,8 @@ interface Employee {
   firstName: string;
   lastName: string;
   position: string;
+  salary: number;
+  salaryPeriod: string;
 }
 
 interface SalaryAdvance {
@@ -73,18 +75,24 @@ export default function SalaryAdvancesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const selectedEmployee = employees.find(e => e.id === form.employeeId) ?? null;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await fetch("/api/salary-advances", {
+      const res = await fetch("/api/salary-advances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
+      if (!res.ok) { setSaving(false); return; }
+      const created: SalaryAdvance = await res.json();
+      setAdvances(prev => [created, ...prev]);
       setShowForm(false);
       setForm({ ...emptyForm, date: todayInTz(tz) });
-      loadData();
     } finally {
       setSaving(false);
     }
@@ -94,19 +102,21 @@ export default function SalaryAdvancesPage() {
     if (adv.status === "paid") return;
     setTogglingId(adv.id);
     const newStatus = adv.status === "pending" ? "returned" : "pending";
-    await fetch(`/api/salary-advances/${adv.id}`, {
+    const res = await fetch(`/api/salary-advances/${adv.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
     setTogglingId(null);
-    loadData();
+    if (res.ok) setAdvances(prev => prev.map(a => a.id === adv.id ? { ...a, status: newStatus } : a));
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t("salary_advances.delete_confirm"))) return;
-    await fetch(`/api/salary-advances/${id}`, { method: "DELETE" });
-    loadData();
+    setDeletingId(id);
+    const res = await fetch(`/api/salary-advances/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    if (res.ok) setAdvances(prev => prev.filter(a => a.id !== id));
   }
 
   const totalAdvanced  = advances.reduce((s, a) => s + a.amount, 0);
@@ -187,17 +197,26 @@ export default function SalaryAdvancesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">{t("payments.amount")} *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-sm font-medium text-text-secondary">{t("payments.amount")} *</label>
+                      {selectedEmployee && (
+                        <span className="text-xs text-text-muted">max {sym}{Math.floor(selectedEmployee.salary)}</span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       step="0.01"
                       min="0.01"
+                      max={selectedEmployee ? selectedEmployee.salary : undefined}
                       required
                       value={form.amount}
                       onChange={e => setForm({ ...form, amount: e.target.value })}
                       placeholder="0.00"
                       className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
                     />
+                    {selectedEmployee && form.amount && parseFloat(form.amount) > selectedEmployee.salary && (
+                      <p className="text-xs text-red-400 mt-1">Cannot exceed employee&apos;s salary ({sym}{fmtAmt(selectedEmployee.salary)})</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.date")} *</label>
@@ -224,7 +243,11 @@ export default function SalaryAdvancesPage() {
                   <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">
                     {t("common.cancel")}
                   </button>
-                  <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  <button
+                    type="submit"
+                    disabled={saving || (!!selectedEmployee && !!form.amount && parseFloat(form.amount) > selectedEmployee.salary)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60"
+                  >
                     {saving && <Loader2 size={14} className="animate-spin" />}
                     {t("common.save")}
                   </button>
@@ -301,8 +324,8 @@ export default function SalaryAdvancesPage() {
                     </td>
                     {canEdit && (
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => handleDelete(adv.id)} className="text-text-muted hover:text-danger p-1">
-                          <Trash2 size={15} />
+                        <button onClick={() => handleDelete(adv.id)} disabled={deletingId === adv.id} className="text-text-muted hover:text-danger p-1 disabled:opacity-50">
+                          {deletingId === adv.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                         </button>
                       </td>
                     )}

@@ -86,6 +86,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json(invoice);
   }
 
+  // Validate partially_paid: must have payments > 0 and < total
+  if (invoiceData.status === "partially_paid") {
+    const agg = await prisma.payment.aggregate({ where: { invoiceId: id }, _sum: { amount: true } });
+    const paid = agg._sum.amount ?? 0;
+    if (paid <= 0 || paid >= existing.total) {
+      return NextResponse.json({ error: "Cannot set to Partially Paid: recorded payments must be greater than 0 and less than the invoice total." }, { status: 400 });
+    }
+  }
+
+  // When reverting to draft/sent, delete all payment records
+  if ((invoiceData.status === "draft" || invoiceData.status === "sent") &&
+      (existing.status === "paid" || existing.status === "partially_paid")) {
+    await prisma.payment.deleteMany({ where: { invoiceId: id, organizationId: session.organizationId } });
+  }
+
   const invoice = await prisma.invoice.update({
     where: { id },
     data: invoiceData,
