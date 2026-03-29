@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -37,6 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 
+  cacheInvalidate(session.organizationId, "employees", "dashboard");
   await logAudit({ session, action: "update", entity: "employee", entityId: employee.id, description: `Updated employee "${employee.firstName} ${employee.lastName}"` });
   return NextResponse.json(employee);
 }
@@ -52,6 +54,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   await prisma.expense.deleteMany({ where: { organizationId: session.organizationId, category: "salaries", reference: id } });
   await prisma.employee.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "employees", "dashboard");
   await logAudit({ session, action: "delete", entity: "employee", entityId: id, description: `Deleted employee "${employee.firstName} ${employee.lastName}"` });
   return NextResponse.json({ success: true });
 }

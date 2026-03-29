@@ -3,11 +3,16 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET() {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "salary_advances")) return NextResponse.json({ error: "No permission" }, { status: 403 });
+
+  const cacheKey = session.organizationId + ":salary-advances";
+  const cached = cacheGet<unknown[]>(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const advances = await prisma.salaryAdvance.findMany({
     where: { organizationId: session.organizationId },
@@ -15,6 +20,7 @@ export async function GET() {
     orderBy: { date: "desc" },
   });
 
+  cacheSet(cacheKey, advances, 30_000);
   return NextResponse.json(advances);
 }
 
@@ -47,6 +53,7 @@ export async function POST(req: NextRequest) {
     include: { employee: { select: { id: true, firstName: true, lastName: true, position: true } } },
   });
 
+  cacheInvalidate(session.organizationId, "salary-advances", "dashboard");
   await logAudit({
     session,
     action: "create",

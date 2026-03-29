@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -43,6 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 
+  cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
   await logAudit({ session, action: "update", entity: "supplier_bill", entityId: bill.id, description: `Updated bill "${bill.description}"` });
   return NextResponse.json(bill);
 }
@@ -84,6 +86,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         },
       }),
     ]);
+    cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
     await logAudit({ session, action: "update", entity: "supplier_bill", entityId: id, description: `Recorded payment of ${payAmount} on ${payDate.toISOString().split("T")[0]} for bill "${existing.description}"` });
     const updatedBill = await prisma.supplierBill.findFirst({ where: { id }, include: { payments: { orderBy: { date: "asc" } } } });
     return NextResponse.json(updatedBill);
@@ -92,6 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Reset payments action
   if (body.action === "reset") {
     const bill = await prisma.supplierBill.update({ where: { id }, data: { amountPaid: 0, status: "pending" } });
+    cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
     await logAudit({ session, action: "update", entity: "supplier_bill", entityId: id, description: `Reset payments for bill "${existing.description}"` });
     return NextResponse.json(bill);
   }
@@ -100,6 +104,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.status) {
     const amountPaid = body.status === "paid" ? existing.amount : existing.amountPaid;
     const bill = await prisma.supplierBill.update({ where: { id }, data: { status: body.status, amountPaid } });
+    cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
     await logAudit({ session, action: "update", entity: "supplier_bill", entityId: id, description: `Marked bill as ${body.status}` });
     return NextResponse.json(bill);
   }
@@ -117,6 +122,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!bill) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.supplierBill.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
   await logAudit({ session, action: "delete", entity: "supplier_bill", entityId: id, description: `Deleted bill "${bill.description}"` });
   return NextResponse.json({ success: true });
 }

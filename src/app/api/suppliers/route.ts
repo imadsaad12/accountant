@@ -3,16 +3,22 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET() {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "suppliers")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
+  const cacheKey = session.organizationId + ":suppliers";
+  const cached = cacheGet<unknown[]>(cacheKey);
+  if (cached) return NextResponse.json(cached);
+
   const suppliers = await prisma.supplier.findMany({
     where: { organizationId: session.organizationId },
     orderBy: { createdAt: "desc" },
   });
+  cacheSet(cacheKey, suppliers, 120_000);
   return NextResponse.json(suppliers);
 }
 
@@ -30,6 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supplier = await prisma.supplier.create({ data: { ...data, organizationId } });
+  cacheInvalidate(organizationId, "suppliers");
   await logAudit({ session, action: "create", entity: "supplier", entityId: supplier.id, description: `Created supplier "${supplier.name}"` });
   return NextResponse.json(supplier, { status: 201 });
 }

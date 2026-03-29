@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -33,6 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const supplier = await prisma.supplier.update({ where: { id }, data });
+  cacheInvalidate(session.organizationId, "suppliers");
   await logAudit({ session, action: "update", entity: "supplier", entityId: supplier.id, description: `Updated supplier "${supplier.name}"` });
   return NextResponse.json(supplier);
 }
@@ -47,6 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!supplier) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.supplier.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "suppliers");
   await logAudit({ session, action: "delete", entity: "supplier", entityId: id, description: `Deleted supplier "${supplier.name}"` });
   return NextResponse.json({ success: true });
 }

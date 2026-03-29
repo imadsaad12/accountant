@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -63,6 +64,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
+  cacheInvalidate(session.organizationId, "products", "dashboard");
   await logAudit({ session, action: "update", entity: "product", entityId: product.id, description: `Updated product "${product.name}"` });
   return NextResponse.json(product);
 }
@@ -89,6 +91,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: `Cannot delete "${product.name}" — it is used as a component in ${product.usedIn.length} composite product(s).` }, { status: 409 });
 
   await prisma.product.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "products", "dashboard");
   await logAudit({ session, action: "delete", entity: "product", entityId: id, description: `Deleted product "${product.name}"` });
   return NextResponse.json({ success: true });
 }

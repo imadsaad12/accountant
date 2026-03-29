@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -36,6 +37,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     include: { payments: { orderBy: { date: "asc" } } },
   });
 
+  cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
   await logAudit({ session, action: "delete", entity: "supplier_bill_payment", entityId: id, description: `Deleted payment of ${payment.amount} from bill` });
   return NextResponse.json(updatedBill);
 }

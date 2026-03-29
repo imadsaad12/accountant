@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { cacheGet, cacheSet } from "@/lib/server-cache";
 
 function calcDays(start: Date, end: Date): number {
   return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -29,6 +30,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const orgId = session.organizationId;
+
+  const cached = cacheGet<ReturnType<typeof NextResponse.json>>(orgId + ":dashboard");
+  if (cached) return NextResponse.json(cached);
+
   const now = new Date();
 
   const monthStart = new Date();
@@ -138,7 +143,7 @@ export async function GET() {
     return { month: label, revenue: parseFloat(revenue.toFixed(2)) };
   });
 
-  return NextResponse.json({
+  const payload = {
     clientCount,
     productCount,
     employeeCount,
@@ -152,5 +157,8 @@ export async function GET() {
     newClientsThisMonth,
     newInvoicesThisMonth,
     revenueTrend,
-  });
+  };
+
+  cacheSet(orgId + ":dashboard", payload, 60_000);
+  return NextResponse.json(payload);
 }

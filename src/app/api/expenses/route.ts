@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 // Shared helper: compute calendar-accurate months between two UTC dates
 // Uses actual days-in-month (28/29/30/31) instead of fixed 30
@@ -322,6 +323,7 @@ export async function POST(req: NextRequest) {
     include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } }, supplier: { select: { id: true, name: true } } },
   });
 
+  cacheInvalidate(session.organizationId, "expenses", "dashboard");
   await logAudit({
     session,
     action: "create",

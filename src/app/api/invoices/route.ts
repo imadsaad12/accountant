@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(req: NextRequest) {
   const session = await getSessionWithPermissions();
@@ -14,6 +15,13 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
   const status = searchParams.get("status");
   const clientId = searchParams.get("clientId");
+
+  // Only cache unfiltered list
+  const cacheKey = session.organizationId + ":invoices";
+  if (!from && !to && !status && !clientId) {
+    const cached = cacheGet<unknown[]>(cacheKey);
+    if (cached) return NextResponse.json(cached);
+  }
 
   const where: Record<string, unknown> = { organizationId: session.organizationId };
   if (from || to) {
@@ -34,11 +42,13 @@ export async function GET(req: NextRequest) {
       payments: { select: { amount: true } },
     },
   });
-  return NextResponse.json(invoices.map(inv => ({
+  const result = invoices.map(inv => ({
     ...inv,
     amountPaid: inv.payments.reduce((s, p) => s + p.amount, 0),
     payments: undefined,
-  })));
+  }));
+  if (!from && !to && !status && !clientId) cacheSet(cacheKey, result, 30_000);
+  return NextResponse.json(result);
 }
 
 export async function POST(req: NextRequest) {
@@ -164,6 +174,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  cacheInvalidate(session.organizationId, "invoices", "clients", "dashboard", "products");
   await logAudit({ session, action: "create", entity: "invoice", entityId: invoice.id, description: `Created invoice ${invoice.number} for ${invoice.client.name} - $${total.toFixed(2)}` });
   return NextResponse.json(invoice, { status: 201 });
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -23,6 +24,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { employee: { select: { id: true, firstName: true, lastName: true, position: true } } },
   });
 
+  cacheInvalidate(session.organizationId, "salary-advances", "dashboard");
   await logAudit({
     session,
     action: "update",
@@ -47,6 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!advance) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.salaryAdvance.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "salary-advances", "dashboard");
   await logAudit({
     session,
     action: "delete",

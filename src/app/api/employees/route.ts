@@ -3,11 +3,16 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET() {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "employees")) return NextResponse.json({ error: "No permission" }, { status: 403 });
+
+  const cacheKey = session.organizationId + ":employees";
+  const cached = cacheGet<unknown[]>(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const [employees, advances] = await Promise.all([
     prisma.employee.findMany({
@@ -24,6 +29,7 @@ export async function GET() {
   const advanceMap = new Map(advances.map(a => [a.employeeId, a._sum.amount ?? 0]));
   const result = employees.map(emp => ({ ...emp, outstandingAdvance: advanceMap.get(emp.id) ?? 0 }));
 
+  cacheSet(cacheKey, result, 120_000);
   return NextResponse.json(result);
 }
 
@@ -46,6 +52,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  cacheInvalidate(session.organizationId, "employees", "dashboard");
   await logAudit({ session, action: "create", entity: "employee", entityId: employee.id, description: `Created employee "${employee.firstName} ${employee.lastName}" (${employee.position})` });
   return NextResponse.json(employee, { status: 201 });
 }

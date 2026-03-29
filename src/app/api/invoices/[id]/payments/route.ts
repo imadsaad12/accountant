@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canEdit, canView } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await prisma.invoice.update({ where: { id }, data: { status: "partially_paid" } });
   }
 
+  cacheInvalidate(session.organizationId, "invoices", "clients", "dashboard");
   await logAudit({
     session,
     action: "create",
@@ -100,5 +102,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
   }
 
+  cacheInvalidate(session.organizationId, "invoices", "clients", "dashboard");
   return NextResponse.json({ ok: true });
 }

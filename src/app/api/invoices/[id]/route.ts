@@ -5,6 +5,7 @@ import { getSessionWithPermissions } from "@/lib/auth";
 // import { sendInvoiceEmail } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -82,6 +83,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         fees: true,
       },
     });
+    cacheInvalidate(session.organizationId, "invoices", "clients", "dashboard");
     await logAudit({ session, action: "update", entity: "invoice", entityId: invoice.id, description: `Updated invoice ${invoice.number}` });
     return NextResponse.json(invoice);
   }
@@ -120,6 +122,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const statusChanged = invoiceData.status ? `status to "${invoiceData.status}"` : "";
+  cacheInvalidate(session.organizationId, "invoices", "clients", "dashboard");
   await logAudit({ session, action: "update", entity: "invoice", entityId: invoice.id, description: `Updated invoice ${invoice.number}${statusChanged ? ` - changed ${statusChanged}` : ""}` });
 
   // TODO: Re-enable email sending when ready
@@ -173,6 +176,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   }
 
   await prisma.invoice.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "invoices", "clients", "dashboard", "products");
   await logAudit({ session, action: "delete", entity: "invoice", entityId: id, description: `Deleted invoice ${invoice.number}` });
   return NextResponse.json({ success: true });
 }

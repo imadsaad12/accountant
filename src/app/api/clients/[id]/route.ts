@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -87,6 +88,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const client = await prisma.client.update({ where: { id }, data });
+  cacheInvalidate(session.organizationId, "clients", "dashboard");
   await logAudit({ session, action: "update", entity: "client", entityId: client.id, description: `Updated client "${client.name}"` });
   return NextResponse.json(client);
 }
@@ -104,6 +106,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: `Cannot delete this client — they have ${client._count.invoices} invoice(s) on record. Delete or reassign the invoices first.` }, { status: 409 });
 
   await prisma.client.delete({ where: { id } });
+  cacheInvalidate(session.organizationId, "clients", "dashboard");
   await logAudit({ session, action: "delete", entity: "client", entityId: id, description: `Deleted client "${client.name}"` });
   return NextResponse.json({ success: true });
 }

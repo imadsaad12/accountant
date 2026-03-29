@@ -3,11 +3,16 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET() {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!canView(session.permissions, "products")) return NextResponse.json({ error: "No permission" }, { status: 403 });
+
+  const cacheKey = session.organizationId + ":products";
+  const cached = cacheGet<unknown[]>(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const products = await prisma.product.findMany({
     where: { organizationId: session.organizationId },
@@ -19,6 +24,7 @@ export async function GET() {
       },
     },
   });
+  cacheSet(cacheKey, products, 120_000);
   return NextResponse.json(products);
 }
 
@@ -57,6 +63,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  cacheInvalidate(session.organizationId, "products", "dashboard");
   await logAudit({ session, action: "create", entity: "product", entityId: product.id, description: `Created ${isComposite ? "composite " : ""}product "${product.name}" (SKU: ${product.sku})` });
   return NextResponse.json(product, { status: 201 });
 }

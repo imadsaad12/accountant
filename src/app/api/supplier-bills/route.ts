@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(req: NextRequest) {
   const session = await getSessionWithPermissions();
@@ -12,6 +13,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const supplierId = searchParams.get("supplierId");
 
+  const cacheKey = session.organizationId + ":supplier-bills";
+  if (!supplierId) {
+    const cached = cacheGet<unknown[]>(cacheKey);
+    if (cached) return NextResponse.json(cached);
+  }
+
   const where: Record<string, unknown> = { organizationId: session.organizationId };
   if (supplierId) where.supplierId = supplierId;
 
@@ -20,6 +27,7 @@ export async function GET(req: NextRequest) {
     orderBy: { date: "desc" },
     include: { supplier: { select: { id: true, name: true } }, payments: { orderBy: { date: "asc" } } },
   });
+  if (!supplierId) cacheSet(cacheKey, bills, 30_000);
   return NextResponse.json(bills);
 }
 
@@ -44,6 +52,7 @@ export async function POST(req: NextRequest) {
     include: { supplier: { select: { id: true, name: true } } },
   });
 
+  cacheInvalidate(session.organizationId, "supplier-bills", "dashboard");
   await logAudit({ session, action: "create", entity: "supplier_bill", entityId: bill.id, description: `Added bill "${bill.description}" for supplier` });
   return NextResponse.json(bill, { status: 201 });
 }

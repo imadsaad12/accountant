@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { cacheGet, cacheSet, cacheInvalidate } from "@/lib/server-cache";
 
 export async function GET(req: NextRequest) {
   const session = await getSessionWithPermissions();
@@ -14,6 +15,13 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
   const fromDate = from ? new Date(from + "T00:00:00Z") : undefined;
   const toDate = to ? new Date(to + "T23:59:59Z") : undefined;
+
+  // Only cache unfiltered list (initial page load)
+  const cacheKey = session.organizationId + ":clients";
+  if (!from && !to) {
+    const cached = cacheGet<unknown[]>(cacheKey);
+    if (cached) return NextResponse.json(cached);
+  }
 
   const clients = await prisma.client.findMany({
     where: { organizationId: session.organizationId },
@@ -56,6 +64,7 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  if (!from && !to) cacheSet(cacheKey, result, 30_000);
   return NextResponse.json(result);
 }
 
@@ -77,6 +86,7 @@ export async function POST(req: NextRequest) {
   }
 
   const client = await prisma.client.create({ data: { ...data, organizationId } });
+  cacheInvalidate(organizationId, "clients", "dashboard");
   await logAudit({ session, action: "create", entity: "client", entityId: client.id, description: `Created client "${client.name}"` });
   return NextResponse.json(client, { status: 201 });
 }
