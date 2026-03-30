@@ -22,6 +22,7 @@ import {
   BarChart2,
   X,
   Banknote,
+  HelpCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { canView, type Permissions } from "@/lib/permissions";
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/ai-assistant", labelKey: "nav.ai", icon: Mic, feature: "ai" as const },
   { href: "/dashboard/activity-log", labelKey: "nav.activity", icon: ScrollText, feature: "activity_log" as const },
   { href: "/dashboard/tax", labelKey: "nav.tax", icon: Receipt, feature: "tax" as const },
+  { href: "/how-it-works", labelKey: "nav.how_it_works", icon: HelpCircle, feature: "dashboard" as const },
 ];
 
 export default function Sidebar({

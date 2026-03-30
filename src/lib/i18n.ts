@@ -19,6 +19,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.salary_advances": "Salary Advances",
     "nav.accounts": "Accounts",
     "nav.reports": "Reports",
+    "nav.how_it_works": "How It Works",
 
     // Salary advances
     "salary_advances.title": "Salary Advances",
@@ -598,6 +599,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.salary_advances": "Avances sur Salaire",
     "nav.accounts": "Comptes",
     "nav.reports": "Rapports",
+    "nav.how_it_works": "Comment Ça Marche",
 
     "salary_advances.title": "Avances sur Salaire",
     "salary_advances.subtitle": "Suivre les avances accordées aux employés et leur statut de remboursement",
@@ -1136,6 +1138,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.salary_advances": "السلف",
     "nav.accounts": "الحسابات",
     "nav.reports": "التقارير",
+    "nav.how_it_works": "كيفية العمل",
 
     "salary_advances.title": "سلف الرواتب",
     "salary_advances.subtitle": "تتبع السلف الممنوحة للموظفين وحالة السداد",
