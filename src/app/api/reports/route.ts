@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.invoice.findMany({
         where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
-        select: { total: true, items: { select: { description: true, quantity: true, unitPrice: true, unitCost: true, total: true } } },
+        select: { total: true, status: true, items: { select: { description: true, quantity: true, unitPrice: true, unitCost: true, total: true } }, payments: { select: { amount: true } } },
       }),
     ]);
 
@@ -211,6 +211,10 @@ export async function GET(req: NextRequest) {
     const totalSalesRevenue = periodInvoices.reduce((s, inv) => s + inv.total, 0);
     const totalSalesCogs = periodInvoices.reduce((s, inv) => s + inv.items.reduce((is, item) => is + (item.unitCost ?? 0) * item.quantity, 0), 0);
     const totalSalesGrossProfit = totalSalesRevenue - totalSalesCogs;
+    const totalSalesPaid = periodInvoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+    const totalSalesPending = totalSalesRevenue - totalSalesPaid;
+    const paidInvoiceCount = periodInvoices.filter(inv => inv.status === "paid").length;
+    const partialInvoiceCount = periodInvoices.filter(inv => inv.status === "partially_paid").length;
 
     const productSalesMap: Record<string, { description: string; quantity: number; unitPrice: number; total: number }> = {};
     for (const inv of periodInvoices) {
@@ -243,6 +247,10 @@ export async function GET(req: NextRequest) {
         cogs: parseFloat(totalSalesCogs.toFixed(2)),
         grossProfit: parseFloat(totalSalesGrossProfit.toFixed(2)),
         invoiceCount: periodInvoices.length,
+        totalPaid: parseFloat(totalSalesPaid.toFixed(2)),
+        totalPending: parseFloat(totalSalesPending.toFixed(2)),
+        paidCount: paidInvoiceCount,
+        partialCount: partialInvoiceCount,
       },
       mostSoldProducts,
     });

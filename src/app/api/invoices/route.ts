@@ -164,6 +164,36 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await logAudit({ session, action: "create", entity: "invoice", entityId: invoice.id, description: `Created invoice ${invoice.number} for ${invoice.client.name} - $${total.toFixed(2)}` });
-  return NextResponse.json(invoice, { status: 201 });
+  // Auto-apply client balance if available
+  let balanceApplied = 0;
+  let finalStatus = invoice.status;
+  const client = await prisma.client.findUnique({ where: { id: invoiceData.clientId }, select: { balance: true } });
+  if (client && client.balance > 0) {
+    balanceApplied = parseFloat(Math.min(client.balance, total).toFixed(2));
+    finalStatus = balanceApplied >= total - 0.001 ? "paid" : "partially_paid";
+
+    await prisma.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        amount: balanceApplied,
+        date: new Date(),
+        method: "balance",
+        note: "Auto-applied from client balance",
+        organizationId: session.organizationId,
+      },
+    });
+
+    await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: { status: finalStatus },
+    });
+
+    await prisma.client.update({
+      where: { id: invoiceData.clientId },
+      data: { balance: { decrement: balanceApplied } },
+    });
+  }
+
+  await logAudit({ session, action: "create", entity: "invoice", entityId: invoice.id, description: `Created invoice ${invoice.number} for ${invoice.client.name} - $${total.toFixed(2)}${balanceApplied > 0 ? `. $${balanceApplied.toFixed(2)} auto-applied from client balance.` : ""}` });
+  return NextResponse.json({ ...invoice, status: finalStatus, balanceApplied, amountPaid: balanceApplied }, { status: 201 });
 }

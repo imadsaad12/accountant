@@ -227,8 +227,14 @@ export default function StockPage() {
         setFormError(d.error || t("common.error"));
         return;
       }
+      const data = await res.json();
+      if (editing) {
+        const cat = form.categoryId ? categories.find(c => c.id === form.categoryId) ?? null : null;
+        setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...data, category: cat } : p));
+      } else {
+        setProducts(prev => [data, ...prev]);
+      }
       setShowForm(false);
-      loadData();
     } finally {
       setSaving(false);
     }
@@ -238,18 +244,23 @@ export default function StockPage() {
     if (!confirm(t("stock.delete_confirm"))) return;
     const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
     if (!res.ok) { const d = await res.json(); alert(d.error || t("common.error")); return; }
-    loadData();
+    setProducts(prev => prev.filter(p => p.id !== id));
   }
 
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCategory }) });
     if (!res.ok) return;
+    const cat = await res.json();
+    setCategories(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)));
     setNewCategory("");
     setShowCategoryForm(false);
-    const [prodRes, catRes] = await Promise.all([fetch("/api/products"), fetch("/api/categories")]);
-    setProducts(await prodRes.json());
-    setCategories(await catRes.json());
+  }
+
+  async function handleDeleteCategory(id: string) {
+    const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json(); alert(d.error || t("common.error")); return; }
+    setCategories(prev => prev.filter(c => c.id !== id));
   }
 
   function toggleSort(field: SortField) {
@@ -353,6 +364,18 @@ export default function StockPage() {
               <h2 className="text-lg font-semibold text-text-primary">{t("stock.new_category")}</h2>
               <button onClick={() => setShowCategoryForm(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
+            {categories.length > 0 && (
+              <div className="mb-4 max-h-40 overflow-y-auto space-y-1">
+                {categories.map(c => (
+                  <div key={c.id} className="flex items-center justify-between px-3 py-2 bg-dark-bg rounded-lg">
+                    <span className="text-sm text-text-primary">{c.name}</span>
+                    <button type="button" onClick={() => handleDeleteCategory(c.id)} className="text-text-muted hover:text-red-400 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <form onSubmit={handleAddCategory} className="space-y-4">
               <input required value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder={t("stock.category_placeholder")} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               <div className="flex gap-3 justify-end">
@@ -487,7 +510,9 @@ export default function StockPage() {
                     setForm(f => ({
                       ...f,
                       categoryId: catId,
-                      sku: skuAuto && !editing ? (cat ? generateSKU(cat.name, products) : "") : f.sku,
+                      sku: (skuAuto || !!editing)
+                        ? (cat ? generateSKU(cat.name, editing ? products.filter(p => p.id !== editing.id) : products) : f.sku)
+                        : f.sku,
                     }));
                   }}
                   className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent"

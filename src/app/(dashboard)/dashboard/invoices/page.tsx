@@ -15,6 +15,7 @@ interface Client {
   id: string;
   name: string;
   email: string | null;
+  balance: number;
 }
 
 interface Product {
@@ -235,17 +236,21 @@ export default function InvoicesPage() {
         const res = await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         if (res.ok) {
           const invoice = await res.json();
-          let amountPaid = 0;
+          let amountPaid = invoice.amountPaid || 0;
           if (showInitPayment && parseFloat(initPayment.amount) > 0) {
             const payRes = await fetch(`/api/invoices/${invoice.id}/payments`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ amount: parseFloat(initPayment.amount), date: initPayment.date, method: initPayment.method, reference: initPayment.reference || null }),
             });
-            if (payRes.ok) amountPaid = parseFloat(initPayment.amount);
+            if (payRes.ok) amountPaid += parseFloat(initPayment.amount);
           }
           const status = amountPaid >= invoice.total ? "paid" : amountPaid > 0 ? "partially_paid" : invoice.status;
           setInvoices(prev => [{ ...invoice, amountPaid, status }, ...prev]);
+          // Refresh clients to reflect any balance changes from auto-applied balance
+          if (invoice.balanceApplied > 0) {
+            fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); });
+          }
         }
       }
       setShowForm(false);
@@ -299,7 +304,11 @@ export default function InvoicesPage() {
     setDeletingId(id);
     const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     setDeletingId(null);
-    if (res.ok) setInvoices(prev => prev.filter(inv => inv.id !== id));
+    if (res.ok) {
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+      // Refresh clients to reflect any balance changes from refunded balance payments
+      fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); });
+    }
   }
 
   function openEdit(inv: Invoice) {
@@ -760,8 +769,32 @@ export default function InvoicesPage() {
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("invoices.client")} *</label>
                   <select required value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
                     <option value="">{t("invoices.select_client")}</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}{c.balance > 0 ? ` (${t("clients.balance")}: ${currencySymbol}${fmtAmt(c.balance)})` : ""}</option>)}
                   </select>
+                  {(() => {
+                    const selectedClient = clients.find(c => c.id === form.clientId);
+                    if (!selectedClient || !selectedClient.balance || selectedClient.balance <= 0) return null;
+                    const invoiceTotal = afterDiscount + tax + feesTotal;
+                    if (invoiceTotal > 0 && selectedClient.balance >= invoiceTotal) {
+                      return (
+                        <p className="text-xs text-green-400 bg-green-400/10 border border-green-400/20 rounded-lg px-3 py-2 mt-1">
+                          {t("clients.balance.will_cover", { balance: `${currencySymbol}${fmtAmt(selectedClient.balance)}` })}
+                        </p>
+                      );
+                    }
+                    if (invoiceTotal > 0 && selectedClient.balance < invoiceTotal) {
+                      return (
+                        <p className="text-xs text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg px-3 py-2 mt-1">
+                          {t("clients.balance.partial_cover", { balance: `${currencySymbol}${fmtAmt(selectedClient.balance)}`, remaining: `${currencySymbol}${fmtAmt(invoiceTotal - selectedClient.balance)}` })}
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-xs text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg px-3 py-2 mt-1">
+                        {t("clients.balance.has_balance", { balance: `${currencySymbol}${fmtAmt(selectedClient.balance)}` })}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("invoices.language")}</label>

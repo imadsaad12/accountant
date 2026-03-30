@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
       country: c.country,
       taxId: c.taxId,
       notes: c.notes,
+      balance: c.balance,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       organizationId: c.organizationId,

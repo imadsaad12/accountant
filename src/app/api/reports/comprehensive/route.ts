@@ -28,7 +28,7 @@ function computeRecurring(rate: number, recurrence: string, expStart: Date, from
   const days = calcDays(eff, toDate);
   if (days <= 0) return 0;
   if (recurrence === "weekly") return parseFloat((rate * (days / 7)).toFixed(2));
-  if (recurrence === "monthly") return parseFloat((rate * calcMonths(eff, toDate)).toFixed(2));
+  if (recurrence === "monthly") return parseFloat((rate * Math.round(calcMonths(eff, toDate))).toFixed(2));
   if (recurrence === "quarterly") return parseFloat((rate * (calcMonths(eff, toDate) / 3)).toFixed(2));
   if (recurrence === "yearly") return parseFloat((rate * (days / 365)).toFixed(2));
   return 0;
@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
     const eff = hireDate > fromDate ? hireDate : fromDate;
     const days = calcDays(eff, toDate);
     let salary = 0;
-    if (emp.salaryPeriod === "month") salary = emp.salary * calcMonths(eff, toDate);
+    if (emp.salaryPeriod === "month") salary = emp.salary * Math.round(calcMonths(eff, toDate));
     else if (emp.salaryPeriod === "week") salary = emp.salary * (days / 7);
     else if (emp.salaryPeriod === "day") salary = emp.salary * days;
     else if (emp.salaryPeriod === "year") salary = emp.salary * (days / 365);
@@ -318,6 +318,10 @@ export async function GET(req: NextRequest) {
   const totalSalesRevenue = invoices.reduce((s, inv) => s + inv.total, 0);
   const totalSalesCogs = invoices.reduce((s, inv) => s + inv.items.reduce((item_s, item) => item_s + (item.unitCost ?? 0) * item.quantity, 0), 0);
   const totalSalesGrossProfit = totalSalesRevenue - totalSalesCogs;
+  const totalSalesPaid = invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+  const totalSalesPending = totalSalesRevenue - totalSalesPaid;
+  const paidInvoiceCount = invoices.filter(inv => inv.status === "paid").length;
+  const partialInvoiceCount = invoices.filter(inv => inv.status === "partially_paid").length;
 
   // ── Most Sold Products ──────────────────────────────────────────────────────
   const productSalesMap: Record<string, { description: string; quantity: number; unitPrice: number; total: number }> = {};
@@ -434,6 +438,10 @@ export async function GET(req: NextRequest) {
       cogs: parseFloat(totalSalesCogs.toFixed(2)),
       grossProfit: parseFloat(totalSalesGrossProfit.toFixed(2)),
       invoiceCount: invoices.length,
+      totalPaid: parseFloat(totalSalesPaid.toFixed(2)),
+      totalPending: parseFloat(totalSalesPending.toFixed(2)),
+      paidCount: paidInvoiceCount,
+      partialCount: partialInvoiceCount,
     },
     mostSoldProducts,
   });

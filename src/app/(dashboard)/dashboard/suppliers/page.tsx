@@ -158,8 +158,13 @@ export default function SuppliersPage() {
         setFormError(data.error || t("common.error"));
         return;
       }
+      const data = await res.json();
+      if (editing) {
+        setSuppliers(prev => prev.map(s => s.id === editing.id ? { ...s, ...data } : s));
+      } else {
+        setSuppliers(prev => [data, ...prev]);
+      }
       setShowForm(false);
-      loadAll();
     } finally {
       setSaving(false);
     }
@@ -176,7 +181,7 @@ export default function SuppliersPage() {
       return;
     }
     setDeletingId(null);
-    loadAll();
+    setSuppliers(prev => prev.filter(s => s.id !== id));
   }
 
   // Bills panel

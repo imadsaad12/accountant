@@ -16,26 +16,48 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const fromDate = from ? new Date(from + "T00:00:00Z") : undefined;
   const toDate = to ? new Date(to + "T23:59:59Z") : undefined;
 
-  const client = await prisma.client.findFirst({
-    where: { id, organizationId: session.organizationId },
-    include: {
-      invoices: {
-        where: {
-          ...(fromDate || toDate ? { date: { ...(fromDate && { gte: fromDate }), ...(toDate && { lte: toDate }) } } : {}),
-        },
-        orderBy: { date: "asc" },
-        select: {
-          id: true,
-          number: true,
-          date: true,
-          dueDate: true,
-          status: true,
-          total: true,
-          payments: { select: { amount: true } },
+  const paymentDateFilter = fromDate || toDate
+    ? { date: { ...(fromDate && { gte: fromDate }), ...(toDate && { lte: toDate }) } }
+    : {};
+
+  // When date filter is set, include invoices whose date OR whose payments fall in range
+  const invoiceWhere = fromDate || toDate
+    ? {
+        OR: [
+          { date: { ...(fromDate && { gte: fromDate }), ...(toDate && { lte: toDate }) } },
+          { payments: { some: { date: { ...(fromDate && { gte: fromDate }), ...(toDate && { lte: toDate }) } } } },
+        ],
+      }
+    : {};
+
+  const [client, clientPayments] = await Promise.all([
+    prisma.client.findFirst({
+      where: { id, organizationId: session.organizationId },
+      include: {
+        invoices: {
+          where: invoiceWhere,
+          orderBy: { date: "asc" },
+          select: {
+            id: true,
+            number: true,
+            date: true,
+            dueDate: true,
+            status: true,
+            total: true,
+            payments: { select: { amount: true, date: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.clientPayment.findMany({
+      where: {
+        clientId: id,
+        organizationId: session.organizationId,
+        ...paymentDateFilter,
+      },
+      orderBy: { date: "desc" },
+    }),
+  ]);
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const invoices = client.invoices.map(inv => {
@@ -55,9 +77,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const totalInvoiced = invoices.reduce((s, inv) => s + inv.total, 0);
   const totalPaid = invoices.reduce((s, inv) => s + inv.paid, 0);
 
+  // Parse invoicesSummary JSON for each payment record
+  const paymentHistory = clientPayments.map(p => ({
+    id: p.id,
+    amount: p.amount,
+    applied: p.applied,
+    date: p.date,
+    method: p.method,
+    reference: p.reference,
+    note: p.note,
+    invoices: p.invoicesSummary ? JSON.parse(p.invoicesSummary) : [],
+    createdAt: p.createdAt,
+  }));
+
   return NextResponse.json({
     ...client,
     invoices,
+    paymentHistory,
     totalInvoiced: parseFloat(totalInvoiced.toFixed(2)),
     totalPaid: parseFloat(totalPaid.toFixed(2)),
     totalPending: parseFloat((totalInvoiced - totalPaid).toFixed(2)),

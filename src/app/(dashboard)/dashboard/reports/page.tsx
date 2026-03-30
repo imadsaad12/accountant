@@ -20,7 +20,7 @@ interface PLReport {
   totalExpenses: number;
   netProfit: number;
   invoiceCount: number;
-  totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number };
+  totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number; totalPaid: number; totalPending: number; paidCount: number; partialCount: number };
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -51,7 +51,7 @@ interface ComprehensiveReport {
   receivableAging: { rows: { invoiceId: string; number: string; client: string; total: number; paid: number; balance: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null }[]; totals: Record<string, number>; totalOutstanding: number };
   payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null; periodPayment: number; totalPaidToDate: number }[]; total: number };
   receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string; periodPayment: number; totalPaidToDate: number }[]; total: number };
-  totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number };
+  totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number; totalPaid: number; totalPending: number; paidCount: number; partialCount: number };
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -183,9 +183,11 @@ export default function ReportsPage() {
         head: [["Metric", "Amount"]],
         body: [
           ["Total Revenue (All Invoices)", fmt(pl.totalSalesInPeriod.revenue)],
+          ["Total Paid", fmt(pl.totalSalesInPeriod.totalPaid)],
+          ["Total Pending", fmt(pl.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(pl.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(pl.totalSalesInPeriod.grossProfit)],
-          ["Invoice Count", pl.totalSalesInPeriod.invoiceCount.toString()],
+          ["Invoice Count", `${pl.totalSalesInPeriod.invoiceCount} (${pl.totalSalesInPeriod.paidCount} paid, ${pl.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
       });
@@ -293,9 +295,11 @@ export default function ReportsPage() {
         head: [["Metric", "Amount"]],
         body: [
           ["Total Revenue (All Invoices)", fmt(cr.totalSalesInPeriod.revenue)],
+          ["Total Paid", fmt(cr.totalSalesInPeriod.totalPaid)],
+          ["Total Pending", fmt(cr.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(cr.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(cr.totalSalesInPeriod.grossProfit)],
-          ["Invoice Count", cr.totalSalesInPeriod.invoiceCount.toString()],
+          ["Invoice Count", `${cr.totalSalesInPeriod.invoiceCount} (${cr.totalSalesInPeriod.paidCount} paid, ${cr.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 8 },
       });
@@ -520,11 +524,20 @@ export default function ReportsPage() {
                   <p className="text-xs text-text-muted mt-0.5">Includes all invoices (all statuses) created in this period. COGS deducted to show gross profit.</p>
                 </div>
                 <div className="px-4 py-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                     <div className="bg-dark-bg/50 rounded-lg p-3">
                       <div className="text-xs text-text-muted mb-1">Revenue</div>
                       <div className="text-lg font-bold text-emerald-400">{fmt(pl.totalSalesInPeriod.revenue)}</div>
                       <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.invoiceCount} invoices</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Paid</div>
+                      <div className="text-lg font-bold text-green-400">{fmt(pl.totalSalesInPeriod.totalPaid)}</div>
+                      <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.paidCount} paid · {pl.totalSalesInPeriod.partialCount} partial</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Pending</div>
+                      <div className={`text-lg font-bold ${pl.totalSalesInPeriod.totalPending > 0 ? "text-amber-400" : "text-text-muted"}`}>{fmt(pl.totalSalesInPeriod.totalPending)}</div>
                     </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3">
                       <div className="text-xs text-text-muted mb-1">COGS</div>
@@ -907,11 +920,20 @@ export default function ReportsPage() {
                   <Eg text="Includes all invoices (draft, sent, partially paid, paid) created in this period. COGS is deducted to show gross profit. For example: 5 invoices totaling $5,000 with COGS of $2,000 = $3,000 gross profit." />
                 </div>
                 <div className="px-4 py-4">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                     <div className="bg-dark-bg/50 rounded-lg p-3">
                       <div className="text-xs text-text-muted mb-1">Revenue</div>
                       <div className="text-lg font-bold text-emerald-400">{fmt(cr.totalSalesInPeriod.revenue)}</div>
                       <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.invoiceCount} invoices</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Paid</div>
+                      <div className="text-lg font-bold text-green-400">{fmt(cr.totalSalesInPeriod.totalPaid)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.paidCount} paid · {cr.totalSalesInPeriod.partialCount} partial</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Pending</div>
+                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.totalPending > 0 ? "text-amber-400" : "text-text-muted"}`}>{fmt(cr.totalSalesInPeriod.totalPending)}</div>
                     </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3">
                       <div className="text-xs text-text-muted mb-1">COGS</div>

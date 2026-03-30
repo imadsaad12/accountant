@@ -48,5 +48,13 @@ export function useSetLang() {
 
 export function useTranslation() {
   const { lang } = useContext(LanguageContext);
-  return (key: string) => translate(lang, key);
+  return (key: string, params?: Record<string, string>) => {
+    let result = translate(lang, key);
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        result = result.replace(new RegExp(`\\{${k}\\}`, "g"), v);
+      }
+    }
+    return result;
+  };
 }

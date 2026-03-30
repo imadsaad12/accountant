@@ -67,13 +67,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const totalApplied = parseFloat((amount - remaining).toFixed(2));
 
+  // If there's remaining amount after all invoices are paid, add to client balance
+  if (remaining > 0) {
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { balance: { increment: remaining } },
+    });
+  }
+
+  // Save payment history record
+  const clientPayment = await prisma.clientPayment.create({
+    data: {
+      clientId,
+      amount,
+      applied: totalApplied,
+      date: date ? new Date(date) : new Date(),
+      method: method || "cash",
+      reference: reference || null,
+      note: note || null,
+      invoicesSummary: JSON.stringify(paymentsCreated),
+      organizationId: session.organizationId,
+    },
+  });
+
   await logAudit({
     session,
     action: "create",
     entity: "payment",
-    entityId: clientId,
-    description: `Bulk payment of ${totalApplied} applied to ${paymentsCreated.length} invoice(s) for client "${client.name}"`,
+    entityId: clientPayment.id,
+    description: `Bulk payment of ${totalApplied} applied to ${paymentsCreated.length} invoice(s) for client "${client.name}"${remaining > 0 ? `. ${remaining} added to client balance.` : ""}`,
   });
 
-  return NextResponse.json({ applied: totalApplied, remaining, payments: paymentsCreated });
+  return NextResponse.json({ id: clientPayment.id, applied: totalApplied, remaining, addedToBalance: remaining, payments: paymentsCreated });
 }

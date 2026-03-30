@@ -37,6 +37,7 @@ model Organization {
   accounts        Account[]
   journalEntries  JournalEntry[]
   salaryAdvances  SalaryAdvance[]
+  clientPayments  ClientPayment[]
 }
 
 model User {
@@ -100,22 +101,44 @@ model SupplierBillPayment {
 }
 
 model Client {
-  id             String       @id @default(cuid())
+  id             String          @id @default(cuid())
   name           String
   email          String?
   phone          String?
-  address        String?      @db.Text
+  address        String?         @db.Text
   city           String?
   country        String?
   taxId          String?
-  notes          String?      @db.Text
+  notes          String?         @db.Text
+  balance        Float           @default(0)
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  invoices       Invoice[]
+  clientPayments ClientPayment[]
+
+  @@index([organizationId])
+}
+
+model ClientPayment {
+  id             String       @id @default(cuid())
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount         Float
+  applied        Float
+  date           DateTime
+  method         String       @default("cash")
+  reference      String?
+  note           String?      @db.Text
+  invoicesSummary String?     @db.Text   // JSON: [{invoiceId, invoiceNumber, amount, newStatus}]
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  invoices       Invoice[]
 
+  @@index([clientId])
   @@index([organizationId])
+  @@index([date])
 }
 
 model Category {

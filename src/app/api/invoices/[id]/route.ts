@@ -149,6 +149,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Refund any "balance" payments back to the client's credit balance
+  const balancePayments = await prisma.payment.findMany({
+    where: { invoiceId: id, method: "balance" },
+    select: { amount: true },
+  });
+  const balanceRefund = balancePayments.reduce((s, p) => s + p.amount, 0);
+  if (balanceRefund > 0) {
+    await prisma.client.update({
+      where: { id: invoice.clientId },
+      data: { balance: { increment: parseFloat(balanceRefund.toFixed(2)) } },
+    });
+  }
+
   // Restore stock for each invoice item before deleting
   for (const item of invoice.items) {
     if (!item.productId) continue;

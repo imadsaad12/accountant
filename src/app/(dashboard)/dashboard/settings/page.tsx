@@ -12,6 +12,7 @@ import type { Lang } from "@/lib/i18n";
 const CURRENCIES = [
   { code: "USD", name: "US Dollar" },
   { code: "EUR", name: "Euro" },
+  { code: "LBP", name: "Lebanese Pound" },
   { code: "XOF", name: "CFA Franc (Senegal, Ivory Coast)" },
   { code: "GNF", name: "Guinean Franc" },
   { code: "SLE", name: "Leone (Sierra Leone)" },

@@ -18,15 +18,29 @@ interface Client {
   country: string | null;
   taxId: string | null;
   notes: string | null;
+  balance: number;
   _count?: { invoices: number };
   totalInvoiced: number;
   totalPaid: number;
   totalPending: number;
 }
 
+interface ClientPaymentRecord {
+  id: string;
+  amount: number;
+  applied: number;
+  date: string;
+  method: string;
+  reference: string | null;
+  note: string | null;
+  invoices: { invoiceId: string; invoiceNumber: string; amount: number; newStatus: string }[];
+  createdAt: string;
+}
+
 interface ClientDetail extends Client {
   invoices: ClientInvoice[];
   invoiceCount: number;
+  paymentHistory: ClientPaymentRecord[];
 }
 
 interface ClientInvoice {
@@ -173,7 +187,7 @@ export default function ClientsPage() {
       if (editing) {
         patchClient({ id: editing.id, ...form });
       } else {
-        setClients(prev => [{ ...data, totalInvoiced: 0, totalPaid: 0, totalPending: 0, _count: { invoices: 0 } }, ...prev]);
+        setClients(prev => [{ ...data, balance: 0, totalInvoiced: 0, totalPaid: 0, totalPending: 0, _count: { invoices: 0 } }, ...prev]);
       }
       setShowForm(false);
     } finally {
@@ -215,13 +229,16 @@ export default function ClientsPage() {
       setPaymentResult(data);
       // Patch client totals in place without full reload
       const applied = data.applied as number;
+      const addedToBalance = data.addedToBalance as number || 0;
+      const patch: Partial<Client> & { id: string } = { id: detailClient.id };
       if (applied > 0) {
-        patchClient({
-          id: detailClient.id,
-          totalPaid: parseFloat((detailClient.totalPaid + applied).toFixed(2)),
-          totalPending: parseFloat((detailClient.totalPending - applied).toFixed(2)),
-        });
+        patch.totalPaid = parseFloat((detailClient.totalPaid + applied).toFixed(2));
+        patch.totalPending = parseFloat((detailClient.totalPending - applied).toFixed(2));
       }
+      if (addedToBalance > 0) {
+        patch.balance = parseFloat(((detailClient.balance || 0) + addedToBalance).toFixed(2));
+      }
+      patchClient(patch);
       // Reload only the detail modal invoices list (scoped fetch, no full page reload)
       reloadDetailClient();
       setPaymentAmount("");
@@ -291,10 +308,15 @@ export default function ClientsPage() {
     doc.text(`${t("clients.total_invoiced")}: ${fmt(detailClient.totalInvoiced)}`, 80, 30);
     doc.text(`${t("clients.total_paid")}: ${fmt(detailClient.totalPaid)}`, 160, 30);
     doc.text(`${t("clients.total_pending")}: ${fmt(detailClient.totalPending)}`, 220, 30);
+    if (detailClient.balance > 0) {
+      doc.setTextColor(0, 100, 200);
+      doc.text(`${t("clients.balance")}: ${fmt(detailClient.balance)}`, 14, 36);
+      doc.setTextColor(0);
+    }
 
     // Invoices table
     autoTable(doc, {
-      startY: 36,
+      startY: detailClient.balance > 0 ? 42 : 36,
       head: [[
         t("field.number"),
         t("field.date"),
@@ -306,8 +328,8 @@ export default function ClientsPage() {
       ]],
       body: detailClient.invoices.map(inv => [
         inv.number,
-        new Date(inv.date).toLocaleDateString(),
-        inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "-",
+        new Date(inv.date).toLocaleDateString("en-GB"),
+        inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "-",
         inv.status,
         fmt(inv.total),
         fmt(inv.paid),
@@ -316,6 +338,33 @@ export default function ClientsPage() {
       styles: { fontSize: 8 },
       headStyles: { fillColor: [30, 30, 50] },
     });
+
+    // Payment History table
+    if (detailClient.paymentHistory && detailClient.paymentHistory.length > 0) {
+      const lastY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? 36;
+      doc.setFontSize(11);
+      doc.text(t("clients.payment_history"), 14, lastY + 10);
+
+      autoTable(doc, {
+        startY: lastY + 14,
+        head: [[
+          t("field.date"),
+          t("field.amount"),
+          t("clients.bulk_payment.method"),
+          t("clients.payment_history.applied_to"),
+          t("clients.bulk_payment.reference"),
+        ]],
+        body: detailClient.paymentHistory.map(p => [
+          new Date(p.date).toLocaleDateString("en-GB"),
+          fmt(p.applied),
+          p.method,
+          p.invoices.map(inv => `#${inv.invoiceNumber} (${fmt(inv.amount)})`).join(", "),
+          p.reference || p.note || "-",
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [30, 80, 50] },
+      });
+    }
 
     doc.save(`${detailClient.name}-invoices.pdf`);
   }
@@ -442,7 +491,7 @@ export default function ClientsPage() {
               </div>
 
               {/* Summary Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <div className="bg-dark-bg rounded-lg p-3">
                   <div className="text-xs text-text-muted">{t("clients.invoices")}</div>
                   <div className="text-lg font-semibold text-text-primary mt-1">{detailClient.invoiceCount}</div>
@@ -458,6 +507,10 @@ export default function ClientsPage() {
                 <div className="bg-dark-bg rounded-lg p-3">
                   <div className="text-xs text-text-muted">{t("clients.total_pending")}</div>
                   <div className={`text-lg font-semibold mt-1 ${detailClient.totalPending > 0 ? "text-amber-400" : "text-text-muted"}`}>{fmt(detailClient.totalPending)}</div>
+                </div>
+                <div className="bg-dark-bg rounded-lg p-3">
+                  <div className="text-xs text-text-muted">{t("clients.balance")}</div>
+                  <div className={`text-lg font-semibold mt-1 ${detailClient.balance > 0 ? "text-blue-400" : "text-text-muted"}`}>{fmt(detailClient.balance)}</div>
                 </div>
               </div>
 
@@ -493,8 +546,8 @@ export default function ClientsPage() {
                     </div>
                   )}
                   {paymentResult.remaining > 0 && (
-                    <p className="text-xs text-amber-400 mt-2">
-                      {t("clients.bulk_payment.remaining")}: {fmt(paymentResult.remaining)}
+                    <p className="text-xs text-blue-400 mt-2">
+                      {t("clients.balance.added", { amount: fmt(paymentResult.remaining) })}
                     </p>
                   )}
                   <button onClick={() => setPaymentResult(null)} className="mt-3 w-full px-3 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">
@@ -528,8 +581,8 @@ export default function ClientsPage() {
                       {detailClient.invoices.map(inv => (
                         <tr key={inv.id} className="hover:bg-dark-card-hover">
                           <td className="px-3 py-2 text-sm font-medium text-text-primary">{inv.number}</td>
-                          <td className="px-3 py-2 text-sm text-text-secondary">{new Date(inv.date).toLocaleDateString()}</td>
-                          <td className="px-3 py-2 text-sm text-text-secondary">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "-"}</td>
+                          <td className="px-3 py-2 text-sm text-text-secondary">{new Date(inv.date).toLocaleDateString("en-GB")}</td>
+                          <td className="px-3 py-2 text-sm text-text-secondary">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "-"}</td>
                           <td className="px-3 py-2 text-sm"><span className={`px-2 py-1 rounded text-xs font-medium ${inv.status === "paid" ? "bg-green-400/10 text-green-400" : inv.status === "partially_paid" ? "bg-amber-400/10 text-amber-400" : "bg-blue-400/10 text-blue-400"}`}>{inv.status}</span></td>
                           <td className="px-3 py-2 text-sm text-right text-text-secondary">{fmt(inv.total)}</td>
                           <td className="px-3 py-2 text-sm text-right text-green-400 font-medium">{fmt(inv.paid)}</td>
@@ -538,6 +591,43 @@ export default function ClientsPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Payment History */}
+              {detailClient.paymentHistory && detailClient.paymentHistory.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-2">{t("clients.payment_history")}</h3>
+                  <div className="overflow-x-auto border border-dark-border rounded-lg">
+                    <table className="w-full min-w-[500px]">
+                      <thead className="bg-dark-bg/50">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-xs font-medium text-text-muted uppercase">{t("field.date")}</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-text-muted uppercase">{t("field.amount")}</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-text-muted uppercase">{t("clients.bulk_payment.method")}</th>
+                          <th className="text-left px-3 py-2 text-xs font-medium text-text-muted uppercase">{t("clients.payment_history.applied_to")}</th>
+                          <th className="text-left px-3 py-2 text-xs font-medium text-text-muted uppercase">{t("clients.bulk_payment.note")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-dark-border/50">
+                        {detailClient.paymentHistory.map(p => (
+                          <tr key={p.id} className="hover:bg-dark-card-hover">
+                            <td className="px-3 py-2 text-sm text-text-secondary">{new Date(p.date).toLocaleDateString("en-GB")}</td>
+                            <td className="px-3 py-2 text-sm text-right text-green-400 font-medium">{fmt(p.applied)}</td>
+                            <td className="px-3 py-2 text-sm text-right text-text-secondary">{t(`payments.method.${p.method}` as Parameters<typeof t>[0])}</td>
+                            <td className="px-3 py-2 text-sm text-text-secondary">
+                              {p.invoices.map(inv => (
+                                <span key={inv.invoiceId} className="inline-block mr-1.5 mb-0.5 px-1.5 py-0.5 rounded text-xs bg-dark-bg border border-dark-border">
+                                  #{inv.invoiceNumber} <span className="text-green-400">{fmt(inv.amount)}</span>
+                                </span>
+                              ))}
+                            </td>
+                            <td className="px-3 py-2 text-sm text-text-muted max-w-[150px] truncate">{p.reference || p.note || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -564,11 +654,23 @@ export default function ClientsPage() {
                                 type="number"
                                 min="0.01"
                                 step="0.01"
-                                max={detailClient.totalPending}
                                 value={paymentAmount}
                                 onChange={e => setPaymentAmount(e.target.value)}
                                 className="w-full px-2 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent"
                               />
+                              {(() => {
+                                const amt = parseFloat(paymentAmount);
+                                if (!amt || amt <= 0) return null;
+                                const excess = parseFloat((amt - detailClient.totalPending).toFixed(2));
+                                if (excess > 0) {
+                                  return (
+                                    <p className="text-xs text-blue-400 mt-1">
+                                      {t("clients.balance.excess_info", { amount: fmt(excess) })}
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-text-secondary mb-1">{t("field.date")}</label>
