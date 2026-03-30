@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, X, Loader2, Banknote, CheckCircle2, Clock, CreditCard } from "lucide-react";
+import { Plus, Trash2, X, Loader2, Banknote, CheckCircle2, Clock, CreditCard, AlertCircle } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
@@ -28,6 +28,12 @@ interface SalaryAdvance {
   createdAt: string;
 }
 
+interface DateRange {
+  start: string;
+  end: string;
+  label: string;
+}
+
 const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtCompact = (n: number) => {
   const abs = Math.abs(n);
@@ -40,9 +46,50 @@ const fmtCompact = (n: number) => {
 const emptyForm = {
   employeeId: "",
   amount: "",
-  date: "", // set to todayInTz(tz) when opening form
+  date: "",
   note: "",
 };
+
+function getSalaryPeriodBounds(salaryPeriod: string, today: Date): DateRange {
+  const todayStr = today.toISOString().split("T")[0];
+  const dayOfWeek = today.getDay();
+  const month = today.getMonth();
+  const year = today.getFullYear();
+
+  if (salaryPeriod === "week") {
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(monday.getDate() + mondayOffset);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+
+    const start = monday.toISOString().split("T")[0];
+    const end = sunday.toISOString().split("T")[0];
+    const monthName = monday.toLocaleDateString("en-US", { month: "short" });
+    const weekStart = monday.getDate();
+    const weekEnd = sunday.getDate();
+    return {
+      start,
+      end,
+      label: `This week (${monthName} ${weekStart}–${weekEnd})`,
+    };
+  } else if (salaryPeriod === "month") {
+    const start = new Date(year, month, 1).toISOString().split("T")[0];
+    const end = new Date(year, month + 1, 0).toISOString().split("T")[0];
+    const monthName = today.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    return {
+      start,
+      end,
+      label: `This month (${monthName})`,
+    };
+  } else {
+    return {
+      start: todayStr,
+      end: todayStr,
+      label: "Today only (daily pay period)",
+    };
+  }
+}
 
 export default function SalaryAdvancesPage() {
   const { canEditFeature } = usePermissions();
@@ -59,6 +106,7 @@ export default function SalaryAdvancesPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [dateError, setDateError] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -78,9 +126,18 @@ export default function SalaryAdvancesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const selectedEmployee = employees.find(e => e.id === form.employeeId) ?? null;
+  const today = new Date(todayInTz(tz) + "T00:00:00");
+  const dateBounds = selectedEmployee ? getSalaryPeriodBounds(selectedEmployee.salaryPeriod, today) : null;
+  const isDateValid = !selectedEmployee || !form.date || (form.date >= dateBounds!.start && form.date <= dateBounds!.end);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!isDateValid) {
+      setDateError(`Date must be within the current pay period: ${dateBounds?.label}`);
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/salary-advances", {
@@ -93,6 +150,7 @@ export default function SalaryAdvancesPage() {
       setAdvances(prev => [created, ...prev]);
       setShowForm(false);
       setForm({ ...emptyForm, date: todayInTz(tz) });
+      setDateError("");
     } finally {
       setSaving(false);
     }
@@ -128,7 +186,6 @@ export default function SalaryAdvancesPage() {
   return (
     <PermissionGuard feature="salary_advances">
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("salary_advances.title")}</h1>
@@ -136,7 +193,7 @@ export default function SalaryAdvancesPage() {
           </div>
           {canEdit && (
             <button
-              onClick={() => { setForm({ ...emptyForm, date: todayInTz(tz) }); setShowForm(true); }}
+              onClick={() => { setForm({ ...emptyForm, date: todayInTz(tz) }); setShowForm(true); setDateError(""); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium"
             >
               <Plus size={16} /> {t("salary_advances.add")}
@@ -144,7 +201,6 @@ export default function SalaryAdvancesPage() {
           )}
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
             <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
@@ -172,7 +228,6 @@ export default function SalaryAdvancesPage() {
           </div>
         </div>
 
-        {/* Add Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-md">
@@ -224,9 +279,19 @@ export default function SalaryAdvancesPage() {
                       type="date"
                       required
                       value={form.date}
-                      onChange={e => setForm({ ...form, date: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
+                      onChange={e => { setForm({ ...form, date: e.target.value }); setDateError(""); }}
+                      min={dateBounds?.start}
+                      max={dateBounds?.end}
+                      className={`w-full px-3 py-2 bg-dark-input border rounded-lg text-sm text-text-primary ${
+                        dateError ? "border-red-500" : "border-dark-border"
+                      }`}
                     />
+                    {dateBounds && (
+                      <p className="text-xs text-text-muted mt-1">{dateBounds.label}</p>
+                    )}
+                    {dateError && (
+                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={12} /> {dateError}</p>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -245,7 +310,7 @@ export default function SalaryAdvancesPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={saving || (!!selectedEmployee && !!form.amount && parseFloat(form.amount) > selectedEmployee.salary)}
+                    disabled={saving || (!!selectedEmployee && !!form.amount && parseFloat(form.amount) > selectedEmployee.salary) || !isDateValid}
                     className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60"
                   >
                     {saving && <Loader2 size={14} className="animate-spin" />}
@@ -257,7 +322,6 @@ export default function SalaryAdvancesPage() {
           </div>
         )}
 
-        {/* Table */}
         <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center h-32">
