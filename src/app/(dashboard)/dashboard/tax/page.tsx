@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Download } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
 import { formatDateInTz } from "@/lib/tz";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { generateTaxPDF } from "@/lib/generate-tax-pdf";
 
 interface TaxInvoice {
   id: string;
@@ -44,9 +46,11 @@ export default function TaxPage() {
   const tz = useOrgTimezone();
   const sym = currencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
+  const lang = useLang();
   const [invoices, setInvoices] = useState<TaxInvoice[]>([]);
   const [totalTaxCollected, setTotalTaxCollected] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -63,14 +67,53 @@ export default function TaxPage() {
   const paidTax = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + i.tax, 0);
   const pendingTax = invoices.filter((i) => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + i.tax, 0);
 
+  async function handleExportPDF() {
+    setExporting(true);
+    try {
+      const buffer = generateTaxPDF({
+        invoices,
+        paidTax,
+        pendingTax,
+        currencySymbol: sym,
+        language: lang,
+      });
+      const blob = new Blob([buffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tax-report-${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to export PDF:", error);
+      alert("Failed to export PDF");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (loading) return <TablePageSkeleton rows={6} hasFilters statCards={4} cols={5} />;
 
   return (
     <PermissionGuard feature="tax">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("tax.title")}</h1>
-          <p className="text-text-muted text-sm mt-1">{t("tax.subtitle")}</p>
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("tax.title")}</h1>
+            <p className="text-text-muted text-sm mt-1">{t("tax.subtitle")}</p>
+          </div>
+          {invoices.length > 0 && (
+            <button
+              onClick={handleExportPDF}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              <Download size={16} />
+              {exporting ? "Exporting..." : "Export PDF"}
+            </button>
+          )}
         </div>
 
         {/* Summary cards */}

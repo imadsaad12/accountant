@@ -46,6 +46,7 @@ export function useOrgTimezone(): string {
 export const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
   EUR: "€",
+  LBP: "ل.ل",
   XOF: "CFA",
   GNF: "FG",
   SLE: "Le",
