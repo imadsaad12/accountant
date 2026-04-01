@@ -19,77 +19,87 @@
           - /url: /dashboard/clients
           - img [ref=e20]
           - generic [ref=e25]: Clients
-        - link "Stock" [ref=e26] [cursor=pointer]:
-          - /url: /dashboard/stock
+        - link "Suppliers" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard/suppliers
           - img [ref=e27]
-          - generic [ref=e31]: Stock
-        - link "Employees" [ref=e32] [cursor=pointer]:
+          - generic [ref=e32]: Suppliers
+        - link "Stock" [ref=e33] [cursor=pointer]:
+          - /url: /dashboard/stock
+          - img [ref=e34]
+          - generic [ref=e38]: Stock
+        - link "Employees" [ref=e39] [cursor=pointer]:
           - /url: /dashboard/employees
-          - img [ref=e33]
-          - generic [ref=e45]: Employees
-        - link "Invoices" [ref=e46] [cursor=pointer]:
+          - img [ref=e40]
+          - generic [ref=e52]: Employees
+        - link "Invoices" [ref=e53] [cursor=pointer]:
           - /url: /dashboard/invoices
-          - img [ref=e47]
-          - generic [ref=e50]: Invoices
-        - link "Expenses" [ref=e51] [cursor=pointer]:
+          - img [ref=e54]
+          - generic [ref=e57]: Invoices
+        - link "Expenses" [ref=e58] [cursor=pointer]:
           - /url: /dashboard/expenses
-          - img [ref=e52]
-          - generic [ref=e55]: Expenses
-        - link "Salary Advances" [ref=e56] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e62]: Expenses
+        - link "Salary Advances" [ref=e63] [cursor=pointer]:
           - /url: /dashboard/salary-advances
-          - img [ref=e57]
-          - generic [ref=e60]: Salary Advances
-        - link "Reports" [ref=e61] [cursor=pointer]:
+          - img [ref=e64]
+          - generic [ref=e67]: Salary Advances
+        - link "Reports" [ref=e68] [cursor=pointer]:
           - /url: /dashboard/reports
-          - img [ref=e62]
-          - generic [ref=e63]: Reports
-        - link "AI Assistant" [ref=e64] [cursor=pointer]:
+          - img [ref=e69]
+          - generic [ref=e70]: Reports
+        - link "AI Assistant" [ref=e71] [cursor=pointer]:
           - /url: /dashboard/ai-assistant
-          - img [ref=e65]
-          - generic [ref=e68]: AI Assistant
-        - link "Activity Log" [ref=e69] [cursor=pointer]:
+          - img [ref=e72]
+          - generic [ref=e75]: AI Assistant
+        - link "Activity Log" [ref=e76] [cursor=pointer]:
           - /url: /dashboard/activity-log
-          - img [ref=e70]
-          - generic [ref=e73]: Activity Log
-        - link "Tax" [ref=e74] [cursor=pointer]:
+          - img [ref=e77]
+          - generic [ref=e80]: Activity Log
+        - link "Tax" [ref=e81] [cursor=pointer]:
           - /url: /dashboard/tax
-          - img [ref=e75]
-          - generic [ref=e78]: Tax
-        - link "Team" [ref=e79] [cursor=pointer]:
+          - img [ref=e82]
+          - generic [ref=e85]: Tax
+        - link "How It Works" [ref=e86] [cursor=pointer]:
+          - /url: /how-it-works
+          - img [ref=e87]
+          - generic [ref=e90]: How It Works
+        - link "Team" [ref=e91] [cursor=pointer]:
           - /url: /dashboard/team
-          - img [ref=e80]
-          - generic [ref=e84]: Team
-        - link "Settings" [ref=e85] [cursor=pointer]:
+          - img [ref=e92]
+          - generic [ref=e96]: Team
+        - link "Settings" [ref=e97] [cursor=pointer]:
           - /url: /dashboard/settings
-          - img [ref=e86]
-          - generic [ref=e89]: Settings
-      - generic [ref=e90]:
-        - generic [ref=e92]:
-          - generic [ref=e93]: A
-          - generic [ref=e94]:
-            - paragraph [ref=e95]: Admin User
-            - paragraph [ref=e96]: admin@accountant.com
-        - button "Logout" [ref=e97]:
           - img [ref=e98]
-          - generic [ref=e101]: Logout
-    - main [ref=e102]:
-      - generic [ref=e104]:
-        - generic [ref=e105]:
-          - heading "Stock" [level=1] [ref=e106]
-          - generic [ref=e107]:
-            - button "Add Category" [ref=e108]:
-              - img [ref=e109]
+          - generic [ref=e101]: Settings
+      - generic [ref=e102]:
+        - generic [ref=e104]:
+          - generic [ref=e105]: A
+          - generic [ref=e106]:
+            - paragraph [ref=e107]: Admin User
+            - paragraph [ref=e108]: admin@accountant.com
+        - button "Logout" [ref=e109]:
+          - img [ref=e110]
+          - generic [ref=e113]: Logout
+    - main [ref=e114]:
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - heading "Stock" [level=1] [ref=e118]
+          - generic [ref=e119]:
+            - button "Add Category" [ref=e120]:
+              - img [ref=e121]
               - text: Add Category
-            - button "Add Product" [ref=e110]:
-              - img [ref=e111]
+            - button "Add Product" [ref=e122]:
+              - img [ref=e123]
               - text: Add Product
-        - generic [ref=e112]:
-          - generic [ref=e113]:
-            - img [ref=e114]
-            - textbox "Search" [ref=e117]
-          - generic [ref=e118]:
-            - combobox [ref=e119]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - img [ref=e126]
+            - textbox "Search" [ref=e129]
+          - generic [ref=e130]:
+            - combobox [ref=e131]:
               - option "All categories" [selected]
+              - option "AnotherCat1774949687029"
+              - option "AnotherCat1774950267240"
               - option "Clothing & Apparel"
               - option "Electronics"
               - option "Finished Goods"
@@ -100,61 +110,65 @@
               - option "Raw Materials"
               - option "Services"
               - option "Software"
+              - option "TestCat1774949687029"
+              - option "TestCat1774950267240"
               - option "Tools & Equipment"
-            - combobox [ref=e120]:
+            - combobox [ref=e132]:
               - option "All Types" [selected]
               - option "Simple"
               - option "Composite"
-            - combobox [ref=e121]:
+            - combobox [ref=e133]:
               - option "All Stock" [selected]
               - option "Low Stock Only"
               - option "In Stock Only"
-        - generic [ref=e123]:
-          - generic [ref=e124]:
-            - heading "Add Product" [level=2] [ref=e125]
-            - button [ref=e126]:
-              - img [ref=e127]
-          - generic [ref=e130]:
-            - button "Simple Product" [ref=e131]:
-              - img [ref=e132]
+        - generic [ref=e135]:
+          - generic [ref=e136]:
+            - heading "Add Product" [level=2] [ref=e137]
+            - button [ref=e138]:
+              - img [ref=e139]
+          - generic [ref=e142]:
+            - button "Simple Product" [ref=e143]:
+              - img [ref=e144]
               - text: Simple Product
-            - button "Composite Product" [ref=e136]:
-              - img [ref=e137]
+            - button "Composite Product" [ref=e148]:
+              - img [ref=e149]
               - text: Composite Product
-          - generic [ref=e141]:
-            - generic [ref=e142]:
-              - generic [ref=e143]: Name *
-              - textbox [ref=e144]: LivingRoom_1774210337479
-            - generic [ref=e145]:
-              - generic [ref=e146]: Description
-              - textbox [ref=e147]
-            - generic [ref=e148]:
-              - generic [ref=e149]:
-                - generic [ref=e150]: Unit Price *
-                - spinbutton [ref=e151]: "200"
-              - generic [ref=e152]:
-                - generic [ref=e153]:
-                  - text: Cost Price
-                  - generic [ref=e154]: (auto from components)
-                - generic [ref=e155]: $0.00
-            - generic [ref=e156]:
-              - generic [ref=e157]:
-                - generic [ref=e158]: Min Stock
-                - spinbutton [ref=e159]: "5"
-                - paragraph [ref=e160]: Low-stock alert threshold
+          - generic [ref=e153]:
+            - generic [ref=e154]:
+              - generic [ref=e155]: Name *
+              - textbox [ref=e156]: LivingRoom_1774954462052
+            - generic [ref=e157]:
+              - generic [ref=e158]: Description
+              - textbox [ref=e159]
+            - generic [ref=e160]:
               - generic [ref=e161]:
-                - generic [ref=e162]: Unit
-                - combobox [ref=e163]:
+                - generic [ref=e162]: Unit Price *
+                - spinbutton [ref=e163]: "200"
+              - generic [ref=e164]:
+                - generic [ref=e165]:
+                  - text: Cost Price
+                  - generic [ref=e166]: (auto from components)
+                - generic [ref=e167]: $0.00
+            - generic [ref=e168]:
+              - generic [ref=e169]:
+                - generic [ref=e170]: Min Stock
+                - spinbutton [ref=e171]: "5"
+                - paragraph [ref=e172]: Low-stock alert threshold
+              - generic [ref=e173]:
+                - generic [ref=e174]: Unit
+                - combobox [ref=e175]:
                   - option "Piece" [selected]
                   - option "Kg"
                   - option "Liter"
                   - option "Meter"
                   - option "Box"
                   - option "Set"
-            - generic [ref=e164]:
-              - generic [ref=e165]: Category
-              - combobox [ref=e166]:
+            - generic [ref=e176]:
+              - generic [ref=e177]: Category
+              - combobox [ref=e178]:
                 - option "No category" [selected]
+                - option "AnotherCat1774949687029"
+                - option "AnotherCat1774950267240"
                 - option "Clothing & Apparel"
                 - option "Electronics"
                 - option "Finished Goods"
@@ -165,27 +179,51 @@
                 - option "Raw Materials"
                 - option "Services"
                 - option "Software"
+                - option "TestCat1774949687029"
+                - option "TestCat1774950267240"
                 - option "Tools & Equipment"
-            - generic [ref=e167]:
-              - generic [ref=e168]:
-                - generic [ref=e169]: Components *
-                - button "Add component" [active] [ref=e170]:
-                  - img [ref=e171]
+            - generic [ref=e179]:
+              - generic [ref=e180]:
+                - generic [ref=e181]: Components *
+                - button "Add component" [active] [ref=e182]:
+                  - img [ref=e183]
                   - text: Add component
-              - generic [ref=e172]:
-                - generic [ref=e173]:
-                  - combobox [ref=e174]:
+              - generic [ref=e184]:
+                - generic [ref=e185]:
+                  - combobox [ref=e186]:
                     - option "Select a product..." [selected]
+                    - option "StockTest1774952558107 (10 piece in stock)"
+                    - option "StockTest1774951585242 (10 piece in stock)"
+                    - option "StockTest1774951555339 (7 piece in stock)"
+                    - option "StockTest1774951159719 (7 piece in stock)"
+                    - option "StockTest1774951128531 (7 piece in stock)"
+                    - option "StockTest1774950717505 (10 piece in stock)"
+                    - option "StockTest1774950705798 (10 piece in stock)"
+                    - option "DeleteProd 1774950330497 (0 piece in stock)"
+                    - option "DeleteProd 1774950313059 (0 piece in stock)"
+                    - option "Product 1774950267240 (0 piece in stock)"
+                    - option "StockTest1774950198338 (10 piece in stock)"
+                    - option "StockTest1774950182516 (7 piece in stock)"
+                    - option "StockTest1774949994076 (7 piece in stock)"
+                    - option "StockTest1774949977200 (7 piece in stock)"
+                    - option "Product 1774949687029 (0 piece in stock)"
+                    - option "StockTest1774949464586 (7 piece in stock)"
+                    - option "StockTest1774949447776 (7 piece in stock)"
+                    - option "StockTest1774949090095 (7 piece in stock)"
+                    - option "StockTest1774949074440 (7 piece in stock)"
+                    - option "StockTest1774947386598 (7 piece in stock)"
+                    - option "StockTest1774946776639 (7 piece in stock)"
+                    - option "StockTest1774946760753 (7 piece in stock)"
                     - option "masamer (12 box in stock)"
                     - option "wood (1.02 piece in stock)"
-                    - option "Adobe Creative Cloud (25 piece in stock)"
-                    - option "IT Consultation (999 piece in stock)"
-                    - option "Microsoft 365 License (100 piece in stock)"
-                    - option "Web Development (999 piece in stock)"
-                    - option "USB-C Hub (2 piece in stock)"
                     - option "Ink Cartridge Set (18 piece in stock)"
-                    - option "Executive Desk (4 piece in stock)"
                     - option "Filing Cabinet (11 piece in stock)"
+                    - option "Executive Desk (4 piece in stock)"
+                    - option "Adobe Creative Cloud (25 piece in stock)"
+                    - option "USB-C Hub (2 piece in stock)"
+                    - option "Web Development (999 piece in stock)"
+                    - option "Microsoft 365 License (100 piece in stock)"
+                    - option "IT Consultation (999 piece in stock)"
                     - option "Dell Monitor 27\" (22 piece in stock)"
                     - option "Ergonomic Chair (8 piece in stock)"
                     - option "Whiteboard Markers (50 box in stock)"
@@ -193,22 +231,44 @@
                     - option "MacBook Pro 16\" (15 piece in stock)"
                     - option "Mechanical Keyboard (30 piece in stock)"
                     - option "Logitech MX Master 3S (45 piece in stock)"
-                  - spinbutton [ref=e175]: "1"
-                  - button [ref=e176]:
-                    - img [ref=e177]
-                - generic [ref=e180]:
-                  - combobox [ref=e181]:
+                  - spinbutton [ref=e187]: "1"
+                  - button [ref=e188]:
+                    - img [ref=e189]
+                - generic [ref=e192]:
+                  - combobox [ref=e193]:
                     - option "Select a product..." [selected]
+                    - option "StockTest1774952558107 (10 piece in stock)"
+                    - option "StockTest1774951585242 (10 piece in stock)"
+                    - option "StockTest1774951555339 (7 piece in stock)"
+                    - option "StockTest1774951159719 (7 piece in stock)"
+                    - option "StockTest1774951128531 (7 piece in stock)"
+                    - option "StockTest1774950717505 (10 piece in stock)"
+                    - option "StockTest1774950705798 (10 piece in stock)"
+                    - option "DeleteProd 1774950330497 (0 piece in stock)"
+                    - option "DeleteProd 1774950313059 (0 piece in stock)"
+                    - option "Product 1774950267240 (0 piece in stock)"
+                    - option "StockTest1774950198338 (10 piece in stock)"
+                    - option "StockTest1774950182516 (7 piece in stock)"
+                    - option "StockTest1774949994076 (7 piece in stock)"
+                    - option "StockTest1774949977200 (7 piece in stock)"
+                    - option "Product 1774949687029 (0 piece in stock)"
+                    - option "StockTest1774949464586 (7 piece in stock)"
+                    - option "StockTest1774949447776 (7 piece in stock)"
+                    - option "StockTest1774949090095 (7 piece in stock)"
+                    - option "StockTest1774949074440 (7 piece in stock)"
+                    - option "StockTest1774947386598 (7 piece in stock)"
+                    - option "StockTest1774946776639 (7 piece in stock)"
+                    - option "StockTest1774946760753 (7 piece in stock)"
                     - option "masamer (12 box in stock)"
                     - option "wood (1.02 piece in stock)"
-                    - option "Adobe Creative Cloud (25 piece in stock)"
-                    - option "IT Consultation (999 piece in stock)"
-                    - option "Microsoft 365 License (100 piece in stock)"
-                    - option "Web Development (999 piece in stock)"
-                    - option "USB-C Hub (2 piece in stock)"
                     - option "Ink Cartridge Set (18 piece in stock)"
-                    - option "Executive Desk (4 piece in stock)"
                     - option "Filing Cabinet (11 piece in stock)"
+                    - option "Executive Desk (4 piece in stock)"
+                    - option "Adobe Creative Cloud (25 piece in stock)"
+                    - option "USB-C Hub (2 piece in stock)"
+                    - option "Web Development (999 piece in stock)"
+                    - option "Microsoft 365 License (100 piece in stock)"
+                    - option "IT Consultation (999 piece in stock)"
                     - option "Dell Monitor 27\" (22 piece in stock)"
                     - option "Ergonomic Chair (8 piece in stock)"
                     - option "Whiteboard Markers (50 box in stock)"
@@ -216,343 +276,181 @@
                     - option "MacBook Pro 16\" (15 piece in stock)"
                     - option "Mechanical Keyboard (30 piece in stock)"
                     - option "Logitech MX Master 3S (45 piece in stock)"
-                  - spinbutton [ref=e182]: "1"
-                  - button [ref=e183]:
-                    - img [ref=e184]
-              - paragraph [ref=e187]: When this product is added to an invoice, component stocks are deducted automatically.
-            - generic [ref=e188]:
-              - button "Cancel" [ref=e189]
-              - button "Add Product" [ref=e190]
-        - table [ref=e192]:
-          - rowgroup [ref=e193]:
-            - row "Product SKU Category Price In Stock Actions" [ref=e194]:
-              - columnheader "Product" [ref=e195] [cursor=pointer]:
-                - generic [ref=e196]:
-                  - text: Product
-                  - img [ref=e197]
-              - columnheader "SKU" [ref=e199] [cursor=pointer]:
-                - generic [ref=e200]:
-                  - text: SKU
-                  - img [ref=e201]
-              - columnheader "Category" [ref=e203] [cursor=pointer]:
-                - generic [ref=e204]:
-                  - text: Category
-                  - img [ref=e205]
-              - columnheader "Price" [ref=e207] [cursor=pointer]:
+                  - spinbutton [ref=e194]: "1"
+                  - button [ref=e195]:
+                    - img [ref=e196]
+              - paragraph [ref=e199]: When this product is added to an invoice, component stocks are deducted automatically.
+            - generic [ref=e200]:
+              - button "Cancel" [ref=e201]
+              - button "Add Product" [ref=e202]
+        - table [ref=e204]:
+          - rowgroup [ref=e205]:
+            - row "Product SKU Category Price In Stock Actions" [ref=e206]:
+              - columnheader "Product" [ref=e207] [cursor=pointer]:
                 - generic [ref=e208]:
-                  - text: Price
+                  - text: Product
                   - img [ref=e209]
-              - columnheader "In Stock" [ref=e211] [cursor=pointer]:
+              - columnheader "SKU" [ref=e211] [cursor=pointer]:
                 - generic [ref=e212]:
-                  - text: In Stock
+                  - text: SKU
                   - img [ref=e213]
-              - columnheader "Actions" [ref=e215]
-          - rowgroup [ref=e216]:
-            - row "Composite jhgjhg 5× masamer, 89.99× wood - $5,656.00 0 piece (can make)" [ref=e217]:
-              - cell "Composite jhgjhg 5× masamer, 89.99× wood" [ref=e218]:
-                - generic [ref=e219]:
-                  - generic [ref=e220]:
-                    - img [ref=e221]
-                    - text: Composite
-                  - generic [ref=e225]:
-                    - generic [ref=e226]: jhgjhg
-                    - generic [ref=e227]: 5× masamer, 89.99× wood
-              - cell [ref=e228]
-              - cell "-" [ref=e229]
-              - cell "$5,656.00" [ref=e230]
-              - cell "0 piece (can make)" [ref=e231]:
-                - generic [ref=e232]:
-                  - img [ref=e233]
-                  - text: 0 piece
-                  - generic [ref=e235]: (can make)
-              - cell [ref=e236]:
-                - button [ref=e237]:
-                  - img [ref=e238]
-                - button [ref=e241]:
-                  - img [ref=e242]
-            - row "Composite living asas 4× masamer, 3.99× wood FURN-006 Furniture $1,500.00 0 piece (can make)" [ref=e245]:
-              - cell "Composite living asas 4× masamer, 3.99× wood" [ref=e246]:
-                - generic [ref=e247]:
-                  - generic [ref=e248]:
-                    - img [ref=e249]
-                    - text: Composite
-                  - generic [ref=e253]:
-                    - generic [ref=e254]: living
-                    - generic [ref=e255]: asas
-                    - generic [ref=e256]: 4× masamer, 3.99× wood
-              - cell "FURN-006" [ref=e257]
-              - cell "Furniture" [ref=e258]
-              - cell "$1,500.00" [ref=e259]
-              - cell "0 piece (can make)" [ref=e260]:
-                - generic [ref=e261]:
-                  - img [ref=e262]
-                  - text: 0 piece
-                  - generic [ref=e264]: (can make)
-              - cell [ref=e265]:
-                - button [ref=e266]:
-                  - img [ref=e267]
-                - button [ref=e270]:
-                  - img [ref=e271]
-            - row "masamer FURN-005 Furniture $5.00 12 box" [ref=e274]:
-              - cell "masamer" [ref=e275]:
-                - generic [ref=e278]: masamer
-              - cell "FURN-005" [ref=e279]
-              - cell "Furniture" [ref=e280]
-              - cell "$5.00" [ref=e281]
-              - cell "12 box" [ref=e282]:
-                - generic [ref=e283]: 12 box
-              - cell [ref=e284]:
-                - button [ref=e285]:
-                  - img [ref=e286]
-                - button [ref=e289]:
-                  - img [ref=e290]
-            - row "wood asas FURN-004 Furniture $100.00 1.02 piece" [ref=e293]:
-              - cell "wood asas" [ref=e294]:
-                - generic [ref=e296]:
-                  - generic [ref=e297]: wood
-                  - generic [ref=e298]: asas
-              - cell "FURN-004" [ref=e299]
-              - cell "Furniture" [ref=e300]
-              - cell "$100.00" [ref=e301]
-              - cell "1.02 piece" [ref=e302]:
-                - generic [ref=e303]:
-                  - img [ref=e304]
-                  - text: 1.02 piece
-              - cell [ref=e306]:
-                - button [ref=e307]:
-                  - img [ref=e308]
-                - button [ref=e311]:
-                  - img [ref=e312]
-            - row "Adobe Creative Cloud Annual all-apps license SOFT-002 Software $659.88 25 piece" [ref=e315]:
-              - cell "Adobe Creative Cloud Annual all-apps license" [ref=e316]:
-                - generic [ref=e318]:
-                  - generic [ref=e319]: Adobe Creative Cloud
-                  - generic [ref=e320]: Annual all-apps license
-              - cell "SOFT-002" [ref=e321]
-              - cell "Software" [ref=e322]
-              - cell "$659.88" [ref=e323]
-              - cell "25 piece" [ref=e324]:
-                - generic [ref=e325]: 25 piece
-              - cell [ref=e326]:
-                - button [ref=e327]:
-                  - img [ref=e328]
-                - button [ref=e331]:
-                  - img [ref=e332]
-            - row "IT Consultation Hourly IT consultation service SERV-001 Services $150.00 999 piece" [ref=e335]:
-              - cell "IT Consultation Hourly IT consultation service" [ref=e336]:
-                - generic [ref=e338]:
-                  - generic [ref=e339]: IT Consultation
-                  - generic [ref=e340]: Hourly IT consultation service
-              - cell "SERV-001" [ref=e341]
-              - cell "Services" [ref=e342]
-              - cell "$150.00" [ref=e343]
-              - cell "999 piece" [ref=e344]:
-                - generic [ref=e345]: 999 piece
-              - cell [ref=e346]:
-                - button [ref=e347]:
-                  - img [ref=e348]
-                - button [ref=e351]:
-                  - img [ref=e352]
-            - row "Microsoft 365 License Annual business subscription per user SOFT-001 Software $264.00 100 piece" [ref=e355]:
-              - cell "Microsoft 365 License Annual business subscription per user" [ref=e356]:
-                - generic [ref=e358]:
-                  - generic [ref=e359]: Microsoft 365 License
-                  - generic [ref=e360]: Annual business subscription per user
-              - cell "SOFT-001" [ref=e361]
-              - cell "Software" [ref=e362]
-              - cell "$264.00" [ref=e363]
-              - cell "100 piece" [ref=e364]:
-                - generic [ref=e365]: 100 piece
-              - cell [ref=e366]:
-                - button [ref=e367]:
-                  - img [ref=e368]
-                - button [ref=e371]:
+              - columnheader "Category" [ref=e215] [cursor=pointer]:
+                - generic [ref=e216]:
+                  - text: Category
+                  - img [ref=e217]
+              - columnheader "Price" [ref=e219] [cursor=pointer]:
+                - generic [ref=e220]:
+                  - text: Price
+                  - img [ref=e221]
+              - columnheader "In Stock" [ref=e223] [cursor=pointer]:
+                - generic [ref=e224]:
+                  - text: In Stock
+                  - img [ref=e225]
+              - columnheader "Actions" [ref=e227]
+          - rowgroup [ref=e228]:
+            - row "StockTest1774952558107 STK-1774952558107 - $100.00 10 piece" [ref=e229]:
+              - cell "StockTest1774952558107" [ref=e230]:
+                - generic [ref=e233]: StockTest1774952558107
+              - cell "STK-1774952558107" [ref=e234]
+              - cell "-" [ref=e235]
+              - cell "$100.00" [ref=e236]
+              - cell "10 piece" [ref=e237]:
+                - generic [ref=e238]: 10 piece
+              - cell [ref=e239]:
+                - button [ref=e240]:
+                  - img [ref=e241]
+                - button [ref=e244]:
+                  - img [ref=e245]
+            - row "StockTest1774951585242 STK-1774951585242 - $100.00 10 piece" [ref=e248]:
+              - cell "StockTest1774951585242" [ref=e249]:
+                - generic [ref=e252]: StockTest1774951585242
+              - cell "STK-1774951585242" [ref=e253]
+              - cell "-" [ref=e254]
+              - cell "$100.00" [ref=e255]
+              - cell "10 piece" [ref=e256]:
+                - generic [ref=e257]: 10 piece
+              - cell [ref=e258]:
+                - button [ref=e259]:
+                  - img [ref=e260]
+                - button [ref=e263]:
+                  - img [ref=e264]
+            - row "StockTest1774951555339 STK-1774951555339 - $100.00 7 piece" [ref=e267]:
+              - cell "StockTest1774951555339" [ref=e268]:
+                - generic [ref=e271]: StockTest1774951555339
+              - cell "STK-1774951555339" [ref=e272]
+              - cell "-" [ref=e273]
+              - cell "$100.00" [ref=e274]
+              - cell "7 piece" [ref=e275]:
+                - generic [ref=e276]: 7 piece
+              - cell [ref=e277]:
+                - button [ref=e278]:
+                  - img [ref=e279]
+                - button [ref=e282]:
+                  - img [ref=e283]
+            - row "StockTest1774951159719 STK-1774951159719 - $100.00 7 piece" [ref=e286]:
+              - cell "StockTest1774951159719" [ref=e287]:
+                - generic [ref=e290]: StockTest1774951159719
+              - cell "STK-1774951159719" [ref=e291]
+              - cell "-" [ref=e292]
+              - cell "$100.00" [ref=e293]
+              - cell "7 piece" [ref=e294]:
+                - generic [ref=e295]: 7 piece
+              - cell [ref=e296]:
+                - button [ref=e297]:
+                  - img [ref=e298]
+                - button [ref=e301]:
+                  - img [ref=e302]
+            - row "StockTest1774951128531 STK-1774951128531 - $100.00 7 piece" [ref=e305]:
+              - cell "StockTest1774951128531" [ref=e306]:
+                - generic [ref=e309]: StockTest1774951128531
+              - cell "STK-1774951128531" [ref=e310]
+              - cell "-" [ref=e311]
+              - cell "$100.00" [ref=e312]
+              - cell "7 piece" [ref=e313]:
+                - generic [ref=e314]: 7 piece
+              - cell [ref=e315]:
+                - button [ref=e316]:
+                  - img [ref=e317]
+                - button [ref=e320]:
+                  - img [ref=e321]
+            - row "StockTest1774950717505 STK-1774950717505 - $100.00 10 piece" [ref=e324]:
+              - cell "StockTest1774950717505" [ref=e325]:
+                - generic [ref=e328]: StockTest1774950717505
+              - cell "STK-1774950717505" [ref=e329]
+              - cell "-" [ref=e330]
+              - cell "$100.00" [ref=e331]
+              - cell "10 piece" [ref=e332]:
+                - generic [ref=e333]: 10 piece
+              - cell [ref=e334]:
+                - button [ref=e335]:
+                  - img [ref=e336]
+                - button [ref=e339]:
+                  - img [ref=e340]
+            - row "StockTest1774950705798 STK-1774950705798 - $100.00 10 piece" [ref=e343]:
+              - cell "StockTest1774950705798" [ref=e344]:
+                - generic [ref=e347]: StockTest1774950705798
+              - cell "STK-1774950705798" [ref=e348]
+              - cell "-" [ref=e349]
+              - cell "$100.00" [ref=e350]
+              - cell "10 piece" [ref=e351]:
+                - generic [ref=e352]: 10 piece
+              - cell [ref=e353]:
+                - button [ref=e354]:
+                  - img [ref=e355]
+                - button [ref=e358]:
+                  - img [ref=e359]
+            - row "DeleteProd 1774950330497 ANOT-004 AnotherCat1774949687029 $99.00 0 piece" [ref=e362]:
+              - cell "DeleteProd 1774950330497" [ref=e363]:
+                - generic [ref=e366]: DeleteProd 1774950330497
+              - cell "ANOT-004" [ref=e367]
+              - cell "AnotherCat1774949687029" [ref=e368]
+              - cell "$99.00" [ref=e369]
+              - cell "0 piece" [ref=e370]:
+                - generic [ref=e371]:
                   - img [ref=e372]
-            - row "Web Development Custom web development per hour SERV-002 Services $120.00 999 piece" [ref=e375]:
-              - cell "Web Development Custom web development per hour" [ref=e376]:
-                - generic [ref=e378]:
-                  - generic [ref=e379]: Web Development
-                  - generic [ref=e380]: Custom web development per hour
-              - cell "SERV-002" [ref=e381]
-              - cell "Services" [ref=e382]
-              - cell "$120.00" [ref=e383]
-              - cell "999 piece" [ref=e384]:
-                - generic [ref=e385]: 999 piece
-              - cell [ref=e386]:
-                - button [ref=e387]:
-                  - img [ref=e388]
-                - button [ref=e391]:
-                  - img [ref=e392]
-            - row "USB-C Hub Anker 7-in-1 USB-C Hub ELEC-005 Electronics $35.99 2 piece" [ref=e395]:
-              - cell "USB-C Hub Anker 7-in-1 USB-C Hub" [ref=e396]:
-                - generic [ref=e398]:
-                  - generic [ref=e399]: USB-C Hub
-                  - generic [ref=e400]: Anker 7-in-1 USB-C Hub
-              - cell "ELEC-005" [ref=e401]
-              - cell "Electronics" [ref=e402]
-              - cell "$35.99" [ref=e403]
-              - cell "2 piece" [ref=e404]:
-                - generic [ref=e405]:
-                  - img [ref=e406]
-                  - text: 2 piece
-              - cell [ref=e408]:
-                - button [ref=e409]:
-                  - img [ref=e410]
-                - button [ref=e413]:
+                  - text: 0 piece
+              - cell [ref=e374]:
+                - button [ref=e375]:
+                  - img [ref=e376]
+                - button [ref=e379]:
+                  - img [ref=e380]
+            - row "DeleteProd 1774950313059 ANOT-003 AnotherCat1774949687029 $99.00 0 piece" [ref=e383]:
+              - cell "DeleteProd 1774950313059" [ref=e384]:
+                - generic [ref=e387]: DeleteProd 1774950313059
+              - cell "ANOT-003" [ref=e388]
+              - cell "AnotherCat1774949687029" [ref=e389]
+              - cell "$99.00" [ref=e390]
+              - cell "0 piece" [ref=e391]:
+                - generic [ref=e392]:
+                  - img [ref=e393]
+                  - text: 0 piece
+              - cell [ref=e395]:
+                - button [ref=e396]:
+                  - img [ref=e397]
+                - button [ref=e400]:
+                  - img [ref=e401]
+            - row "Product 1774950267240 ANOT-002 AnotherCat1774949687029 $100.00 0 piece" [ref=e404]:
+              - cell "Product 1774950267240" [ref=e405]:
+                - generic [ref=e408]: Product 1774950267240
+              - cell "ANOT-002" [ref=e409]
+              - cell "AnotherCat1774949687029" [ref=e410]
+              - cell "$100.00" [ref=e411]
+              - cell "0 piece" [ref=e412]:
+                - generic [ref=e413]:
                   - img [ref=e414]
-            - row "Ink Cartridge Set HP 63XL Black & Color combo pack OFF-002 Office Supplies $65.99 18 piece" [ref=e417]:
-              - cell "Ink Cartridge Set HP 63XL Black & Color combo pack" [ref=e418]:
-                - generic [ref=e420]:
-                  - generic [ref=e421]: Ink Cartridge Set
-                  - generic [ref=e422]: HP 63XL Black & Color combo pack
-              - cell "OFF-002" [ref=e423]
-              - cell "Office Supplies" [ref=e424]
-              - cell "$65.99" [ref=e425]
-              - cell "18 piece" [ref=e426]:
-                - generic [ref=e427]: 18 piece
-              - cell [ref=e428]:
-                - button [ref=e429]:
-                  - img [ref=e430]
-                - button [ref=e433]:
-                  - img [ref=e434]
-            - row "Executive Desk L-shaped executive desk, walnut finish FURN-001 Furniture $899.99 4 piece" [ref=e437]:
-              - cell "Executive Desk L-shaped executive desk, walnut finish" [ref=e438]:
-                - generic [ref=e440]:
-                  - generic [ref=e441]: Executive Desk
-                  - generic [ref=e442]: L-shaped executive desk, walnut finish
-              - cell "FURN-001" [ref=e443]
-              - cell "Furniture" [ref=e444]
-              - cell "$899.99" [ref=e445]
-              - cell "4 piece" [ref=e446]:
-                - generic [ref=e447]: 4 piece
-              - cell [ref=e448]:
-                - button [ref=e449]:
-                  - img [ref=e450]
-                - button [ref=e453]:
-                  - img [ref=e454]
-            - row "Filing Cabinet 4-drawer vertical filing cabinet, steel FURN-003 Furniture $299.99 11 piece" [ref=e457]:
-              - cell "Filing Cabinet 4-drawer vertical filing cabinet, steel" [ref=e458]:
-                - generic [ref=e460]:
-                  - generic [ref=e461]: Filing Cabinet
-                  - generic [ref=e462]: 4-drawer vertical filing cabinet, steel
-              - cell "FURN-003" [ref=e463]
-              - cell "Furniture" [ref=e464]
-              - cell "$299.99" [ref=e465]
-              - cell "11 piece" [ref=e466]:
-                - generic [ref=e467]: 11 piece
-              - cell [ref=e468]:
-                - button [ref=e469]:
-                  - img [ref=e470]
-                - button [ref=e473]:
-                  - img [ref=e474]
-            - row "Dell Monitor 27\" Dell UltraSharp 27 4K USB-C Monitor ELEC-002 Electronics $549.99 22 piece" [ref=e477]:
-              - cell "Dell Monitor 27\" Dell UltraSharp 27 4K USB-C Monitor" [ref=e478]:
-                - generic [ref=e480]:
-                  - generic [ref=e481]: Dell Monitor 27"
-                  - generic [ref=e482]: Dell UltraSharp 27 4K USB-C Monitor
-              - cell "ELEC-002" [ref=e483]
-              - cell "Electronics" [ref=e484]
-              - cell "$549.99" [ref=e485]
-              - cell "22 piece" [ref=e486]:
-                - generic [ref=e487]: 22 piece
-              - cell [ref=e488]:
-                - button [ref=e489]:
-                  - img [ref=e490]
-                - button [ref=e493]:
-                  - img [ref=e494]
-            - row "Ergonomic Chair Herman Miller Aeron chair FURN-002 Furniture $1,395.00 8 piece" [ref=e497]:
-              - cell "Ergonomic Chair Herman Miller Aeron chair" [ref=e498]:
-                - generic [ref=e500]:
-                  - generic [ref=e501]: Ergonomic Chair
-                  - generic [ref=e502]: Herman Miller Aeron chair
-              - cell "FURN-002" [ref=e503]
-              - cell "Furniture" [ref=e504]
-              - cell "$1,395.00" [ref=e505]
-              - cell "8 piece" [ref=e506]:
-                - generic [ref=e507]: 8 piece
-              - cell [ref=e508]:
-                - button [ref=e509]:
-                  - img [ref=e510]
-                - button [ref=e513]:
-                  - img [ref=e514]
-            - row "Whiteboard Markers Expo dry erase markers, 12 pack OFF-003 Office Supplies $14.99 50 box" [ref=e517]:
-              - cell "Whiteboard Markers Expo dry erase markers, 12 pack" [ref=e518]:
-                - generic [ref=e520]:
-                  - generic [ref=e521]: Whiteboard Markers
-                  - generic [ref=e522]: Expo dry erase markers, 12 pack
-              - cell "OFF-003" [ref=e523]
-              - cell "Office Supplies" [ref=e524]
-              - cell "$14.99" [ref=e525]
-              - cell "50 box" [ref=e526]:
-                - generic [ref=e527]: 50 box
-              - cell [ref=e528]:
-                - button [ref=e529]:
-                  - img [ref=e530]
-                - button [ref=e533]:
-                  - img [ref=e534]
-            - row "A4 Paper (Box) Premium A4 copy paper, 5000 sheets OFF-001 Office Supplies $45.99 3 box" [ref=e537]:
-              - cell "A4 Paper (Box) Premium A4 copy paper, 5000 sheets" [ref=e538]:
-                - generic [ref=e540]:
-                  - generic [ref=e541]: A4 Paper (Box)
-                  - generic [ref=e542]: Premium A4 copy paper, 5000 sheets
-              - cell "OFF-001" [ref=e543]
-              - cell "Office Supplies" [ref=e544]
-              - cell "$45.99" [ref=e545]
-              - cell "3 box" [ref=e546]:
-                - generic [ref=e547]:
-                  - img [ref=e548]
-                  - text: 3 box
-              - cell [ref=e550]:
-                - button [ref=e551]:
-                  - img [ref=e552]
-                - button [ref=e555]:
-                  - img [ref=e556]
-            - row "MacBook Pro 16\" Apple MacBook Pro 16-inch M3 Pro ELEC-001 Electronics $2,499.99 15 piece" [ref=e559]:
-              - cell "MacBook Pro 16\" Apple MacBook Pro 16-inch M3 Pro" [ref=e560]:
-                - generic [ref=e562]:
-                  - generic [ref=e563]: MacBook Pro 16"
-                  - generic [ref=e564]: Apple MacBook Pro 16-inch M3 Pro
-              - cell "ELEC-001" [ref=e565]
-              - cell "Electronics" [ref=e566]
-              - cell "$2,499.99" [ref=e567]
-              - cell "15 piece" [ref=e568]:
-                - generic [ref=e569]: 15 piece
-              - cell [ref=e570]:
-                - button [ref=e571]:
-                  - img [ref=e572]
-                - button [ref=e575]:
-                  - img [ref=e576]
-            - row "Mechanical Keyboard Keychron K2 Pro Wireless Mechanical ELEC-004 Electronics $89.99 30 piece" [ref=e579]:
-              - cell "Mechanical Keyboard Keychron K2 Pro Wireless Mechanical" [ref=e580]:
-                - generic [ref=e582]:
-                  - generic [ref=e583]: Mechanical Keyboard
-                  - generic [ref=e584]: Keychron K2 Pro Wireless Mechanical
-              - cell "ELEC-004" [ref=e585]
-              - cell "Electronics" [ref=e586]
-              - cell "$89.99" [ref=e587]
-              - cell "30 piece" [ref=e588]:
-                - generic [ref=e589]: 30 piece
-              - cell [ref=e590]:
-                - button [ref=e591]:
-                  - img [ref=e592]
-                - button [ref=e595]:
-                  - img [ref=e596]
-            - row "Logitech MX Master 3S Wireless mouse with ergonomic design ELEC-003 Electronics $99.99 45 piece" [ref=e599]:
-              - cell "Logitech MX Master 3S Wireless mouse with ergonomic design" [ref=e600]:
-                - generic [ref=e602]:
-                  - generic [ref=e603]: Logitech MX Master 3S
-                  - generic [ref=e604]: Wireless mouse with ergonomic design
-              - cell "ELEC-003" [ref=e605]
-              - cell "Electronics" [ref=e606]
-              - cell "$99.99" [ref=e607]
-              - cell "45 piece" [ref=e608]:
-                - generic [ref=e609]: 45 piece
-              - cell [ref=e610]:
-                - button [ref=e611]:
-                  - img [ref=e612]
-                - button [ref=e615]:
-                  - img [ref=e616]
-  - button "Open Next.js Dev Tools" [ref=e624] [cursor=pointer]:
-    - img [ref=e625]
-  - alert [ref=e628]
+                  - text: 0 piece
+              - cell [ref=e416]:
+                - button [ref=e417]:
+                  - img [ref=e418]
+                - button [ref=e421]:
+                  - img [ref=e422]
+        - generic [ref=e425]:
+          - generic [ref=e426]: 1–10 of 41
+          - generic [ref=e427]:
+            - button "Prev" [disabled] [ref=e428]
+            - generic [ref=e429]: 1 / 5
+            - button "Next" [ref=e430]
+  - button "Open Next.js Dev Tools" [ref=e436] [cursor=pointer]:
+    - img [ref=e437]
+  - alert [ref=e440]
 ```

@@ -814,7 +814,7 @@ export default function ReportsPage() {
                     <h2 className="text-sm font-semibold text-orange-400">Expense Breakdown</h2>
                     <span className="text-xs text-text-muted">Total: <strong className="text-text-primary">{fmt(cr.expenses.total)}</strong></span>
                   </div>
-                  <Eg text="One-time rent $600 appears once. Recurring rent of $1,000/month is pro-rated by actual days (e.g. Jan 1–15 in a 31-day month = $484). A monthly salary of $1,000 with a $200 advance = $800 shown. Supplier bill expenses reflect only actual payments made in the period." />
+                  <Eg text="One-time rent $600 appears once. Recurring rent of $1,000/month is pro-rated using calendar-accurate months with rounding (e.g. Jan 1–Jan 31 = 1 month = $1,000; Jan 1–Feb 15 rounds to 1 month = $1,000). A monthly salary of $1,000 with a $200 advance = $800 shown. Supplier bill expenses reflect only actual payments made in the period." />
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[700px]">

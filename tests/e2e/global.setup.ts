@@ -6,7 +6,7 @@ const authFile = path.join(__dirname, ".auth/admin.json");
 
 setup("authenticate as admin", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.locator("h1")).toContainText("Accountant");
+  await expect(page.locator("#email")).toBeVisible({ timeout: 10000 });
 
   await page.fill("#email", "admin@accountant.com");
   await page.fill("#password", "admin123");

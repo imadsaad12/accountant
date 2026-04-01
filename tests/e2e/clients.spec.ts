@@ -49,12 +49,12 @@ test.describe("Clients", () => {
   });
 
   test("edit existing client", async ({ page }) => {
-    // Find the first edit button and click it
-    const editBtn = page.locator("button[title], button").filter({ has: page.locator("svg") }).first();
-    const pencilBtns = page.locator("table tbody tr").first().locator("button").first();
-    await pencilBtns.click();
+    // Button order per row: Eye (view), Pencil (edit), Trash (delete)
+    // So edit is the 2nd button (index 1)
+    const editBtn = page.locator("table tbody tr").first().locator("button").nth(1);
+    await editBtn.click();
 
-    // Modal should open
+    // Edit modal should open
     await expect(page.locator("h2")).toContainText(/edit/i, { timeout: 4000 });
     await page.keyboard.press("Escape");
   });

@@ -179,8 +179,13 @@ export default function InvoicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(paymentForm),
       });
-      if (!payRes.ok) return;
-      const newPayment: Payment = await payRes.json();
+      if (!payRes.ok) {
+        const err = await payRes.json().catch(() => null);
+        alert(err?.error || "Failed to record payment");
+        return;
+      }
+      const result = await payRes.json();
+      const newPayment: Payment = result;
       setPayments(prev => [newPayment, ...prev]);
       setPaymentForm({ amount: "", date: todayInTz(tz), method: "cash", reference: "", note: "" });
       setShowPaymentForm(false);
@@ -188,6 +193,10 @@ export default function InvoicesPage() {
       const newAmountPaid = viewInvoice.amountPaid + newPayment.amount;
       const newStatus = newAmountPaid >= viewInvoice.total ? "paid" : "partially_paid";
       patchInvoice({ ...viewInvoice, amountPaid: newAmountPaid, status: newStatus });
+      // Refresh clients list if excess was added to client balance
+      if (result.excessAmount > 0) {
+        fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); });
+      }
     } finally {
       setSavingPayment(false);
     }
@@ -237,18 +246,23 @@ export default function InvoicesPage() {
         if (res.ok) {
           const invoice = await res.json();
           let amountPaid = invoice.amountPaid || 0;
+          let hasExcess = false;
           if (showInitPayment && parseFloat(initPayment.amount) > 0) {
             const payRes = await fetch(`/api/invoices/${invoice.id}/payments`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ amount: parseFloat(initPayment.amount), date: initPayment.date, method: initPayment.method, reference: initPayment.reference || null }),
             });
-            if (payRes.ok) amountPaid += parseFloat(initPayment.amount);
+            if (payRes.ok) {
+              const payResult = await payRes.json();
+              amountPaid += payResult.amount;
+              if (payResult.excessAmount > 0) hasExcess = true;
+            }
           }
           const status = amountPaid >= invoice.total ? "paid" : amountPaid > 0 ? "partially_paid" : invoice.status;
           setInvoices(prev => [{ ...invoice, amountPaid, status }, ...prev]);
-          // Refresh clients to reflect any balance changes from auto-applied balance
-          if (invoice.balanceApplied > 0) {
+          // Refresh clients to reflect any balance changes from auto-applied balance or excess payment
+          if (invoice.balanceApplied > 0 || hasExcess) {
             fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); });
           }
         }
@@ -661,12 +675,12 @@ export default function InvoicesPage() {
                         {(() => {
                           const remaining = parseFloat((viewInvoice.total - payments.reduce((s, p) => s + p.amount, 0)).toFixed(2));
                           const enteredAmount = parseFloat(paymentForm.amount);
-                          const exceedsBalance = !isNaN(enteredAmount) && enteredAmount > remaining;
+                          const excessAmount = !isNaN(enteredAmount) && enteredAmount > remaining ? parseFloat((enteredAmount - remaining).toFixed(2)) : 0;
                           return (
                             <>
-                              <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className={`w-full px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${exceedsBalance ? "border-danger" : "border-dark-border"}`} placeholder="0.00" />
-                              {exceedsBalance
-                                ? <p className="text-[11px] text-danger mt-1">Exceeds remaining balance of {currencySymbol}{fmtAmt(remaining)}</p>
+                              <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" placeholder="0.00" />
+                              {excessAmount > 0
+                                ? <p className="text-[11px] text-accent mt-1">{currencySymbol}{fmtAmt(excessAmount)} {t("payments.excess_to_balance") ?? "will be added to client balance"}</p>
                                 : <p className="text-[11px] text-text-muted mt-1">Remaining: {currencySymbol}{fmtAmt(remaining)}</p>
                               }
                             </>
@@ -974,6 +988,13 @@ export default function InvoicesPage() {
                             onChange={e => setInitPayment({ ...initPayment, amount: e.target.value })}
                             className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent"
                           />
+                          {(() => {
+                            const total = afterDiscount + tax + feesTotal;
+                            const entered = parseFloat(initPayment.amount);
+                            return !isNaN(entered) && entered > total && total > 0 ? (
+                              <p className="text-[11px] text-accent mt-1">{currencySymbol}{fmtAmt(entered - total)} {t("payments.excess_to_balance") ?? "will be added to client balance"}</p>
+                            ) : null;
+                          })()}
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-text-secondary mb-1">{t("field.date")}</label>

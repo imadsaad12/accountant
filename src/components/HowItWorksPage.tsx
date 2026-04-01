@@ -124,6 +124,25 @@ export default function HowItWorksPage() {
               </div>
             </Subsection>
 
+            <Subsection title="Overpayment → Client Balance">
+              <p className="text-text-secondary mb-4">
+                When a payment exceeds the remaining invoice balance, the excess is automatically added to the client's credit balance:
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Applied to Invoice = min(Payment Amount, Remaining Balance)",
+                  "Excess = Payment Amount − Applied to Invoice",
+                  "Client Balance += Excess",
+                ]}
+              />
+              <p className="text-text-secondary text-sm mt-4">
+                <strong>Example:</strong> Invoice total = $200, already paid $150, remaining = $50. Client pays $80 → $50 applied to invoice (status → paid), $30 added to client balance.
+              </p>
+              <p className="text-text-secondary text-sm mt-2">
+                The client's balance is then auto-applied to future invoices at creation time.
+              </p>
+            </Subsection>
+
             <Subsection title="Cost of Goods Sold (COGS)">
               <p className="text-text-secondary mb-4">
                 Product costs are <strong>snapshotted at invoice creation time</strong>:
@@ -250,21 +269,52 @@ export default function HowItWorksPage() {
 
             <Subsection title="Calendar-Accurate Month Calculation">
               <p className="text-text-secondary mb-4">
-                Months are calculated based on actual days in each month (28/29/30/31):
+                When you have a monthly expense or salary, the system needs to figure out <strong>how many months</strong> fit between two dates. Instead of assuming every month has 30 days, it counts using the real calendar.
               </p>
-              <p className="text-text-secondary text-sm">
-                <strong>Example: Feb 15 → Mar 17</strong>
+              <p className="text-text-secondary mb-2 text-sm">
+                <strong>The idea is simple:</strong> split the date range into 3 parts:
               </p>
-              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-1 text-sm text-text-secondary font-mono mt-2 mb-4">
-                <div>Days in Feb after 15th: (28 − 15 + 1) ÷ 28 = 0.5 months</div>
-                <div>Full month of March: 1 month</div>
-                <div>Days in March up to 17: 17 ÷ 31 = 0.548 months</div>
-                <div className="text-accent">Total: 0.5 + 1 + 0.548 = 2.048 months</div>
-                <div>For $1000/month: $1000 × 2.048 = <strong>$2048</strong></div>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mb-4">
+                <div>1. <strong>Remaining days in the first month</strong> — how much of the starting month is left?</div>
+                <div>2. <strong>Full months in between</strong> — any complete months from start to end?</div>
+                <div>3. <strong>Days used in the last month</strong> — how far into the ending month?</div>
               </div>
-              <p className="text-text-secondary text-sm">
-                <strong>Rounding:</strong> Monthly recurring expenses use Math.round() to snap fractional months (1.048 → 1 month, 1.5 → 2 months).
+
+              <p className="text-text-secondary text-sm mb-2">
+                <strong>Example: Feb 15 → Mar 17</strong> (expense is $1,000/month)
               </p>
+              <div className="bg-dark-card border-l-4 border-accent rounded p-4 space-y-3 text-sm text-text-secondary mb-4">
+                <div>
+                  <strong>Step 1 — Rest of February:</strong> Feb has 28 days. From Feb 15 to Feb 28 = 14 days remaining.
+                  <div className="font-mono text-text-muted mt-1">14 ÷ 28 = 0.5 (half a month)</div>
+                </div>
+                <div>
+                  <strong>Step 2 — Full months between:</strong> Feb and Mar are next to each other, so there are 0 full months in between.
+                </div>
+                <div>
+                  <strong>Step 3 — Days used in March:</strong> 17 days into March. March has 31 days.
+                  <div className="font-mono text-text-muted mt-1">17 ÷ 31 = 0.5484 months</div>
+                </div>
+                <div className="border-t border-dark-border pt-2 text-accent font-semibold">
+                  Total = 0.5 + 0 + 0.5484 = 1.0484 months → $1,000 × 1.0484 = <strong>$1,048.40</strong>
+                </div>
+              </div>
+
+              <p className="text-text-secondary text-sm mb-2">
+                <strong>Another example: Jan 1 → Mar 31</strong>
+              </p>
+              <div className="bg-dark-card border-l-4 border-accent rounded p-4 space-y-2 text-sm text-text-secondary mb-4">
+                <div><strong>Step 1:</strong> Jan 1 to Jan 31 = full month → 1.0</div>
+                <div><strong>Step 2:</strong> February is one full month in between → 1.0</div>
+                <div><strong>Step 3:</strong> Mar 1 to Mar 31 = full month → 31 ÷ 31 = 1.0</div>
+                <div className="border-t border-dark-border pt-2 text-accent font-semibold">Total = 1.0 + 1.0 + 1.0 = 3.0 months exactly</div>
+              </div>
+
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div><strong>Rounding difference between reports:</strong></div>
+                <div>• <strong>P&L Report:</strong> Uses the exact number (e.g. 1.0484 months)</div>
+                <div>• <strong>Comprehensive Report:</strong> Rounds to the nearest whole month (e.g. 1.0484 → 1 month)</div>
+              </div>
             </Subsection>
           </Section>
 
@@ -288,31 +338,65 @@ export default function HowItWorksPage() {
                 <SalaryPeriodBox
                   period="Monthly"
                   formula="Salary = rate × calcMonths() [calendar-accurate]"
-                  example="$3000/month, Feb 15–Mar 17 (2.048 months) = $6144"
+                  example="$3000/month, Feb 15–Mar 17 (1.0484 months) = $3145.20"
                 />
               </div>
             </Subsection>
 
             <Subsection title="Salary Advances: Deduction & Pro-rating">
               <p className="text-text-secondary mb-4">
-                Advances reduce take-home pay for the period issued, calculated by remaining days in pay period:
+                Advances reduce take-home pay, pro-rated by overlap between the advance's pay period and the report period:
               </p>
               <FormulaBox
                 formulas={[
-                  "Remaining Days = Period End − Advance Date + 1",
-                  "Pro-Rated Advance = Amount × (Remaining Days ÷ Total Days)",
-                  "Net Salary = Base Salary − Sum of Pro-Rated Advances",
+                  "Remaining Days = calcDays(Advance Date, Period End)",
+                  "Daily Rate = Advance Amount ÷ Remaining Days",
+                  "Overlap Days = calcDays(max(Advance Date, Report Start), min(Period End, Report End))",
+                  "Deduction = Daily Rate × Overlap Days",
+                  "Net Salary = Base Salary − Sum of Deductions",
                 ]}
               />
               <p className="text-text-secondary text-sm mt-4">
-                <strong>Example:</strong> $3000/month employee issues $500 advance on Jan 25. Remaining days in January: 31 − 25 + 1 = 7 days. Pro-rated: $500 × (7÷31) = $112.90. Net salary: $3000 − $112.90 = <strong>$2887.10</strong>
+                <strong>Example:</strong> $3000/month employee, $500 advance on Jan 25. Period end = Jan 31. Remaining days = calcDays(Jan 25, Jan 31) = 7. Daily rate = $500 ÷ 7 = $71.43. If report covers full January: overlap = 7 days → Deduction = $71.43 × 7 = <strong>$500</strong>. Net salary: $3000 − $500 = <strong>$2500</strong>.
+              </p>
+              <p className="text-text-secondary text-sm mt-2">
+                If report only covers Jan 25–Jan 28 (4 overlap days): Deduction = $71.43 × 4 = <strong>$285.71</strong>.
               </p>
             </Subsection>
 
-            <Subsection title="Automatic Advance Status">
-              <p className="text-text-secondary">
-                Salary advances are auto-marked as "paid" once their pay period ends. Day period: if date passed. Week period: if current week started. Month period: if current month started. Unpaid advances remain deducted from salary.
+            <Subsection title="Advance Status & What Each Means">
+              <p className="text-text-secondary mb-4">
+                Every salary advance has one of 3 statuses:
               </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-3 text-sm text-text-secondary mb-4">
+                <div>
+                  <strong className="text-yellow-400">Pending</strong> — The advance was given but the pay period hasn't ended yet. It <strong>will be deducted</strong> from the employee's salary.
+                </div>
+                <div>
+                  <strong className="text-accent">Deducted from Salary</strong> — The pay period has ended and the advance was automatically deducted from salary. This happens on its own — you don't need to do anything.
+                </div>
+                <div>
+                  <strong className="text-green-400">Returned</strong> — The employee gave back the money directly (not through salary). The advance is <strong>NOT deducted</strong> from salary.
+                </div>
+              </div>
+
+              <p className="text-text-secondary text-sm mb-2">
+                <strong>When does it auto-change to "Deducted"?</strong>
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mb-4">
+                <div>• <strong>Daily</strong> employee → when the advance date has passed</div>
+                <div>• <strong>Weekly</strong> employee → when a new week starts after the advance</div>
+                <div>• <strong>Monthly</strong> employee → when a new month starts after the advance</div>
+              </div>
+
+              <p className="text-text-secondary text-sm mb-2">
+                <strong>What can you change manually?</strong>
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• You can mark a <strong>Pending</strong> advance as <strong>Returned</strong> (employee gave the money back) — it will no longer be deducted from salary</div>
+                <div>• You can switch a <strong>Returned</strong> advance back to <strong>Pending</strong> if needed</div>
+                <div>• Once an advance is <strong>Deducted from Salary</strong>, you cannot change it — it's already been applied</div>
+              </div>
             </Subsection>
 
             <Subsection title="Active Employee Filter">
@@ -441,7 +525,8 @@ export default function HowItWorksPage() {
                 <div>• <strong>Total Tax:</strong> Sum of tax across all invoices</div>
                 <div>• <strong>Total Supplier Bills:</strong> Sum of all bill amounts</div>
                 <div>• <strong>Total Expenses:</strong> Sum of one-time + recurring</div>
-                <div>• <strong>Net Earning:</strong> Gross − COGS − Tax − Bills − Expenses</div>
+                <div>• <strong>Total Salaries:</strong> All employees prorated from hire date to today (minus advances)</div>
+                <div>• <strong>Net Earning:</strong> Gross − COGS − Tax − Bills − Expenses − Salaries</div>
                 <div>• <strong>Pending Amount:</strong> Sum of unpaid invoice balances</div>
               </div>
             </Subsection>
@@ -503,9 +588,10 @@ export default function HowItWorksPage() {
 
             <Subsection title="Payment Boundary Checks">
               <ul className="text-text-secondary space-y-2 list-disc list-inside">
-                <li>Cannot pay more than remaining invoice balance</li>
-                <li>Cannot exceed invoice total through multiple payments</li>
-                <li>Balance is checked at each payment application</li>
+                <li>Payment amount must be greater than 0</li>
+                <li>If payment exceeds remaining balance, only the remaining is applied to the invoice — excess goes to client balance</li>
+                <li>Invoice payment records never exceed the invoice total</li>
+                <li>Client balance auto-applies to new invoices at creation</li>
               </ul>
             </Subsection>
 
@@ -533,7 +619,7 @@ export default function HowItWorksPage() {
                 {
                   question: "How is monthly recurring expense pro-ration calculated?",
                   answer:
-                    "Uses calendar-accurate month calculation based on actual days in each month (28/29/30/31). Feb 15 → Mar 17 = 2.048 months. With Math.round(), this becomes 2 months.",
+                    "Uses calendar-accurate month calculation based on actual days in each month (28/29/30/31). Feb 15 → Mar 17 = 1.0484 months. The Comprehensive Report uses Math.round() (1.0484 → 1 month), while the P&L report uses the exact fractional value.",
                 },
                 {
                   question: "Can I use multiple currencies?",
@@ -553,12 +639,17 @@ export default function HowItWorksPage() {
                 {
                   question: "When are salary advances deducted from salary?",
                   answer:
-                    "Advances are pro-rated based on remaining days in the pay period. Only the portion covering days after the advance date is deducted from that period's salary.",
+                    "Advances are spread across remaining days in the pay period (from advance date to period end). The deduction for a report equals (advance ÷ remaining days) × overlap days with the report period. If the report covers the full remaining period, the entire advance is deducted.",
                 },
                 {
                   question: "How is composite product stock calculated?",
                   answer:
                     "Effective quantity = floor(min(component1_qty / component1_needed, component2_qty / component2_needed, ...)). The bottleneck component determines availability.",
+                },
+                {
+                  question: "What happens if a client overpays an invoice?",
+                  answer:
+                    "The payment is capped at the remaining invoice balance and the invoice is marked as paid. The excess amount is automatically added to the client's credit balance, which will be auto-applied to their next invoice.",
                 },
               ]}
             />

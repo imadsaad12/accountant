@@ -33,14 +33,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const totalPaidSoFar = invoice.payments.reduce((s, p) => s + p.amount, 0);
   const remaining = parseFloat((invoice.total - totalPaidSoFar).toFixed(2));
   const requestedAmount = parseFloat(data.amount);
-  if (requestedAmount > remaining) {
-    return NextResponse.json({ error: `Payment exceeds remaining balance of ${remaining}` }, { status: 400 });
+  if (requestedAmount <= 0) {
+    return NextResponse.json({ error: "Payment amount must be greater than 0" }, { status: 400 });
   }
+
+  // Cap the payment record at the remaining invoice balance; excess goes to client balance
+  const appliedToInvoice = Math.min(requestedAmount, Math.max(remaining, 0));
+  const excessAmount = parseFloat((requestedAmount - appliedToInvoice).toFixed(2));
 
   const payment = await prisma.payment.create({
     data: {
       invoiceId: id,
-      amount: parseFloat(data.amount),
+      amount: appliedToInvoice,
       date: data.date ? new Date(data.date) : new Date(),
       method: data.method || "cash",
       reference: data.reference || null,
@@ -49,11 +53,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  const totalPaid = invoice.payments.reduce((s, p) => s + p.amount, 0) + payment.amount;
+  const totalPaid = totalPaidSoFar + appliedToInvoice;
   if (totalPaid >= invoice.total) {
     await prisma.invoice.update({ where: { id }, data: { status: "paid" } });
   } else if (totalPaid > 0) {
     await prisma.invoice.update({ where: { id }, data: { status: "partially_paid" } });
+  }
+
+  // Add excess to client balance
+  if (excessAmount > 0) {
+    await prisma.client.update({
+      where: { id: invoice.clientId },
+      data: { balance: { increment: excessAmount } },
+    });
   }
 
   await logAudit({
@@ -61,10 +73,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     action: "create",
     entity: "payment",
     entityId: payment.id,
-    description: `Recorded payment of ${payment.amount} for invoice ${invoice.number}`,
+    description: `Recorded payment of ${requestedAmount} for invoice ${invoice.number}${excessAmount > 0 ? ` (${excessAmount} added to client balance)` : ""}`,
   });
 
-  return NextResponse.json(payment, { status: 201 });
+  return NextResponse.json({ ...payment, excessAmount }, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

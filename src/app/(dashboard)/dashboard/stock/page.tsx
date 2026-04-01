@@ -229,8 +229,9 @@ export default function StockPage() {
       }
       const data = await res.json();
       if (editing) {
-        const cat = form.categoryId ? categories.find(c => c.id === form.categoryId) ?? null : null;
-        setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...data, category: cat } : p));
+        // Re-fetch all products so composite effective stock updates when a component's quantity changes
+        const prodRes = await fetch("/api/products");
+        if (prodRes.ok) setProducts(await prodRes.json());
       } else {
         setProducts(prev => [data, ...prev]);
       }

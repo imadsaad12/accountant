@@ -6,13 +6,21 @@ function calcDays(start: Date, end: Date): number {
   return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 }
 function calcMonths(start: Date, end: Date): number {
-  const startDay = start.getUTCDate();
-  const endDay = end.getUTCDate();
-  const lastDayOfEndMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
-  if (startDay === 1 && endDay === lastDayOfEndMonth) {
-    return (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth()) + 1;
+  const sy = start.getUTCFullYear(), sm = start.getUTCMonth(), sd = start.getUTCDate();
+  const ey = end.getUTCFullYear(),   em = end.getUTCMonth(),   ed = end.getUTCDate();
+  if (sy === ey && sm === em) {
+    const dim = new Date(Date.UTC(sy, sm + 1, 0)).getUTCDate();
+    if (sd === 1 && ed === dim) return 1;
+    return (ed - sd + 1) / dim;
   }
-  return parseFloat((calcDays(start, end) / 30).toFixed(2));
+  const dimFirst = new Date(Date.UTC(sy, sm + 1, 0)).getUTCDate();
+  let total = (dimFirst - sd + 1) / dimFirst;
+  let y = sy, m = sm + 1;
+  if (m > 11) { m = 0; y++; }
+  while (y < ey || (y === ey && m < em)) { total += 1; m++; if (m > 11) { m = 0; y++; } }
+  const dimLast = new Date(Date.UTC(ey, em + 1, 0)).getUTCDate();
+  total += ed / dimLast;
+  return parseFloat(total.toFixed(4));
 }
 function computeRecurring(rate: number, recurrence: string, expStart: Date, now: Date): number {
   const days = calcDays(expStart, now);
@@ -38,7 +46,7 @@ export async function GET() {
   // Last 12 months window for trend chart (client slices based on selected period)
   const twelveMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
 
-  const [clientCount, productCount, employeeCount, invoices, allInvoiceItems, lowStockProducts, recentInvoices, allPayments, allBills, allExpenses, newClientsThisMonth, newInvoicesThisMonth, trendInvoices] = await Promise.all([
+  const [clientCount, productCount, employeeCount, invoices, allInvoiceItems, lowStockProducts, recentInvoices, allPayments, allBills, allExpenses, allEmployees, newClientsThisMonth, newInvoicesThisMonth, trendInvoices] = await Promise.all([
     prisma.client.count({ where: { organizationId: orgId } }),
     prisma.product.count({ where: { organizationId: orgId } }),
     prisma.employee.count({ where: { organizationId: orgId } }),
@@ -60,6 +68,13 @@ export async function GET() {
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
     prisma.supplierBill.aggregate({ where: { organizationId: orgId }, _sum: { amount: true } }),
     prisma.expense.findMany({ where: { organizationId: orgId }, select: { amount: true, recurrence: true, date: true } }),
+    prisma.employee.findMany({
+      where: { organizationId: orgId },
+      select: {
+        hireDate: true, salary: true, salaryPeriod: true,
+        salaryAdvances: { select: { amount: true, date: true, status: true } },
+      },
+    }),
     prisma.client.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
     prisma.invoice.count({ where: { organizationId: orgId, createdAt: { gte: monthStart } } }),
     // All invoices in last 12 months for trend chart
@@ -104,7 +119,6 @@ export async function GET() {
   const totalSupplierBills = allBills._sum.amount ?? 0;
 
   // Total Expenses = one-time (stored amount) + recurring (prorated from start to today)
-  // Note: expenses table does NOT include supplier bills or salaries — no double-counting
   let totalExpenses = 0;
   for (const exp of allExpenses) {
     const recurrence = exp.recurrence || "none";
@@ -116,8 +130,46 @@ export async function GET() {
     }
   }
 
-  // Net = Gross - COGS - Total Tax - Total Supplier Bills - Total Expenses
-  const netEarning = grossEarning - cogs - totalTax - totalSupplierBills - totalExpenses;
+  // Total Salaries = sum of all employee salaries prorated from hire date to today
+  let totalSalaries = 0;
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  for (const emp of allEmployees) {
+    const hireDate = new Date(emp.hireDate);
+    if (hireDate > today) continue;
+    const days = calcDays(hireDate, today);
+    if (days <= 0) continue;
+    const rate = Number(emp.salary);
+    const period = emp.salaryPeriod || "month";
+    let amount = 0;
+    if (period === "day") {
+      amount = parseFloat((rate * days).toFixed(2));
+    } else if (period === "week") {
+      amount = parseFloat((rate * (days / 7)).toFixed(2));
+    } else {
+      amount = parseFloat((rate * calcMonths(hireDate, today)).toFixed(2));
+    }
+    // Deduct advances (same logic as expenses page)
+    let totalDeduction = 0;
+    for (const adv of emp.salaryAdvances) {
+      const advDate = new Date(adv.date);
+      let periodEnd: Date;
+      if (period === "month") {
+        periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+      } else if (period === "week") {
+        const satDate = advDate.getUTCDate() + (6 - advDate.getUTCDay());
+        periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), satDate, 23, 59, 59, 999));
+      } else {
+        periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), advDate.getUTCDate(), 23, 59, 59, 999));
+      }
+      const remainingDays = calcDays(advDate, periodEnd);
+      if (remainingDays <= 0) continue;
+      totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(advDate, periodEnd);
+    }
+    totalSalaries += Math.max(0, amount - parseFloat(totalDeduction.toFixed(2)));
+  }
+
+  // Net = Gross - COGS - Total Tax - Total Supplier Bills - Total Expenses - Total Salaries
+  const netEarning = grossEarning - cogs - totalTax - totalSupplierBills - totalExpenses - totalSalaries;
 
   // Revenue Trend: group trendInvoices by month (last 12 months), filling empty months with 0
   const monthMap: Record<string, number> = {};
@@ -147,6 +199,7 @@ export async function GET() {
     grossEarning,
     netEarning,
     pendingAmount,
+    totalSalaries: parseFloat(totalSalaries.toFixed(2)),
     lowStockProducts: lowStock,
     recentInvoices,
     newClientsThisMonth,

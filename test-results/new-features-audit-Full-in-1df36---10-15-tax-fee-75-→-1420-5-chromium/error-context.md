@@ -19,426 +19,375 @@
           - /url: /dashboard/clients
           - img [ref=e20]
           - generic [ref=e25]: Clients
-        - link "Stock" [ref=e26] [cursor=pointer]:
-          - /url: /dashboard/stock
+        - link "Suppliers" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard/suppliers
           - img [ref=e27]
-          - generic [ref=e31]: Stock
-        - link "Employees" [ref=e32] [cursor=pointer]:
+          - generic [ref=e32]: Suppliers
+        - link "Stock" [ref=e33] [cursor=pointer]:
+          - /url: /dashboard/stock
+          - img [ref=e34]
+          - generic [ref=e38]: Stock
+        - link "Employees" [ref=e39] [cursor=pointer]:
           - /url: /dashboard/employees
-          - img [ref=e33]
-          - generic [ref=e45]: Employees
-        - link "Invoices" [ref=e46] [cursor=pointer]:
+          - img [ref=e40]
+          - generic [ref=e52]: Employees
+        - link "Invoices" [ref=e53] [cursor=pointer]:
           - /url: /dashboard/invoices
-          - img [ref=e47]
-          - generic [ref=e50]: Invoices
-        - link "Expenses" [ref=e51] [cursor=pointer]:
+          - img [ref=e54]
+          - generic [ref=e57]: Invoices
+        - link "Expenses" [ref=e58] [cursor=pointer]:
           - /url: /dashboard/expenses
-          - img [ref=e52]
-          - generic [ref=e55]: Expenses
-        - link "Salary Advances" [ref=e56] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e62]: Expenses
+        - link "Salary Advances" [ref=e63] [cursor=pointer]:
           - /url: /dashboard/salary-advances
-          - img [ref=e57]
-          - generic [ref=e60]: Salary Advances
-        - link "Reports" [ref=e61] [cursor=pointer]:
+          - img [ref=e64]
+          - generic [ref=e67]: Salary Advances
+        - link "Reports" [ref=e68] [cursor=pointer]:
           - /url: /dashboard/reports
-          - img [ref=e62]
-          - generic [ref=e63]: Reports
-        - link "AI Assistant" [ref=e64] [cursor=pointer]:
+          - img [ref=e69]
+          - generic [ref=e70]: Reports
+        - link "AI Assistant" [ref=e71] [cursor=pointer]:
           - /url: /dashboard/ai-assistant
-          - img [ref=e65]
-          - generic [ref=e68]: AI Assistant
-        - link "Activity Log" [ref=e69] [cursor=pointer]:
+          - img [ref=e72]
+          - generic [ref=e75]: AI Assistant
+        - link "Activity Log" [ref=e76] [cursor=pointer]:
           - /url: /dashboard/activity-log
-          - img [ref=e70]
-          - generic [ref=e73]: Activity Log
-        - link "Tax" [ref=e74] [cursor=pointer]:
+          - img [ref=e77]
+          - generic [ref=e80]: Activity Log
+        - link "Tax" [ref=e81] [cursor=pointer]:
           - /url: /dashboard/tax
-          - img [ref=e75]
-          - generic [ref=e78]: Tax
-        - link "Team" [ref=e79] [cursor=pointer]:
+          - img [ref=e82]
+          - generic [ref=e85]: Tax
+        - link "How It Works" [ref=e86] [cursor=pointer]:
+          - /url: /how-it-works
+          - img [ref=e87]
+          - generic [ref=e90]: How It Works
+        - link "Team" [ref=e91] [cursor=pointer]:
           - /url: /dashboard/team
-          - img [ref=e80]
-          - generic [ref=e84]: Team
-        - link "Settings" [ref=e85] [cursor=pointer]:
+          - img [ref=e92]
+          - generic [ref=e96]: Team
+        - link "Settings" [ref=e97] [cursor=pointer]:
           - /url: /dashboard/settings
-          - img [ref=e86]
-          - generic [ref=e89]: Settings
-      - generic [ref=e90]:
-        - generic [ref=e92]:
-          - generic [ref=e93]: A
-          - generic [ref=e94]:
-            - paragraph [ref=e95]: Admin User
-            - paragraph [ref=e96]: admin@accountant.com
-        - button "Logout" [ref=e97]:
           - img [ref=e98]
-          - generic [ref=e101]: Logout
-    - main [ref=e102]:
-      - generic [ref=e104]:
-        - generic [ref=e105]:
-          - heading "Invoices" [level=1] [ref=e106]
-          - button "New Invoice" [ref=e107]:
-            - img [ref=e108]
+          - generic [ref=e101]: Settings
+      - generic [ref=e102]:
+        - generic [ref=e104]:
+          - generic [ref=e105]: A
+          - generic [ref=e106]:
+            - paragraph [ref=e107]: Admin User
+            - paragraph [ref=e108]: admin@accountant.com
+        - button "Logout" [ref=e109]:
+          - img [ref=e110]
+          - generic [ref=e113]: Logout
+    - main [ref=e114]:
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - heading "Invoices" [level=1] [ref=e118]
+          - button "New Invoice" [ref=e119]:
+            - img [ref=e120]
             - text: New Invoice
-        - generic [ref=e109]:
-          - generic [ref=e110]:
-            - generic: $130,988.77
-            - paragraph [ref=e111]: Total
-            - paragraph [ref=e112]: $130.99K
-          - generic [ref=e113]:
-            - generic: $63,867.59
-            - paragraph [ref=e114]: Paid
-            - paragraph [ref=e115]: $63.87K
-          - generic [ref=e116]:
-            - generic: $61,149.35
-            - paragraph [ref=e117]: Pending
-            - paragraph [ref=e118]: $61.15K
-        - table [ref=e120]:
-          - rowgroup [ref=e121]:
-            - 'row "Invoice # Client Date Due Date Total Status Actions" [ref=e122]':
-              - 'columnheader "Invoice #" [ref=e123] [cursor=pointer]':
-                - generic [ref=e124]:
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - img [ref=e123]
+            - textbox "Search" [ref=e126]
+          - generic [ref=e127]:
+            - combobox [ref=e128]:
+              - option "All statuses" [selected]
+              - option "Draft"
+              - option "Sent"
+              - option "Partially Paid"
+              - option "Paid"
+              - option "Overdue"
+            - textbox "From" [ref=e130]
+            - textbox "To" [ref=e132]
+        - generic [ref=e133]:
+          - generic [ref=e134]:
+            - generic: $151,986.77
+            - paragraph [ref=e135]: Total
+            - paragraph [ref=e136]: $151.99K
+            - paragraph [ref=e137]: 77 invoices
+          - generic [ref=e138]:
+            - generic: $68,785.59
+            - paragraph [ref=e139]: Paid
+            - paragraph [ref=e140]: $68.79K
+            - paragraph [ref=e141]: 25 fully paid
+          - generic [ref=e142]:
+            - generic: $800.00
+            - paragraph [ref=e143]: Partially Paid
+            - paragraph [ref=e144]: $800.00
+            - paragraph [ref=e145]: 3 invoices
+          - generic [ref=e146]:
+            - generic: $82,401.18
+            - paragraph [ref=e147]: Pending
+            - paragraph [ref=e148]: $82.4K
+            - paragraph [ref=e149]: 52 outstanding
+        - table [ref=e151]:
+          - rowgroup [ref=e152]:
+            - 'row "Invoice # Client Date Due Date Total Status Actions" [ref=e153]':
+              - 'columnheader "Invoice #" [ref=e154] [cursor=pointer]':
+                - generic [ref=e155]:
                   - text: "Invoice #"
-                  - img [ref=e125]
-              - columnheader "Client" [ref=e127] [cursor=pointer]:
-                - generic [ref=e128]:
+                  - img [ref=e156]
+              - columnheader "Client" [ref=e158] [cursor=pointer]:
+                - generic [ref=e159]:
                   - text: Client
-                  - img [ref=e129]
-              - columnheader "Date" [ref=e131] [cursor=pointer]:
-                - generic [ref=e132]:
-                  - text: Date
-                  - img [ref=e133]
-              - columnheader "Due Date" [ref=e135] [cursor=pointer]:
-                - generic [ref=e136]:
-                  - text: Due Date
-                  - img [ref=e137]
-              - columnheader "Total" [ref=e139] [cursor=pointer]:
-                - generic [ref=e140]:
-                  - text: Total
-                  - img [ref=e141]
-              - columnheader "Status" [ref=e143] [cursor=pointer]:
-                - generic [ref=e144]:
-                  - text: Status
-                  - img [ref=e145]
-              - columnheader "Actions" [ref=e147]
-          - rowgroup [ref=e148]:
-            - row "DEMO-COMPANY-00003 Al Noor Trading 22/03/2026 - $1,628.29 Draft" [ref=e149]:
-              - cell "DEMO-COMPANY-00003" [ref=e150]
-              - cell "Al Noor Trading" [ref=e151]
-              - cell "22/03/2026" [ref=e152]
-              - cell "-" [ref=e153]:
-                - generic [ref=e154]: "-"
-              - cell "$1,628.29" [ref=e155]
-              - cell "Draft" [ref=e156]:
-                - combobox [ref=e157] [cursor=pointer]:
-                  - option "Draft" [selected]
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid"
-                  - option "Overdue"
-              - cell [ref=e158]:
-                - button "View" [ref=e159]:
                   - img [ref=e160]
-                - button "Download PDF" [ref=e163]:
+              - columnheader "Date" [ref=e162] [cursor=pointer]:
+                - generic [ref=e163]:
+                  - text: Date
                   - img [ref=e164]
-                - button "Delete" [ref=e167]:
+              - columnheader "Due Date" [ref=e166] [cursor=pointer]:
+                - generic [ref=e167]:
+                  - text: Due Date
                   - img [ref=e168]
-            - row "DEMO-COMPANY-00002 Al Noor Trading 22/03/2026 28/03/2026 $1,785.00 Draft" [ref=e171]:
-              - cell "DEMO-COMPANY-00002" [ref=e172]
-              - cell "Al Noor Trading" [ref=e173]
-              - cell "22/03/2026" [ref=e174]
-              - cell "28/03/2026" [ref=e175]:
-                - generic [ref=e176]: 28/03/2026
-              - cell "$1,785.00" [ref=e177]
-              - cell "Draft" [ref=e178]:
-                - combobox [ref=e179] [cursor=pointer]:
+              - columnheader "Total" [ref=e170] [cursor=pointer]:
+                - generic [ref=e171]:
+                  - text: Total
+                  - img [ref=e172]
+              - columnheader "Status" [ref=e174] [cursor=pointer]:
+                - generic [ref=e175]:
+                  - text: Status
+                  - img [ref=e176]
+              - columnheader "Actions" [ref=e178]
+          - rowgroup [ref=e179]:
+            - row "DEMO-COMPANY-00077 Client A 1774953142552 31/03/2026 - $238.00 Draft" [ref=e180]:
+              - cell "DEMO-COMPANY-00077" [ref=e181]
+              - cell "Client A 1774953142552" [ref=e182]
+              - cell "31/03/2026" [ref=e183]
+              - cell "-" [ref=e184]:
+                - generic [ref=e185]: "-"
+              - cell "$238.00" [ref=e186]
+              - cell "Draft" [ref=e187]:
+                - combobox [ref=e188] [cursor=pointer]:
                   - option "Draft" [selected]
                   - option "Sent"
                   - option "Partially Paid"
                   - option "Paid"
                   - option "Overdue"
-              - cell [ref=e180]:
-                - button "View" [ref=e181]:
-                  - img [ref=e182]
-                - button "Download PDF" [ref=e185]:
-                  - img [ref=e186]
-                - button "Delete" [ref=e189]:
-                  - img [ref=e190]
-            - row "DEMO-COMPANY-00001 Al Noor Trading 22/03/2026 29/03/2026 $356.99 Draft" [ref=e193]:
-              - cell "DEMO-COMPANY-00001" [ref=e194]
-              - cell "Al Noor Trading" [ref=e195]
-              - cell "22/03/2026" [ref=e196]
-              - cell "29/03/2026" [ref=e197]:
-                - generic [ref=e198]: 29/03/2026
-              - cell "$356.99" [ref=e199]
-              - cell "Draft" [ref=e200]:
-                - combobox [ref=e201] [cursor=pointer]:
+              - cell [ref=e189]:
+                - button "View" [ref=e190]:
+                  - img [ref=e191]
+                - button "Download PDF" [ref=e194]:
+                  - img [ref=e195]
+                - button "Edit" [ref=e198]:
+                  - img [ref=e199]
+                - button "Delete" [ref=e201]:
+                  - img [ref=e202]
+            - row "DEMO-COMPANY-00076 Client A 1774953142552 31/03/2026 - $238.00 Draft" [ref=e205]:
+              - cell "DEMO-COMPANY-00076" [ref=e206]
+              - cell "Client A 1774953142552" [ref=e207]
+              - cell "31/03/2026" [ref=e208]
+              - cell "-" [ref=e209]:
+                - generic [ref=e210]: "-"
+              - cell "$238.00" [ref=e211]
+              - cell "Draft" [ref=e212]:
+                - combobox [ref=e213] [cursor=pointer]:
                   - option "Draft" [selected]
                   - option "Sent"
                   - option "Partially Paid"
                   - option "Paid"
                   - option "Overdue"
-              - cell [ref=e202]:
-                - button "View" [ref=e203]:
-                  - img [ref=e204]
-                - button "Download PDF" [ref=e207]:
-                  - img [ref=e208]
-                - button "Delete" [ref=e211]:
-                  - img [ref=e212]
-            - row "INV-00012 Global Dynamics Ltd 08/01/2026 07/02/2026 $8,375.54 Paid" [ref=e215]:
-              - cell "INV-00012" [ref=e216]
-              - cell "Global Dynamics Ltd" [ref=e217]
-              - cell "08/01/2026" [ref=e218]
-              - cell "07/02/2026" [ref=e219]:
-                - generic [ref=e220]: 07/02/2026
-              - cell "$8,375.54" [ref=e221]
-              - cell "Paid" [ref=e222]:
-                - combobox [ref=e223] [cursor=pointer]:
+              - cell [ref=e214]:
+                - button "View" [ref=e215]:
+                  - img [ref=e216]
+                - button "Download PDF" [ref=e219]:
+                  - img [ref=e220]
+                - button "Edit" [ref=e223]:
+                  - img [ref=e224]
+                - button "Delete" [ref=e226]:
+                  - img [ref=e227]
+            - row "DEMO-COMPANY-00075 Client A 1774953142552 31/03/2026 - $250.00 Paid" [ref=e230]:
+              - cell "DEMO-COMPANY-00075" [ref=e231]
+              - cell "Client A 1774953142552" [ref=e232]
+              - cell "31/03/2026" [ref=e233]
+              - cell "-" [ref=e234]:
+                - generic [ref=e235]: "-"
+              - cell "$250.00" [ref=e236]
+              - cell "Paid" [ref=e237]:
+                - combobox [ref=e238] [cursor=pointer]:
                   - option "Draft"
                   - option "Sent"
                   - option "Partially Paid"
                   - option "Paid" [selected]
                   - option "Overdue"
-              - cell [ref=e224]:
-                - button "View" [ref=e225]:
-                  - img [ref=e226]
-                - button "Download PDF" [ref=e229]:
-                  - img [ref=e230]
-                - button "Delete" [ref=e233]:
-                  - img [ref=e234]
-            - row "INV-00011 TechStart SAS 18/03/2026 17/04/2026 $4,451.46 Paid" [ref=e237]:
-              - cell "INV-00011" [ref=e238]
-              - cell "TechStart SAS" [ref=e239]
-              - cell "18/03/2026" [ref=e240]
-              - cell "17/04/2026" [ref=e241]:
-                - generic [ref=e242]: 17/04/2026
-              - cell "$4,451.46" [ref=e243]
-              - cell "Paid" [ref=e244]:
-                - combobox [ref=e245] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid" [selected]
-                  - option "Overdue"
-              - cell [ref=e246]:
-                - button "View" [ref=e247]:
-                  - img [ref=e248]
-                - button "Download PDF" [ref=e251]:
+              - cell [ref=e239]:
+                - button "View" [ref=e240]:
+                  - img [ref=e241]
+                - button "Download PDF" [ref=e244]:
+                  - img [ref=e245]
+                - button "Edit" [ref=e248]:
+                  - img [ref=e249]
+                - button "Delete" [ref=e251]:
                   - img [ref=e252]
-                - button "Delete" [ref=e255]:
-                  - img [ref=e256]
-            - row "INV-00010 Al Noor Trading 16/03/2026 15/04/2026 $1,724.97 Paid" [ref=e259]:
-              - cell "INV-00010" [ref=e260]
-              - cell "Al Noor Trading" [ref=e261]
-              - cell "16/03/2026" [ref=e262]
-              - cell "15/04/2026" [ref=e263]:
-                - generic [ref=e264]: 15/04/2026
-              - cell "$1,724.97" [ref=e265]
-              - cell "Paid" [ref=e266]:
-                - combobox [ref=e267] [cursor=pointer]:
+            - row "DEMO-COMPANY-00074 Client A 1774953142552 31/03/2026 - $180.00 Sent" [ref=e255]:
+              - cell "DEMO-COMPANY-00074" [ref=e256]
+              - cell "Client A 1774953142552" [ref=e257]
+              - cell "31/03/2026" [ref=e258]
+              - cell "-" [ref=e259]:
+                - generic [ref=e260]: "-"
+              - cell "$180.00" [ref=e261]
+              - cell "Sent" [ref=e262]:
+                - combobox [ref=e263] [cursor=pointer]:
                   - option "Draft"
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid" [selected]
-                  - option "Overdue"
-              - cell [ref=e268]:
-                - button "View" [ref=e269]:
-                  - img [ref=e270]
-                - button "Download PDF" [ref=e273]:
-                  - img [ref=e274]
-                - button "Delete" [ref=e277]:
-                  - img [ref=e278]
-            - row "INV-00009 Acme Corporation 04/03/2026 03/04/2026 $7,140.00 Paid" [ref=e281]:
-              - cell "INV-00009" [ref=e282]
-              - cell "Acme Corporation" [ref=e283]
-              - cell "04/03/2026" [ref=e284]
-              - cell "03/04/2026" [ref=e285]:
-                - generic [ref=e286]: 03/04/2026
-              - cell "$7,140.00" [ref=e287]
-              - cell "Paid" [ref=e288]:
-                - combobox [ref=e289] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid" [selected]
-                  - option "Overdue"
-              - cell [ref=e290]:
-                - button "View" [ref=e291]:
-                  - img [ref=e292]
-                - button "Download PDF" [ref=e295]:
-                  - img [ref=e296]
-                - button "Delete" [ref=e299]:
-                  - img [ref=e300]
-            - row "INV-00008 Desert Tech LLC 28/01/2026 27/02/2026 23d overdue $19,094.20 Overdue" [ref=e303]:
-              - cell "INV-00008" [ref=e304]
-              - cell "Desert Tech LLC" [ref=e305]
-              - cell "28/01/2026" [ref=e306]
-              - cell "27/02/2026 23d overdue" [ref=e307]:
-                - generic [ref=e308]:
-                  - text: 27/02/2026
-                  - generic [ref=e309]: 23d overdue
-              - cell "$19,094.20" [ref=e310]
-              - cell "Overdue" [ref=e311]:
-                - combobox [ref=e312] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent"
+                  - option "Sent" [selected]
                   - option "Partially Paid"
                   - option "Paid"
-                  - option "Overdue" [selected]
-              - cell [ref=e313]:
-                - button "View" [ref=e314]:
-                  - img [ref=e315]
-                - button "Download PDF" [ref=e318]:
-                  - img [ref=e319]
-                - button "Delete" [ref=e322]:
-                  - img [ref=e323]
-            - row "INV-00007 Nordic Solutions AB 18/01/2026 17/02/2026 $9,074.25 Paid" [ref=e326]:
-              - cell "INV-00007" [ref=e327]
-              - cell "Nordic Solutions AB" [ref=e328]
-              - cell "18/01/2026" [ref=e329]
-              - cell "17/02/2026" [ref=e330]:
-                - generic [ref=e331]: 17/02/2026
-              - cell "$9,074.25" [ref=e332]
-              - cell "Paid" [ref=e333]:
-                - combobox [ref=e334] [cursor=pointer]:
+                  - option "Overdue"
+              - cell [ref=e264]:
+                - button "View" [ref=e265]:
+                  - img [ref=e266]
+                - button "Download PDF" [ref=e269]:
+                  - img [ref=e270]
+                - button "Edit" [ref=e273]:
+                  - img [ref=e274]
+                - button "Delete" [ref=e276]:
+                  - img [ref=e277]
+            - row "DEMO-COMPANY-00073 Client A 1774953142552 31/03/2026 - $200.00 Paid" [ref=e280]:
+              - cell "DEMO-COMPANY-00073" [ref=e281]
+              - cell "Client A 1774953142552" [ref=e282]
+              - cell "31/03/2026" [ref=e283]
+              - cell "-" [ref=e284]:
+                - generic [ref=e285]: "-"
+              - cell "$200.00" [ref=e286]
+              - cell "Paid" [ref=e287]:
+                - combobox [ref=e288] [cursor=pointer]:
                   - option "Draft"
                   - option "Sent"
                   - option "Partially Paid"
                   - option "Paid" [selected]
                   - option "Overdue"
-              - cell [ref=e335]:
-                - button "View" [ref=e336]:
-                  - img [ref=e337]
-                - button "Download PDF" [ref=e340]:
+              - cell [ref=e289]:
+                - button "View" [ref=e290]:
+                  - img [ref=e291]
+                - button "Download PDF" [ref=e294]:
+                  - img [ref=e295]
+                - button "Edit" [ref=e298]:
+                  - img [ref=e299]
+                - button "Delete" [ref=e301]:
+                  - img [ref=e302]
+            - row "DEMO-COMPANY-00072 Client A 1774953142552 31/03/2026 - $200.00 Paid" [ref=e305]:
+              - cell "DEMO-COMPANY-00072" [ref=e306]
+              - cell "Client A 1774953142552" [ref=e307]
+              - cell "31/03/2026" [ref=e308]
+              - cell "-" [ref=e309]:
+                - generic [ref=e310]: "-"
+              - cell "$200.00" [ref=e311]
+              - cell "Paid" [ref=e312]:
+                - combobox [ref=e313] [cursor=pointer]:
+                  - option "Draft"
+                  - option "Sent"
+                  - option "Partially Paid"
+                  - option "Paid" [selected]
+                  - option "Overdue"
+              - cell [ref=e314]:
+                - button "View" [ref=e315]:
+                  - img [ref=e316]
+                - button "Download PDF" [ref=e319]:
+                  - img [ref=e320]
+                - button "Edit" [ref=e323]:
+                  - img [ref=e324]
+                - button "Delete" [ref=e326]:
+                  - img [ref=e327]
+            - row "DEMO-COMPANY-00071 Client A 1774953142552 31/03/2026 - $100.00 Sent" [ref=e330]:
+              - cell "DEMO-COMPANY-00071" [ref=e331]
+              - cell "Client A 1774953142552" [ref=e332]
+              - cell "31/03/2026" [ref=e333]
+              - cell "-" [ref=e334]:
+                - generic [ref=e335]: "-"
+              - cell "$100.00" [ref=e336]
+              - cell "Sent" [ref=e337]:
+                - combobox [ref=e338] [cursor=pointer]:
+                  - option "Draft"
+                  - option "Sent" [selected]
+                  - option "Partially Paid"
+                  - option "Paid"
+                  - option "Overdue"
+              - cell [ref=e339]:
+                - button "View" [ref=e340]:
                   - img [ref=e341]
-                - button "Delete" [ref=e344]:
+                - button "Download PDF" [ref=e344]:
                   - img [ref=e345]
-            - row "INV-00006 Mediterranean Foods 14/03/2026 13/04/2026 $2,201.55 Draft" [ref=e348]:
-              - cell "INV-00006" [ref=e349]
-              - cell "Mediterranean Foods" [ref=e350]
-              - cell "14/03/2026" [ref=e351]
-              - cell "13/04/2026" [ref=e352]:
-                - generic [ref=e353]: 13/04/2026
-              - cell "$2,201.55" [ref=e354]
-              - cell "Draft" [ref=e355]:
-                - combobox [ref=e356] [cursor=pointer]:
+                - button "Edit" [ref=e348]:
+                  - img [ref=e349]
+                - button "Delete" [ref=e351]:
+                  - img [ref=e352]
+            - row "DEMO-COMPANY-00070 Client A 1774953142552 31/03/2026 - $1,000.00 Paid" [ref=e355]:
+              - cell "DEMO-COMPANY-00070" [ref=e356]
+              - cell "Client A 1774953142552" [ref=e357]
+              - cell "31/03/2026" [ref=e358]
+              - cell "-" [ref=e359]:
+                - generic [ref=e360]: "-"
+              - cell "$1,000.00" [ref=e361]
+              - cell "Paid" [ref=e362]:
+                - combobox [ref=e363] [cursor=pointer]:
+                  - option "Draft"
+                  - option "Sent"
+                  - option "Partially Paid"
+                  - option "Paid" [selected]
+                  - option "Overdue"
+              - cell [ref=e364]:
+                - button "View" [ref=e365]:
+                  - img [ref=e366]
+                - button "Download PDF" [ref=e369]:
+                  - img [ref=e370]
+                - button "Edit" [ref=e373]:
+                  - img [ref=e374]
+                - button "Delete" [ref=e376]:
+                  - img [ref=e377]
+            - row "DEMO-COMPANY-00069 Client A 1774953142552 31/03/2026 - $750.00 Draft" [ref=e380]:
+              - cell "DEMO-COMPANY-00069" [ref=e381]
+              - cell "Client A 1774953142552" [ref=e382]
+              - cell "31/03/2026" [ref=e383]
+              - cell "-" [ref=e384]:
+                - generic [ref=e385]: "-"
+              - cell "$750.00" [ref=e386]
+              - cell "Draft" [ref=e387]:
+                - combobox [ref=e388] [cursor=pointer]:
                   - option "Draft" [selected]
                   - option "Sent"
                   - option "Partially Paid"
                   - option "Paid"
                   - option "Overdue"
-              - cell [ref=e357]:
-                - button "View" [ref=e358]:
-                  - img [ref=e359]
-                - button "Download PDF" [ref=e362]:
-                  - img [ref=e363]
-                - button "Delete" [ref=e366]:
-                  - img [ref=e367]
-            - row "INV-00005 Sakura Industries 07/03/2026 06/04/2026 $9,107.95 Sent" [ref=e370]:
-              - cell "INV-00005" [ref=e371]
-              - cell "Sakura Industries" [ref=e372]
-              - cell "07/03/2026" [ref=e373]
-              - cell "06/04/2026" [ref=e374]:
-                - generic [ref=e375]: 06/04/2026
-              - cell "$9,107.95" [ref=e376]
-              - cell "Sent" [ref=e377]:
-                - combobox [ref=e378] [cursor=pointer]:
+              - cell [ref=e389]:
+                - button "View" [ref=e390]:
+                  - img [ref=e391]
+                - button "Download PDF" [ref=e394]:
+                  - img [ref=e395]
+                - button "Edit" [ref=e398]:
+                  - img [ref=e399]
+                - button "Delete" [ref=e401]:
+                  - img [ref=e402]
+            - row "DEMO-COMPANY-00064 Client A 1774947236228 31/03/2026 - $300.00 Sent" [ref=e405]:
+              - cell "DEMO-COMPANY-00064" [ref=e406]
+              - cell "Client A 1774947236228" [ref=e407]
+              - cell "31/03/2026" [ref=e408]
+              - cell "-" [ref=e409]:
+                - generic [ref=e410]: "-"
+              - cell "$300.00" [ref=e411]
+              - cell "Sent" [ref=e412]:
+                - combobox [ref=e413] [cursor=pointer]:
                   - option "Draft"
                   - option "Sent" [selected]
                   - option "Partially Paid"
                   - option "Paid"
                   - option "Overdue"
-              - cell [ref=e379]:
-                - button "View" [ref=e380]:
-                  - img [ref=e381]
-                - button "Download PDF" [ref=e384]:
-                  - img [ref=e385]
-                - button "Delete" [ref=e388]:
-                  - img [ref=e389]
-            - row "INV-00004 Global Dynamics Ltd 17/02/2026 19/03/2026 $10,080.00 Paid" [ref=e392]:
-              - cell "INV-00004" [ref=e393]
-              - cell "Global Dynamics Ltd" [ref=e394]
-              - cell "17/02/2026" [ref=e395]
-              - cell "19/03/2026" [ref=e396]:
-                - generic [ref=e397]: 19/03/2026
-              - cell "$10,080.00" [ref=e398]
-              - cell "Paid" [ref=e399]:
-                - combobox [ref=e400] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid" [selected]
-                  - option "Overdue"
-              - cell [ref=e401]:
-                - button "View" [ref=e402]:
-                  - img [ref=e403]
-                - button "Download PDF" [ref=e406]:
-                  - img [ref=e407]
-                - button "Delete" [ref=e410]:
-                  - img [ref=e411]
-            - row "INV-00003 Al Noor Trading 27/02/2026 29/03/2026 $32,947.21 Sent" [ref=e414]:
-              - cell "INV-00003" [ref=e415]
-              - cell "Al Noor Trading" [ref=e416]
-              - cell "27/02/2026" [ref=e417]
-              - cell "29/03/2026" [ref=e418]:
-                - generic [ref=e419]: 29/03/2026
-              - cell "$32,947.21" [ref=e420]
-              - cell "Sent" [ref=e421]:
-                - combobox [ref=e422] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent" [selected]
-                  - option "Partially Paid"
-                  - option "Paid"
-                  - option "Overdue"
-              - cell [ref=e423]:
-                - button "View" [ref=e424]:
-                  - img [ref=e425]
-                - button "Download PDF" [ref=e428]:
-                  - img [ref=e429]
-                - button "Delete" [ref=e432]:
-                  - img [ref=e433]
-            - row "INV-00002 TechStart SAS 09/02/2026 11/03/2026 $11,538.00 Paid" [ref=e436]:
-              - cell "INV-00002" [ref=e437]
-              - cell "TechStart SAS" [ref=e438]
-              - cell "09/02/2026" [ref=e439]
-              - cell "11/03/2026" [ref=e440]:
-                - generic [ref=e441]: 11/03/2026
-              - cell "$11,538.00" [ref=e442]
-              - cell "Paid" [ref=e443]:
-                - combobox [ref=e444] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid" [selected]
-                  - option "Overdue"
-              - cell [ref=e445]:
-                - button "View" [ref=e446]:
-                  - img [ref=e447]
-                - button "Download PDF" [ref=e450]:
-                  - img [ref=e451]
-                - button "Delete" [ref=e454]:
-                  - img [ref=e455]
-            - row "INV-00001 Acme Corporation 02/02/2026 04/03/2026 $11,483.37 Paid" [ref=e458]:
-              - cell "INV-00001" [ref=e459]
-              - cell "Acme Corporation" [ref=e460]
-              - cell "02/02/2026" [ref=e461]
-              - cell "04/03/2026" [ref=e462]:
-                - generic [ref=e463]: 04/03/2026
-              - cell "$11,483.37" [ref=e464]
-              - cell "Paid" [ref=e465]:
-                - combobox [ref=e466] [cursor=pointer]:
-                  - option "Draft"
-                  - option "Sent"
-                  - option "Partially Paid"
-                  - option "Paid" [selected]
-                  - option "Overdue"
-              - cell [ref=e467]:
-                - button "View" [ref=e468]:
-                  - img [ref=e469]
-                - button "Download PDF" [ref=e472]:
-                  - img [ref=e473]
-                - button "Delete" [ref=e476]:
-                  - img [ref=e477]
-  - button "Open Next.js Dev Tools" [ref=e485] [cursor=pointer]:
-    - img [ref=e486]
-  - alert [ref=e489]
+              - cell [ref=e414]:
+                - button "View" [ref=e415]:
+                  - img [ref=e416]
+                - button "Download PDF" [ref=e419]:
+                  - img [ref=e420]
+                - button "Edit" [ref=e423]:
+                  - img [ref=e424]
+                - button "Delete" [ref=e426]:
+                  - img [ref=e427]
+        - generic [ref=e430]:
+          - generic [ref=e431]: 1–10 of 77
+          - generic [ref=e432]:
+            - button "Prev" [disabled] [ref=e433]
+            - generic [ref=e434]: 1 / 8
+            - button "Next" [ref=e435]
+  - button "Open Next.js Dev Tools" [ref=e441] [cursor=pointer]:
+    - img [ref=e442]
+  - alert [ref=e445]
 ```

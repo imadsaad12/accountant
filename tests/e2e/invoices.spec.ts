@@ -24,7 +24,7 @@ test.describe("Invoices", () => {
     await page.getByRole("button", { name: /new invoice/i }).click();
     await page.locator("select[required]").selectOption({ index: 1 });
     await page.locator("input[placeholder*='escription']").fill("Consulting Service");
-    const numInputs = page.locator(".space-y-2 input[type='number']");
+    const numInputs = page.locator(".divide-y input[type='number']");
     await numInputs.nth(0).fill("2");
     await numInputs.nth(1).fill("500");
     await page.getByRole("button", { name: /new invoice/i }).last().click();
@@ -64,7 +64,7 @@ test.describe("Invoices", () => {
     await page.getByRole("button", { name: /new invoice/i }).click();
     await page.locator("select[required]").selectOption({ index: 1 });
     await page.locator("input[placeholder*='escription']").fill("Item A");
-    const numInputs = page.locator(".space-y-2 input[type='number']");
+    const numInputs = page.locator(".divide-y input[type='number']");
     await numInputs.nth(0).fill("5");
     await numInputs.nth(1).fill("100");
     await expect(page.locator("text=/500/").first()).toBeVisible({ timeout: 3000 });
@@ -75,7 +75,8 @@ test.describe("Invoices", () => {
     await page.getByRole("button", { name: /new invoice/i }).click();
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-    const dateInputs = page.locator("input[type='date']");
+    // Date inputs inside the form (first = invoice date, second = due date)
+    const dateInputs = page.locator(".fixed.inset-0 input[type='date']");
     await dateInputs.nth(0).fill(today);
     await dateInputs.nth(1).fill(yesterday);
     const dueDateValue = await dateInputs.nth(1).inputValue();
@@ -86,9 +87,11 @@ test.describe("Invoices", () => {
   test("tax rate 0% shows zero tax amount", async ({ page }) => {
     await page.getByRole("button", { name: /new invoice/i }).click();
     await page.locator("select[required]").selectOption({ index: 1 });
-    await page.locator("form .grid input[type='number']").last().fill("0");
+    // Set tax rate to 0 (the number input with max=100 is the tax rate field)
+    const taxInput = page.locator("input[type='number'][max='100']");
+    await taxInput.fill("0");
     await page.locator("input[placeholder*='escription']").fill("Test");
-    const numInputs = page.locator(".space-y-2 input[type='number']");
+    const numInputs = page.locator(".divide-y input[type='number']");
     await numInputs.nth(0).fill("1");
     await numInputs.nth(1).fill("100");
     await expect(page.locator("text=/tax.*0|0.*tax/i").first()).toBeVisible({ timeout: 3000 });
@@ -105,6 +108,223 @@ test.describe("Invoices", () => {
     await firstSelect.selectOption("paid");
     await page.waitForLoadState("networkidle");
     await expect(firstSelect).toHaveValue("paid");
+  });
+
+  // ── TC-INV-18: STATUS TRANSITIONS (all combinations) ─────────
+  const INV_API_TIMEOUT = 30000;
+
+  test("TC-INV-18a: draft → sent status change (no warning popup)", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "draft", items: [{ description: "Status Test A", quantity: 1, unitPrice: 100 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+    await row.locator("select").selectOption("sent");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("sent", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18b: sent → paid status change auto-creates full payment", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "sent", items: [{ description: "Status Test B", quantity: 1, unitPrice: 200 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+    await row.locator("select").selectOption("paid");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("paid", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18c: paid → draft shows warning popup, confirm deletes payments", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "sent", items: [{ description: "Status Test C", quantity: 1, unitPrice: 150 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.request.post(`/api/invoices/${inv.id}/payments`, {
+      data: { amount: 150, method: "cash" }, timeout: INV_API_TIMEOUT
+    });
+
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+
+    page.on("dialog", (dialog) => {
+      expect(dialog.message()).toContain("payment");
+      dialog.accept();
+    });
+    await row.locator("select").selectOption("draft");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("draft", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18d: paid → sent shows warning popup, confirm deletes payments", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "sent", items: [{ description: "Status Test D", quantity: 1, unitPrice: 180 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.request.post(`/api/invoices/${inv.id}/payments`, {
+      data: { amount: 180, method: "cash" }, timeout: INV_API_TIMEOUT
+    });
+
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+
+    page.on("dialog", (d) => d.accept());
+    await row.locator("select").selectOption("sent");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("sent", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18e: partially_paid → draft shows warning popup, confirm deletes payments", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "sent", items: [{ description: "Status Test E", quantity: 1, unitPrice: 500 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.request.post(`/api/invoices/${inv.id}/payments`, {
+      data: { amount: 200, method: "cash" }, timeout: INV_API_TIMEOUT
+    });
+
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+    await expect(row.locator("select")).toHaveValue("partially_paid");
+
+    page.on("dialog", (d) => d.accept());
+    await row.locator("select").selectOption("draft");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("draft", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18f: partially_paid → sent shows warning popup, confirm deletes payments", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "sent", items: [{ description: "Status Test F", quantity: 1, unitPrice: 600 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.request.post(`/api/invoices/${inv.id}/payments`, {
+      data: { amount: 300, method: "cash" }, timeout: INV_API_TIMEOUT
+    });
+
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+
+    page.on("dialog", (d) => d.accept());
+    await row.locator("select").selectOption("sent");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("sent", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18g: draft → paid (direct jump) auto-creates full payment", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "draft", items: [{ description: "Status Test G", quantity: 1, unitPrice: 250 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+    await row.locator("select").selectOption("paid");
+    await page.waitForLoadState("networkidle");
+    await expect(row.locator("select")).toHaveValue("paid", { timeout: 10000 });
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
+  });
+
+  test("TC-INV-18h: cancel warning popup keeps status unchanged", async ({ page }) => {
+    const clientsRes = await page.request.get("/api/clients", { timeout: INV_API_TIMEOUT });
+    const clients = await clientsRes.json();
+    if (clients.length === 0) return;
+    const invRes = await page.request.post("/api/invoices", {
+      data: { clientId: clients[0].id, taxRate: 0, status: "sent", items: [{ description: "Status Test H", quantity: 1, unitPrice: 100 }] },
+      timeout: INV_API_TIMEOUT,
+    });
+    const inv = await invRes.json();
+    await page.request.post(`/api/invoices/${inv.id}/payments`, {
+      data: { amount: 100, method: "cash" }, timeout: INV_API_TIMEOUT
+    });
+
+    await page.goto("/dashboard/invoices");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".animate-spin")).toHaveCount(0, { timeout: 10000 });
+
+    const row = page.locator(`tr:has-text("${inv.number}")`);
+    await expect(row).toBeVisible({ timeout: 6000 });
+    await expect(row.locator("select")).toHaveValue("paid");
+
+    // DISMISS (cancel) the warning — status should stay "paid"
+    page.on("dialog", (d) => d.dismiss());
+    await row.locator("select").selectOption("draft");
+    await page.waitForTimeout(500);
+
+    // Status should still be "paid" (user cancelled)
+    await expect(row.locator("select")).toHaveValue("paid");
+
+    await page.request.delete(`/api/invoices/${inv.id}`, { timeout: INV_API_TIMEOUT });
   });
 
   // ── AGING BADGE ──────────────────────────────────────────────
@@ -133,8 +353,8 @@ test.describe("Invoices", () => {
   test("view modal shows balance due and amount paid cards", async ({ page }) => {
     const eyeBtn = page.locator("table tbody tr").first().locator("button").first();
     await eyeBtn.click();
-    await expect(page.locator("text=/amount paid|paid/i").first()).toBeVisible({ timeout: 4000 });
-    await expect(page.locator("text=/balance/i").first()).toBeVisible({ timeout: 4000 });
+    await expect(page.locator(".fixed.inset-0, [role='dialog']").locator("text=/amount paid/i").first()).toBeVisible({ timeout: 4000 });
+    await expect(page.locator(".fixed.inset-0, [role='dialog']").locator("text=/balance/i").first()).toBeVisible({ timeout: 4000 });
     await page.keyboard.press("Escape");
   });
 
@@ -241,7 +461,7 @@ test.describe("Invoices", () => {
   test("ERROR: submit with no client selected is blocked", async ({ page }) => {
     await page.getByRole("button", { name: /new invoice/i }).click();
     await page.locator("input[placeholder*='escription']").fill("Test item");
-    const numInputs = page.locator(".space-y-2 input[type='number']");
+    const numInputs = page.locator(".divide-y input[type='number']");
     await numInputs.nth(0).fill("1");
     await numInputs.nth(1).fill("100");
     await page.getByRole("button", { name: /new invoice/i }).last().click();
@@ -252,7 +472,7 @@ test.describe("Invoices", () => {
   test("ERROR: empty description blocks submission", async ({ page }) => {
     await page.getByRole("button", { name: /new invoice/i }).click();
     await page.locator("select[required]").selectOption({ index: 1 });
-    const numInputs = page.locator(".space-y-2 input[type='number']");
+    const numInputs = page.locator(".divide-y input[type='number']");
     await numInputs.nth(0).fill("1");
     await numInputs.nth(1).fill("100");
     await page.getByRole("button", { name: /new invoice/i }).last().click();

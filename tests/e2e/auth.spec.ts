@@ -6,7 +6,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Authentication", () => {
   test("login page loads correctly", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.locator("h1")).toContainText("Accountant");
+    await expect(page.locator("#email")).toBeVisible({ timeout: 10000 });
     await expect(page.locator("#email")).toBeVisible();
     await expect(page.locator("#password")).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();

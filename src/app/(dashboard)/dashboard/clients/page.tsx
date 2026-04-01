@@ -108,7 +108,8 @@ export default function ClientsPage() {
   }
 
   async function openDetailModal(client: Client) {
-    setDetailClient(null);
+    // Show modal immediately with skeleton, then load full data
+    setDetailClient({ ...client, invoices: [], invoiceCount: 0, paymentHistory: [] });
     setDetailLoading(true);
     setDetailFromDate("");
     setDetailToDate("");

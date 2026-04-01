@@ -464,7 +464,7 @@ export default function ExpensesPage() {
               <input
                 type="date"
                 value={customFrom}
-                max={customTo || todayInTz(tz)}
+                max={customTo || undefined}
                 onChange={e => { setCustomFrom(e.target.value); setDateRangeError(false); }}
                 className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
               />
@@ -472,7 +472,6 @@ export default function ExpensesPage() {
                 type="date"
                 value={customTo}
                 min={customFrom || undefined}
-                max={todayInTz(tz)}
                 onChange={e => { setCustomTo(e.target.value); setDateRangeError(false); }}
                 className={`flex-1 min-w-[130px] sm:flex-none px-3 py-2 bg-dark-input border text-text-primary rounded-lg text-sm ${dateRangeError ? "border-red-500" : "border-dark-border"}`}
               />
@@ -620,7 +619,7 @@ export default function ExpensesPage() {
                       {canEdit && !exp.id.startsWith("salary-") && !exp.id.startsWith("bill-") && (
                         <>
                           <button onClick={() => openEdit(exp)} className="text-text-muted hover:text-accent p-1"><Edit2 size={15} /></button>
-                          <button onClick={() => handleDelete(exp.id)} className="text-text-muted hover:text-danger p-1"><Trash2 size={15} /></button>
+                          <button onClick={() => handleDelete(exp.id)} disabled={deletingId === exp.id} className="text-text-muted hover:text-danger p-1">{deletingId === exp.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}</button>
                         </>
                       )}
                     </td>

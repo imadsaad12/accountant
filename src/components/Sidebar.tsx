@@ -23,8 +23,9 @@ import {
   X,
   Banknote,
   HelpCircle,
+  Search,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { canView, type Permissions } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
 import CashentLogo from "@/components/CashentLogo";
@@ -43,7 +44,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/ai-assistant", labelKey: "nav.ai", icon: Mic, feature: "ai" as const },
   { href: "/dashboard/activity-log", labelKey: "nav.activity", icon: ScrollText, feature: "activity_log" as const },
   { href: "/dashboard/tax", labelKey: "nav.tax", icon: Receipt, feature: "tax" as const },
-  { href: "/how-it-works", labelKey: "nav.how_it_works", icon: HelpCircle, feature: "dashboard" as const },
+  { href: "/how-it-works", labelKey: "nav.how_it_works", icon: HelpCircle, feature: "dashboard" as const, newTab: true },
 ];
 
 export default function Sidebar({
@@ -79,6 +80,7 @@ export default function Sidebar({
   }, []);
 
   const [loggingOut, setLoggingOut] = useState(false);
+  const [navSearch, setNavSearch] = useState("");
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -86,11 +88,16 @@ export default function Sidebar({
     window.location.href = "/login";
   }
 
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    if (isAdmin) return true;
-    if (!permissions) return item.feature === "dashboard"; // show only dashboard while loading
-    return canView(permissions, item.feature);
-  });
+  const visibleItems = useMemo(() => {
+    const permitted = NAV_ITEMS.filter((item) => {
+      if (isAdmin) return true;
+      if (!permissions) return item.feature === "dashboard";
+      return canView(permissions, item.feature);
+    });
+    if (!navSearch.trim()) return permitted;
+    const q = navSearch.toLowerCase();
+    return permitted.filter((item) => t(item.labelKey).toLowerCase().includes(q));
+  }, [isAdmin, permissions, navSearch, t]);
 
   return (
     <aside
@@ -134,19 +141,37 @@ export default function Sidebar({
         </button>
       </div>
 
+      {/* Search — sticky above nav */}
+      {!collapsed && (
+        <div className="px-2 pt-2 shrink-0">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              value={navSearch}
+              onChange={(e) => setNavSearch(e.target.value)}
+              placeholder={t("common.search") ?? "Search..."}
+              className="w-full pl-8 pr-2 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-xs focus:ring-1 focus:ring-accent focus:border-accent"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Nav */}
-      <nav className="flex-1 p-2 space-y-0.5 mt-2 overflow-y-auto">
+      <nav className="flex-1 p-2 space-y-0.5 mt-1 overflow-y-auto">
         {visibleItems.map((item) => {
           const activePath = optimisticPath ?? pathname;
           const isActive =
             item.href === "/dashboard"
               ? activePath === "/dashboard"
               : activePath.startsWith(item.href);
+          const isNewTab = "newTab" in item && item.newTab;
           return (
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => { setOptimisticPath(item.href); onMobileClose(); }}
+              {...(isNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              onClick={() => { if (!isNewTab) setOptimisticPath(item.href); onMobileClose(); }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
                 isActive
                   ? "bg-accent/10 text-accent-hover border border-accent/20"
@@ -161,7 +186,7 @@ export default function Sidebar({
         })}
 
         {/* Team — admin only */}
-        {isAdmin && (
+        {isAdmin && (!navSearch.trim() || t("nav.team").toLowerCase().includes(navSearch.toLowerCase())) && (
           <Link
             href="/dashboard/team"
             onClick={() => { setOptimisticPath("/dashboard/team"); onMobileClose(); }}
@@ -178,19 +203,21 @@ export default function Sidebar({
         )}
 
         {/* Settings — always visible */}
-        <Link
-          href="/dashboard/settings"
-          onClick={() => { setOptimisticPath("/dashboard/settings"); onMobileClose(); }}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-            (optimisticPath ?? pathname).startsWith("/dashboard/settings")
-              ? "bg-accent/10 text-accent-hover border border-accent/20"
-              : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
-          }`}
-          title={collapsed ? t("nav.settings") : undefined}
-        >
-          <Settings size={18} className={(optimisticPath ?? pathname).startsWith("/dashboard/settings") ? "text-accent" : ""} />
-          {!collapsed && <span>{t("nav.settings")}</span>}
-        </Link>
+        {(!navSearch.trim() || t("nav.settings").toLowerCase().includes(navSearch.toLowerCase())) && (
+          <Link
+            href="/dashboard/settings"
+            onClick={() => { setOptimisticPath("/dashboard/settings"); onMobileClose(); }}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+              (optimisticPath ?? pathname).startsWith("/dashboard/settings")
+                ? "bg-accent/10 text-accent-hover border border-accent/20"
+                : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
+            }`}
+            title={collapsed ? t("nav.settings") : undefined}
+          >
+            <Settings size={18} className={(optimisticPath ?? pathname).startsWith("/dashboard/settings") ? "text-accent" : ""} />
+            {!collapsed && <span>{t("nav.settings")}</span>}
+          </Link>
+        )}
       </nav>
 
       {/* User & Logout */}

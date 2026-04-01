@@ -187,6 +187,7 @@ export default function SuppliersPage() {
   // Bills panel
   async function openBills(supplier: Supplier) {
     setBillsSupplier(supplier);
+    setSupplierBills([]);
     setBillsLoading(true);
     setShowBillForm(false);
     const res = await fetch(`/api/supplier-bills?supplierId=${supplier.id}`);
@@ -528,7 +529,18 @@ export default function SuppliersPage() {
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-text-primary">{billsSupplier.name}</h2>
                 <p className="text-sm text-text-muted mt-1">Bills & Payment History</p>
-                {(() => {
+                {billsLoading ? (
+                  <div className="flex gap-6 mt-4">
+                    <div className="bg-dark-bg/50 rounded-lg px-4 py-3 border border-dark-border">
+                      <p className="text-xs text-text-muted mb-1">Amount Paid</p>
+                      <div className="h-7 w-24 bg-dark-border/50 rounded animate-pulse mt-1" />
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg px-4 py-3 border border-dark-border">
+                      <p className="text-xs text-text-muted mb-1">Remaining Due</p>
+                      <div className="h-7 w-24 bg-dark-border/50 rounded animate-pulse mt-1" />
+                    </div>
+                  </div>
+                ) : (() => {
                   const paid = supplierBills.reduce((s, b) => s + (b.amountPaid ?? (b.status === "paid" ? b.amount : 0)), 0);
                   const pending = supplierBills.reduce((s, b) => s + (b.amount - (b.amountPaid ?? (b.status === "paid" ? b.amount : 0))), 0);
                   return (
