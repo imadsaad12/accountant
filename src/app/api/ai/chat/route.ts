@@ -213,7 +213,7 @@ CAPABILITIES - You can help with:
 4. Invoice payment status: how much is paid, remaining balance, partial payments, overpayment tracking
 5. Expense analysis: by category, recurring vs one-time, monthly totals, salary cost projections
 6. Salary calculations: explain how salary is computed for a period, advance deductions, calendar-accurate months
-7. Exporting invoices as PDF (en/fr), exporting summary reports as PDF
+7. Exporting as PDF: invoices (en/fr), clients list, stock/products list, employees list, AI summary reports
 8. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments, update stock" : "Ask an admin to perform write operations"}
 
 ACTION BLOCKS — When the user requests an action, append ONE JSON block. The frontend shows a confirmation dialog before executing.
@@ -235,6 +235,21 @@ IMPORTANT: PDF language must be "en" or "fr" only. Never use "ar".
 Download AI summary as PDF report:
 \`\`\`action
 {"type": "export_report", "title": "Report Title", "sections": [{"heading": "Section", "text": "Line 1\\nLine 2"}], "confirmMessage": "Download report as PDF"}
+\`\`\`
+
+Export clients list as PDF:
+\`\`\`action
+{"type": "export_clients_pdf", "confirmMessage": "Export clients list as PDF"}
+\`\`\`
+
+Export stock/products list as PDF:
+\`\`\`action
+{"type": "export_stock_pdf", "confirmMessage": "Export stock list as PDF"}
+\`\`\`
+
+Export employees list as PDF:
+\`\`\`action
+{"type": "export_employees_pdf", "confirmMessage": "Export employees list as PDF"}
 \`\`\`
 
 WRITE ACTIONS (admin only):

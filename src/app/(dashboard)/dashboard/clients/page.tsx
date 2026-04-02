@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Eye, Download } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -370,6 +370,44 @@ export default function ClientsPage() {
     doc.save(`${detailClient.name}-invoices.pdf`);
   }
 
+  const [exportingList, setExportingList] = useState(false);
+  async function exportListPDF() {
+    setExportingList(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.text(t("clients.title"), 14, 16);
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(`${t("field.total")}: ${filtered.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+      doc.setTextColor(0);
+      autoTable(doc, {
+        startY: 28,
+        head: [[t("field.name"), t("field.email"), t("field.phone"), t("field.city"), t("clients.total_invoiced"), t("clients.total_paid"), t("clients.total_pending"), t("clients.balance")]],
+        body: filtered.map(c => [
+          c.name,
+          c.email || "—",
+          c.phone || "—",
+          c.city || "—",
+          fmt(c.totalInvoiced),
+          fmt(c.totalPaid),
+          fmt(c.totalPending),
+          fmt(c.balance),
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
+        columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
+        margin: { left: 14, right: 14 },
+      });
+      doc.save(`clients-${new Date().toISOString().split("T")[0]}.pdf`);
+    } finally {
+      setExportingList(false);
+    }
+  }
+
   if (loading) return <TablePageSkeleton rows={8} hasFilters cols={8} />;
 
   return (
@@ -377,11 +415,16 @@ export default function ClientsPage() {
     <div>
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("clients.title")}</h1>
-        {canEdit && (
-          <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-            <Plus size={16} /> {t("clients.add")}
+        <div className="flex gap-2">
+          <button onClick={exportListPDF} disabled={exportingList} className="flex items-center gap-1.5 px-3 py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-sm font-medium">
+            {exportingList ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t("clients.export_pdf")}
           </button>
-        )}
+          {canEdit && (
+            <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+              <Plus size={16} /> {t("clients.add")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search & Filter Bar */}

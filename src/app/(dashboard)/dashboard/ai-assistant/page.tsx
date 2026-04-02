@@ -139,7 +139,7 @@ export default function AIAssistantPage() {
         return;
       }
 
-      const isWriteAction = data.action && !["export_invoices", "export_pdf", "export_report"].includes(data.action.type);
+      const isWriteAction = data.action && !["export_invoices", "export_pdf", "export_report", "export_clients_pdf", "export_stock_pdf", "export_employees_pdf"].includes(data.action.type);
       const assistantMessage: Message = {
         role: "assistant",
         content: data.message,
@@ -216,6 +216,83 @@ export default function AIAssistantPage() {
         a.download = `${(action.title || "report").replace(/\s+/g, "-").toLowerCase()}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
+      }
+    } else if (action.type === "export_clients_pdf") {
+      const res = await fetch("/api/clients");
+      if (res.ok) {
+        const clients = await res.json();
+        const { default: jsPDF } = await import("jspdf");
+        const autoTable = (await import("jspdf-autotable")).default;
+        const doc = new jsPDF({ orientation: "landscape" });
+        doc.setFontSize(16); doc.setTextColor(37, 99, 235);
+        doc.text("Clients", 14, 16);
+        doc.setFontSize(9); doc.setTextColor(120);
+        doc.text(`Total: ${clients.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+        autoTable(doc, {
+          startY: 28,
+          head: [["Name", "Email", "Phone", "City", "Total Invoiced", "Total Paid", "Total Pending", "Balance"]],
+          body: clients.map((c: { name: string; email: string | null; phone: string | null; city: string | null; totalInvoiced: number; totalPaid: number; totalPending: number; balance: number }) => [
+            c.name, c.email || "—", c.phone || "—", c.city || "—",
+            c.totalInvoiced.toFixed(2), c.totalPaid.toFixed(2), c.totalPending.toFixed(2), c.balance.toFixed(2),
+          ]),
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
+          columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
+        });
+        doc.save(`clients-${new Date().toISOString().split("T")[0]}.pdf`);
+      }
+    } else if (action.type === "export_stock_pdf") {
+      const res = await fetch("/api/products");
+      if (res.ok) {
+        const products = await res.json();
+        const { default: jsPDF } = await import("jspdf");
+        const autoTable = (await import("jspdf-autotable")).default;
+        const doc = new jsPDF({ orientation: "landscape" });
+        doc.setFontSize(16); doc.setTextColor(37, 99, 235);
+        doc.text("Stock", 14, 16);
+        doc.setFontSize(9); doc.setTextColor(120);
+        doc.text(`Total: ${products.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+        autoTable(doc, {
+          startY: 28,
+          head: [["Name", "SKU", "Type", "Category", "Price", "Cost", "Quantity", "Min Stock", "Status"]],
+          body: products.map((p: { name: string; sku: string; type: string; category: { name: string } | null; price: number; cost: number; quantity: number; minStock: number; unit: string; components: { quantity: number; component: { quantity: number } }[] }) => {
+            const qty = p.type === "composite" && p.components?.length > 0
+              ? Math.floor(Math.min(...p.components.map((c: { quantity: number; component: { quantity: number } }) => c.component.quantity / c.quantity)))
+              : p.quantity;
+            return [p.name, p.sku, p.type, p.category?.name || "—", p.price.toFixed(2), p.cost.toFixed(2), `${qty} ${p.unit}`, String(p.minStock), qty <= p.minStock ? "LOW STOCK" : "OK"];
+          }),
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
+          columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "center" } },
+        });
+        doc.save(`stock-${new Date().toISOString().split("T")[0]}.pdf`);
+      }
+    } else if (action.type === "export_employees_pdf") {
+      const res = await fetch("/api/employees");
+      if (res.ok) {
+        const employees = await res.json();
+        const { default: jsPDF } = await import("jspdf");
+        const autoTable = (await import("jspdf-autotable")).default;
+        const doc = new jsPDF({ orientation: "landscape" });
+        doc.setFontSize(16); doc.setTextColor(37, 99, 235);
+        doc.text("Employees", 14, 16);
+        doc.setFontSize(9); doc.setTextColor(120);
+        doc.text(`Total: ${employees.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+        autoTable(doc, {
+          startY: 28,
+          head: [["Name", "Email", "Position", "Department", "Salary", "Outstanding Advance", "Hire Date", "Status"]],
+          body: employees.map((e: { firstName: string; lastName: string; email: string; position: string; department: string | null; salary: number; salaryPeriod: string; outstandingAdvance: number; hireDate: string; status: string }) => [
+            `${e.firstName} ${e.lastName}`, e.email || "—", e.position, e.department || "—",
+            `${e.salary.toFixed(2)}/${e.salaryPeriod}`,
+            e.outstandingAdvance > 0 ? e.outstandingAdvance.toFixed(2) : "—",
+            e.hireDate ? new Date(e.hireDate).toLocaleDateString("en-GB") : "—",
+            e.status,
+          ]),
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
+          columnStyles: { 4: { halign: "right" }, 5: { halign: "right" } },
+        });
+        doc.save(`employees-${new Date().toISOString().split("T")[0]}.pdf`);
       }
     }
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown, Loader2, Layers, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown, Loader2, Layers, Package, Download } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, currencySymbol } from "@/components/OrgSettingsProvider";
@@ -307,6 +307,56 @@ export default function StockPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
+  const [exportingList, setExportingList] = useState(false);
+  async function exportListPDF() {
+    setExportingList(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.text(t("stock.title"), 14, 16);
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(`${t("field.total")}: ${filtered.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+      doc.setTextColor(0);
+      autoTable(doc, {
+        startY: 28,
+        head: [[t("field.name"), "SKU", "Type", t("stock.category"), `${t("field.price")} (${currSym})`, `${t("field.cost")} (${currSym})`, t("field.quantity"), t("stock.min_stock"), t("field.status")]],
+        body: filtered.map(p => {
+          const qty = p.type === "composite" ? canMakeQty(p) : p.quantity;
+          const isLow = qty <= p.minStock;
+          return [
+            p.name,
+            p.sku,
+            p.type === "composite" ? t("stock.filter.composite") : t("stock.filter.simple"),
+            p.category?.name || "—",
+            fmtAmt(p.price),
+            fmtAmt(p.cost),
+            `${qty} ${p.unit}`,
+            String(p.minStock),
+            isLow ? "LOW STOCK" : "OK",
+          ];
+        }),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
+        columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "center" } },
+        margin: { left: 14, right: 14 },
+        didParseCell: (data: { section: string; column: { index: number }; cell: { styles: { textColor: number[] } }; row: { raw: string[] } }) => {
+          if (data.section === "body" && data.column.index === 8) {
+            const val = data.row.raw[8];
+            if (val === "LOW STOCK") data.cell.styles.textColor = [220, 38, 38];
+            else data.cell.styles.textColor = [34, 197, 94];
+          }
+        },
+      });
+      doc.save(`stock-${new Date().toISOString().split("T")[0]}.pdf`);
+    } finally {
+      setExportingList(false);
+    }
+  }
+
   if (loading) return <TablePageSkeleton rows={8} hasFilters cols={6} />;
 
   return (
@@ -314,16 +364,21 @@ export default function StockPage() {
     <div>
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("stock.title")}</h1>
-        {canEdit && (
-          <div className="flex gap-2">
-            <button onClick={() => setShowCategoryForm(true)} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-xs sm:text-sm font-medium">
-              <Plus size={14} /> {t("stock.add_category")}
-            </button>
-            <button onClick={openCreate} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-xs sm:text-sm font-medium">
-              <Plus size={14} /> {t("stock.add")}
-            </button>
-          </div>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={exportListPDF} disabled={exportingList} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-xs sm:text-sm font-medium">
+            {exportingList ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {t("stock.export_pdf")}
+          </button>
+          {canEdit && (
+            <>
+              <button onClick={() => setShowCategoryForm(true)} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-xs sm:text-sm font-medium">
+                <Plus size={14} /> {t("stock.add_category")}
+              </button>
+              <button onClick={openCreate} className="flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-3 sm:py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-xs sm:text-sm font-medium">
+                <Plus size={14} /> {t("stock.add")}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
