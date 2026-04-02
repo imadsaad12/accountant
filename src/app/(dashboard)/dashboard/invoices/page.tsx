@@ -706,7 +706,7 @@ export default function InvoicesPage() {
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button type="button" onClick={() => setShowPaymentForm(false)} className="px-3 py-1.5 text-xs font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                      <button type="submit" disabled={savingPayment || (() => { const r = viewInvoice.total - payments.reduce((s,p)=>s+p.amount,0); return !isNaN(parseFloat(paymentForm.amount)) && parseFloat(paymentForm.amount) > r; })()} className="px-3 py-1.5 text-xs font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                      <button type="submit" disabled={savingPayment} className="px-3 py-1.5 text-xs font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
                         {savingPayment ? <Loader2 size={13} className="animate-spin inline" /> : t("payments.save")}
                       </button>
                     </div>

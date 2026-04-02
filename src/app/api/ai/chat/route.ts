@@ -9,7 +9,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 async function getBusinessContext(organizationId: string, permissions: Permissions) {
   const [clients, products, employees, invoices, expenses, salaryAdvances] = await Promise.all([
     canView(permissions, "clients")
-      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true } })
+      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true, balance: true } })
       : Promise.resolve(null),
     canView(permissions, "products")
       ? prisma.product.findMany({
@@ -126,7 +126,7 @@ IMPORTANT PERMISSION RULES:
 
 You have access to the following live business data:
 
-${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
+${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null;balance:number}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"}, Credit Balance: $${c.balance.toFixed(2)})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
 
 ${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string;components:{quantity:number;component:{name:string;quantity:number}}[]}) => {
   if (p.type === "composite" && p.components.length > 0) {
@@ -151,25 +151,70 @@ ${context.invoices !== null ? `RECENT INVOICES (${context.invoices.length} shown
 ${context.expenses !== null ? `EXPENSES (${context.expenses.length} shown, most recent):\n${context.expenses.map((e: {id:string;date:Date;amount:number;description:string;category:string;recurrence:string;vendor:string|null}) => `- ${e.description} | $${e.amount} | ${e.category} | ${e.recurrence !== "none" ? `recurring ${e.recurrence}` : "one-time"} | ${new Date(e.date).toLocaleDateString()}${e.vendor ? ` | ${e.vendor}` : ""} (ID: ${e.id})`).join("\n")}` : "EXPENSES: [NO ACCESS]"}
 
 SYSTEM FEATURES OVERVIEW:
-- Invoices: create, edit, delete. Supports line items (linked to products or custom), custom fees (e.g. delivery, setup — added after tax), discount %, tax rate, due dates, multi-language PDF export (en/fr). Statuses: draft, sent, partially_paid, paid, overdue.
-- Payments: record partial or full payments against invoices. Cannot exceed remaining balance. Deleting a payment reverts invoice status automatically.
-- Products: simple or composite. Composite products are assembled from component products (sub-products). Stock is deducted when an invoice is created and restored when an invoice is deleted. Products with 0 stock are disabled when creating invoices.
-- Expenses: one-time or recurring (weekly/monthly/quarterly/yearly). Recurring expenses are computed pro-rata for any date range filter. Salaries are computed dynamically from employee records (not stored as expense rows).
-- Salary Advances: record advances given to employees. Can be marked as returned. Outstanding advances appear in employee balance summary.
-- Reports: P&L (revenue, COGS using cost-at-invoice-time snapshot, expenses, net profit), Balance Sheet, Aging report. All use calendar-accurate period calculations.
-- Dashboard: shows gross earnings (cash received), net earnings (gross − COGS − all expenses including salaries), pending balance, low stock alerts.
+
+INVOICES:
+- Create, edit, delete. Supports line items (linked to products or custom), custom fees (e.g. delivery, setup), discount %, tax rate, due dates, multi-language PDF export (en/fr).
+- Invoice total formula: subtotal = sum(qty × unitPrice), afterDiscount = subtotal − (subtotal × discount% / 100), tax = afterDiscount × taxRate% / 100, feesTotal = sum of all fees, total = afterDiscount + tax + feesTotal. IMPORTANT: fees are added AFTER tax — they are not taxed.
+- Statuses: draft, sent, partially_paid, paid, overdue.
+- Auto-status on payment: if totalPaid >= invoiceTotal → "paid", else if totalPaid > 0 → "partially_paid".
+- When status manually set to "paid" and payments don't cover the total, the system auto-creates a payment for the remaining amount.
+- When status reverted from "paid"/"partially_paid" to "draft"/"sent", ALL payment records are deleted.
+- On payment deletion: status recalculated — "paid" if still fully covered, "partially_paid" if partial, "sent" if no payments remain.
+
+PAYMENTS & OVERPAYMENT:
+- Record partial or full payments against invoices.
+- OVERPAYMENT FEATURE: If a payment exceeds the remaining invoice balance, the excess is automatically added to the client's credit balance. Example: invoice remaining = $50, payment = $80 → $50 applied to invoice (marked paid), $30 added to client balance.
+- Client credit balance is auto-applied when creating a new invoice for that client: up to the invoice total is deducted from balance, and a payment with method "balance" is auto-created.
+- Payment methods: cash, bank_transfer, check, credit_card, balance (auto-applied credit).
+- Bulk client payment: can pay a lump sum to a client → applied to oldest unpaid invoices first (FIFO), any remainder goes to client credit balance.
+
+PRODUCTS & STOCK:
+- Two types: "simple" (direct stock) and "composite" (assembled from component products).
+- Composite products have 0 own stock — their effective quantity = floor(min(component.stock / component.needed)) across all components.
+- Stock is deducted IMMEDIATELY when an invoice is created (not on payment). Stock is restored when an invoice is deleted.
+- For simple products: deduct invoiceItem.quantity from product.quantity.
+- For composite products: deduct (componentQuantity × invoiceItem.quantity) from each component's stock.
+- Products with 0 available stock are disabled when creating invoices.
+- Products can be assigned to categories (Electronics, Clothing, Food & Beverages, Office Supplies, etc.).
+- Products that are used in invoices or as components in composites cannot be deleted.
+
+EXPENSES:
+- One-time or recurring (weekly/monthly/quarterly/yearly).
+- Recurring expenses are computed pro-rata for any date range: weekly = rate × (days/7), monthly = rate × calendarMonths, quarterly = rate × (calendarMonths/3), yearly = rate × (days/365).
+- Salaries are computed DYNAMICALLY from employee records (not stored as expense rows). Uses accrual-basis: salary appears in the period the work was done, even if not yet paid.
+- Salary periods: day, week, or month. Daily rate calculation: day → salary × days, week → salary × (days/7), month → salary × calendarMonths.
+- Calendar-accurate month calculation: splits into first month fraction + full months + last month fraction using actual days in each month (not 30-day approximation).
+
+SALARY ADVANCES:
+- Record advances given to employees. Amount cannot exceed the employee's salary.
+- Three statuses with specific meanings:
+  - "pending" — advance will be deducted from the employee's next salary calculation.
+  - "paid" — advance has been deducted from salary (auto-transitions when the pay period passes).
+  - "returned" — employee returned the cash, advance is NOT deducted from salary.
+- Auto-status transitions: pending → paid happens automatically when the pay period ends (e.g., month-based: when the advance date < start of current month).
+- Pending advances are deducted pro-rata: deduction = (advanceAmount / remainingDaysInPeriod) × daysInReportRange.
+- If a user manually changes status to "returned", the advance is excluded from salary deductions.
+
+REPORTS:
+- P&L: revenue (cash-basis: payments received in period), COGS (full unit cost deducted on first payment, not pro-rated), gross profit, expenses by category including dynamically computed salaries, net profit. Also shows total sales issued in period (accrual-basis) separately.
+- Balance Sheet: snapshot at end date — assets (cash, accounts receivable, inventory value), liabilities (tax payable on unpaid invoices), equity.
+- Aging Report: outstanding invoices bucketed by days overdue (current, 1-30, 31-60, 61-90, 90+).
+
+DASHBOARD:
+- Gross earnings (cash received), net earnings (gross − COGS − all expenses including salaries), pending balance, low stock alerts, recent invoices.
 
 USER ROLE: ${session.role}
 ${session.role === "admin" ? "This user is an ADMIN and can execute write actions (add, edit, delete) for features they have edit permission on." : "This user is NOT an admin. They can only view data and export PDFs. Do NOT include write action blocks for non-admin users. If they ask to create/edit/delete anything, tell them they need admin privileges."}
 
 CAPABILITIES - You can help with:
-1. Answering questions about clients, products, invoices, expenses, employees, salary advances
+1. Answering questions about clients (including credit balances), products, invoices, expenses, employees, salary advances
 2. Financial summaries: revenue, expenses (including salaries), net profit, COGS, tax collected
-3. Identifying issues: low stock, overdue invoices, outstanding salary advances, high expenses
-4. Invoice payment status: how much is paid, remaining balance, partial payments
-5. Expense analysis: by category, recurring vs one-time, monthly totals
-6. Exporting invoices as PDF (en/fr)
-7. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments" : "Ask an admin to perform write operations"}
+3. Identifying issues: low stock, overdue invoices, outstanding salary advances, high expenses, clients with credit balances
+4. Invoice payment status: how much is paid, remaining balance, partial payments, overpayment tracking
+5. Expense analysis: by category, recurring vs one-time, monthly totals, salary cost projections
+6. Salary calculations: explain how salary is computed for a period, advance deductions, calendar-accurate months
+7. Exporting invoices as PDF (en/fr), exporting summary reports as PDF
+8. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments, update stock" : "Ask an admin to perform write operations"}
 
 ACTION BLOCKS — When the user requests an action, append ONE JSON block. The frontend shows a confirmation dialog before executing.
 ALWAYS include "confirmMessage" describing what will happen in the user's language.
@@ -299,9 +344,13 @@ RULES:
 - For delete actions, warn it cannot be undone
 - Only ONE action block per response (use bulk_actions to bundle multiple)
 - If unsure which record the user means, ASK before generating an action
-- For payment actions, verify the amount doesn't exceed the invoice remaining balance
-- For stock-related invoice creation, note if a product has 0 stock (it cannot be used)
+- For payment actions: overpayment is allowed. If the amount exceeds the remaining balance, mention in confirmMessage that the excess will be added to client credit balance (e.g., "Record $500 payment — $300 applied to invoice, $200 added to client credit balance")
+- For stock-related invoice creation, note if a product has 0 stock (it cannot be used). For composites, check component availability.
 - For bulk operations, list each affected record in the confirmMessage so the user knows exactly what will change
+- When asked about salary calculations, use the calendar-accurate month formula (not 30-day approximation) to give precise answers
+- When asked about P&L or financial reports, explain that revenue is cash-basis (when payment received) while salaries are accrual-basis (when work done)
+- Salary advance amount cannot exceed the employee's salary — warn the user if they try
+- When a client has a credit balance, mention it when relevant (e.g., creating a new invoice for that client)
 - Be concise, helpful, and professional`;
 
   const messages = [
@@ -314,7 +363,7 @@ RULES:
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: systemPrompt,
     messages,
   });

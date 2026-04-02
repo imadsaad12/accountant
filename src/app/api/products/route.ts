@@ -58,5 +58,15 @@ export async function POST(req: NextRequest) {
   }
 
   await logAudit({ session, action: "create", entity: "product", entityId: product.id, description: `Created ${isComposite ? "composite " : ""}product "${product.name}" (SKU: ${product.sku})` });
-  return NextResponse.json(product, { status: 201 });
+
+  const full = await prisma.product.findUnique({
+    where: { id: product.id },
+    include: {
+      category: { select: { id: true, name: true } },
+      components: {
+        include: { component: { select: { id: true, name: true, quantity: true, unit: true, cost: true } } },
+      },
+    },
+  });
+  return NextResponse.json(full, { status: 201 });
 }

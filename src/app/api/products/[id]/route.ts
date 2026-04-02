@@ -64,7 +64,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   await logAudit({ session, action: "update", entity: "product", entityId: product.id, description: `Updated product "${product.name}"` });
-  return NextResponse.json(product);
+
+  const full = await prisma.product.findUnique({
+    where: { id: product.id },
+    include: {
+      category: { select: { id: true, name: true } },
+      components: {
+        include: { component: { select: { id: true, name: true, quantity: true, unit: true, cost: true } } },
+      },
+    },
+  });
+  return NextResponse.json(full);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

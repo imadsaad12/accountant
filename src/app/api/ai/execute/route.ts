@@ -235,23 +235,35 @@ async function executeSingleAction(
       });
       if (!existingInv) return { success: false, message: "Invoice not found" };
       const totalPaid = existingInv.payments.reduce((s, p) => s + p.amount, 0);
-      const remaining = existingInv.total - totalPaid;
-      if (action.amount > remaining + 0.01) return { success: false, message: `Payment amount $${action.amount} exceeds remaining balance $${remaining.toFixed(2)}` };
-      const newTotalPaid = totalPaid + action.amount;
-      const newStatus = newTotalPaid >= existingInv.total - 0.01 ? "paid" : "partially_paid";
-      await prisma.invoicePayment.create({
-        data: {
-          invoiceId: action.invoiceId,
-          amount: action.amount,
-          date: action.date ? new Date(action.date) : new Date(),
-          method: action.method || "cash",
-          reference: action.reference || null,
-          note: action.note || null,
-        },
-      });
+      const remaining = Math.max(existingInv.total - totalPaid, 0);
+      const appliedToInvoice = Math.min(action.amount, remaining);
+      const excessAmount = parseFloat((action.amount - appliedToInvoice).toFixed(2));
+      const newTotalPaid = totalPaid + appliedToInvoice;
+      const newStatus = newTotalPaid >= existingInv.total - 0.01 ? "paid" : appliedToInvoice > 0 ? "partially_paid" : existingInv.status;
+      if (appliedToInvoice > 0) {
+        await prisma.invoicePayment.create({
+          data: {
+            invoiceId: action.invoiceId,
+            amount: appliedToInvoice,
+            date: action.date ? new Date(action.date) : new Date(),
+            method: action.method || "cash",
+            reference: action.reference || null,
+            note: action.note || null,
+          },
+        });
+      }
+      if (excessAmount > 0) {
+        await prisma.client.update({
+          where: { id: existingInv.clientId },
+          data: { balance: { increment: excessAmount } },
+        });
+      }
       const invoice = await prisma.invoice.update({ where: { id: action.invoiceId }, data: { status: newStatus }, include: { client: true } });
-      await logAudit({ session, action: "create", entity: "payment", entityId: action.invoiceId, description: `Recorded payment of $${action.amount} for invoice ${invoice.number}`, method: "ai", metadata: action });
-      return { success: true, message: `Payment of $${action.amount} recorded for invoice ${invoice.number}` };
+      await logAudit({ session, action: "create", entity: "payment", entityId: action.invoiceId, description: `Recorded payment of $${action.amount} for invoice ${invoice.number}${excessAmount > 0 ? ` ($${excessAmount} added to client balance)` : ""}`, method: "ai", metadata: action });
+      const msg = excessAmount > 0
+        ? `Payment of $${action.amount} recorded for invoice ${invoice.number}. $${appliedToInvoice.toFixed(2)} applied to invoice, $${excessAmount.toFixed(2)} added to ${invoice.client.name}'s credit balance.`
+        : `Payment of $${action.amount} recorded for invoice ${invoice.number}`;
+      return { success: true, message: msg };
     }
 
     case "add_salary_advance": {

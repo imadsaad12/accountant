@@ -144,7 +144,7 @@ export default function StockPage() {
       categoryId: product.categoryId || "",
     });
     setFormComponents(
-      product.components.length > 0
+      product.components?.length > 0
         ? product.components.map(c => ({ componentId: c.componentId, quantity: String(c.quantity) }))
         : [{ componentId: "", quantity: "1" }]
     );
