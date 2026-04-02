@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Receipt, CheckCircle2, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Receipt, CheckCircle2, Clock, Download } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -326,6 +326,57 @@ export default function SuppliersPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
+  const [exportingList, setExportingList] = useState(false);
+  async function exportListPDF() {
+    setExportingList(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.text(t("suppliers.title"), 14, 16);
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(`${t("field.total")}: ${filtered.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+      doc.setTextColor(0);
+
+      // Summary line
+      doc.setFontSize(10);
+      doc.text(`Billed: ${currencySymbol}${fmtCompact(totalBilled)}  |  Paid: ${currencySymbol}${fmtCompact(totalPaid)}  |  Pending: ${currencySymbol}${fmtCompact(totalPending)}`, 14, 30);
+
+      autoTable(doc, {
+        startY: 35,
+        head: [[t("field.name"), t("suppliers.contact_name"), t("field.email"), t("field.phone"), t("field.city"), t("suppliers.payment_terms"), "Bills", "Total Billed", "Total Paid", "Pending"]],
+        body: filtered.map(s => {
+          const sBills = bills.filter(b => b.supplierId === s.id);
+          const sBilled = sBills.reduce((sum, b) => sum + b.amount, 0);
+          const sPaid = sBills.reduce((sum, b) => sum + (b.amountPaid ?? 0), 0);
+          const sPending = sBills.filter(b => b.status !== "paid").reduce((sum, b) => sum + (b.amount - (b.amountPaid ?? 0)), 0);
+          return [
+            s.name,
+            s.contactName || "—",
+            s.email || "—",
+            s.phone || "—",
+            s.city || "—",
+            s.paymentTerms != null ? `${s.paymentTerms} days` : "—",
+            String(sBills.length),
+            sBilled > 0 ? sBilled.toFixed(2) : "—",
+            sPaid > 0 ? sPaid.toFixed(2) : "—",
+            sPending > 0 ? sPending.toFixed(2) : "—",
+          ];
+        }),
+        styles: { fontSize: 7 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 7, fontStyle: "bold" },
+        columnStyles: { 6: { halign: "center" }, 7: { halign: "right" }, 8: { halign: "right" }, 9: { halign: "right" } },
+        margin: { left: 14, right: 14 },
+      });
+      doc.save(`suppliers-${new Date().toISOString().split("T")[0]}.pdf`);
+    } finally {
+      setExportingList(false);
+    }
+  }
+
   if (loading) return <TablePageSkeleton rows={8} hasFilters cols={6} statCards={3} />;
 
   return (
@@ -333,11 +384,16 @@ export default function SuppliersPage() {
     <div>
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("suppliers.title")}</h1>
-        {canEdit && (
-          <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-            <Plus size={16} /> {t("suppliers.add")}
+        <div className="flex gap-2">
+          <button onClick={exportListPDF} disabled={exportingList} className="flex items-center gap-1.5 px-3 py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-sm font-medium">
+            {exportingList ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t("suppliers.export_pdf")}
           </button>
-        )}
+          {canEdit && (
+            <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+              <Plus size={16} /> {t("suppliers.add")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stat boxes */}

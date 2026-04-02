@@ -139,7 +139,7 @@ export default function AIAssistantPage() {
         return;
       }
 
-      const isWriteAction = data.action && !["export_invoices", "export_pdf", "export_report", "export_clients_pdf", "export_stock_pdf", "export_employees_pdf"].includes(data.action.type);
+      const isWriteAction = data.action && !["export_invoices", "export_pdf", "export_report", "export_clients_pdf", "export_stock_pdf", "export_employees_pdf", "export_suppliers_pdf"].includes(data.action.type);
       const assistantMessage: Message = {
         role: "assistant",
         content: data.message,
@@ -293,6 +293,29 @@ export default function AIAssistantPage() {
           columnStyles: { 4: { halign: "right" }, 5: { halign: "right" } },
         });
         doc.save(`employees-${new Date().toISOString().split("T")[0]}.pdf`);
+      }
+    } else if (action.type === "export_suppliers_pdf") {
+      const res = await fetch("/api/suppliers");
+      if (res.ok) {
+        const suppliers = await res.json();
+        const { default: jsPDF } = await import("jspdf");
+        const autoTable = (await import("jspdf-autotable")).default;
+        const doc = new jsPDF({ orientation: "landscape" });
+        doc.setFontSize(16); doc.setTextColor(37, 99, 235);
+        doc.text("Suppliers", 14, 16);
+        doc.setFontSize(9); doc.setTextColor(120);
+        doc.text(`Total: ${suppliers.length} — ${new Date().toLocaleDateString()}`, 14, 23);
+        autoTable(doc, {
+          startY: 28,
+          head: [["Name", "Contact", "Email", "Phone", "City", "Payment Terms"]],
+          body: suppliers.map((s: { name: string; contactName: string | null; email: string | null; phone: string | null; city: string | null; paymentTerms: number | null }) => [
+            s.name, s.contactName || "—", s.email || "—", s.phone || "—", s.city || "—",
+            s.paymentTerms != null ? `${s.paymentTerms} days` : "—",
+          ]),
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
+        });
+        doc.save(`suppliers-${new Date().toISOString().split("T")[0]}.pdf`);
       }
     }
   }

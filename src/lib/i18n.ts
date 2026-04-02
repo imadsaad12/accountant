@@ -157,6 +157,7 @@ const translations: Record<Lang, Record<string, string>> = {
     // Suppliers
     "suppliers.title": "Suppliers",
     "suppliers.subtitle": "Manage your supplier directory",
+    "suppliers.export_pdf": "Export PDF",
     "suppliers.add": "Add Supplier",
     "suppliers.edit": "Edit Supplier",
     "suppliers.delete_confirm": "Are you sure you want to delete this supplier?",
@@ -726,6 +727,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "common.all": "Tous",
     "suppliers.title": "Fournisseurs",
     "suppliers.subtitle": "Gérez votre répertoire de fournisseurs",
+    "suppliers.export_pdf": "Exporter PDF",
     "suppliers.add": "Ajouter un fournisseur",
     "suppliers.edit": "Modifier le fournisseur",
     "suppliers.delete_confirm": "Êtes-vous sûr de vouloir supprimer ce fournisseur ?",
@@ -1267,6 +1269,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "common.all": "الكل",
     "suppliers.title": "الموردون",
     "suppliers.subtitle": "إدارة دليل الموردين",
+    "suppliers.export_pdf": "تصدير PDF",
     "suppliers.add": "إضافة مورد",
     "suppliers.edit": "تعديل المورد",
     "suppliers.delete_confirm": "هل أنت متأكد من حذف هذا المورد؟",
