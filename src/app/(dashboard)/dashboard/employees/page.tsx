@@ -279,7 +279,11 @@ export default function EmployeesPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         {/* Total monthly salaries */}
-        <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+        <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+            {currentMonthSalary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+          </div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-text-muted">{t("employees.total_monthly_salaries")}</span>
             <DollarSign size={15} className="text-emerald-400" />
