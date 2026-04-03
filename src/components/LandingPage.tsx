@@ -707,7 +707,7 @@ export default function LandingPage() {
             <p className="text-slate-400 text-sm mb-5">Choose how you'd like to reach us — we typically respond within a few hours.</p>
             <div className="flex flex-col gap-3">
               <a
-                href="mailto:imad.alhaj.saad@gmail.com?subject=Interested%20in%20Cashent%20Pro&body=Hi%2C%0A%0AI%27m%20interested%20in%20the%20Pro%20plan.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
+                href="mailto:info@cashent.app?subject=Interested%20in%20Cashent&body=Hi%2C%0A%0AI%27m%20interested%20in%20Cashent.%20Could%20you%20please%20send%20me%20more%20details%3F%0A%0AThanks"
                 className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600/30 transition-colors group"
               >
                 <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
@@ -715,7 +715,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-white">Email us</div>
-                  <div className="text-xs text-slate-400">imad.alhaj.saad@gmail.com</div>
+                  <div className="text-xs text-slate-400">info@cashent.app</div>
                 </div>
               </a>
               <a
