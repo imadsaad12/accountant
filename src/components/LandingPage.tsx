@@ -8,6 +8,7 @@ import {
   BarChart3, FileText, Package, TrendingUp,
   Bot, Shield, Globe, ChevronRight, ArrowRight,
   Receipt, UserCog, Activity, Zap, CheckCircle, X, TriangleAlert, Menu, Mail, MessageCircle,
+  Truck, Banknote,
 } from "lucide-react";
 
 // ─── Intersection observer fade-in ───────────────────────────────────────────
@@ -385,7 +386,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Invoices, expenses, inventory, payroll and AI-powered insights. All in one platform.
+            Invoices, expenses, inventory, payroll, suppliers, salary advances and AI-powered insights. All in one platform.
             Built for SMBs. Works in English, French, and Arabic.
           </p>
 
@@ -437,15 +438,17 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">One platform, zero spreadsheets</h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">Replace 6 different tools with one connected system that keeps every number consistent.</p>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <FeatureCard icon={FileText}   title="Smart Invoicing"   color="bg-indigo-500/20"  desc="Live preview, payment tracking and auto status from Sent to Partially Paid to Paid." />
-          <FeatureCard icon={TrendingUp} title="Financial Reports" color="bg-emerald-500/20" desc="P&L and receivables aging from live data. Export to PDF in one click." />
-          <FeatureCard icon={Bot}        title="AI Assistant"      color="bg-purple-500/20"  desc="Ask questions or give commands in English, French, or Arabic. The AI reads and acts on your data." />
-          <FeatureCard icon={Package}    title="Stock & Inventory" color="bg-amber-500/20"   desc="Low stock alerts, auto decrement on invoice and cost vs price margin tracking." />
-          <FeatureCard icon={Receipt}    title="Expense Tracking"  color="bg-red-500/20"     desc="Categorized expenses feed directly into P&L and net earnings." />
-          <FeatureCard icon={UserCog}    title="Employee Payroll"  color="bg-pink-500/20"    desc="Salary records that flow into financial calculations automatically." />
-          <FeatureCard icon={Shield}     title="Role Permissions"  color="bg-cyan-500/20"    desc="Per feature view and edit permissions enforced at the API level." />
-          <FeatureCard icon={Activity}   title="Activity Log"      color="bg-orange-500/20"  desc="Full audit trail of who did what, when, across every module." />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <FeatureCard icon={FileText}   title="Smart Invoicing"    color="bg-indigo-500/20"  desc="Live preview, payment tracking, overpayment to client credit, and auto status updates." />
+          <FeatureCard icon={TrendingUp} title="Financial Reports"  color="bg-emerald-500/20" desc="P&L, balance sheet and receivables aging from live data. Export to PDF in one click." />
+          <FeatureCard icon={Bot}        title="AI Assistant"       color="bg-purple-500/20"  desc="Ask questions or give commands in English, French, or Arabic. The AI reads and acts on your data." />
+          <FeatureCard icon={Package}    title="Stock & Inventory"  color="bg-amber-500/20"   desc="Simple and composite products, low-stock alerts, auto deduction on invoice, and PDF export." />
+          <FeatureCard icon={Truck}      title="Supplier Management" color="bg-teal-500/20"   desc="Track supplier bills, record payments, monitor outstanding balances and export to PDF." />
+          <FeatureCard icon={Banknote}   title="Salary Advances"    color="bg-pink-500/20"    desc="Record advances, auto-deduct from salary, track pending vs returned vs paid status." />
+          <FeatureCard icon={Receipt}    title="Expense Tracking"   color="bg-red-500/20"     desc="One-time and recurring expenses with pro-rata calculations feed into P&L automatically." />
+          <FeatureCard icon={UserCog}    title="Employee Payroll"   color="bg-cyan-500/20"    desc="Salary records with weekly or monthly periods that flow into financial calculations." />
+          <FeatureCard icon={Shield}     title="Role Permissions"   color="bg-sky-500/20"     desc="Per feature view and edit permissions enforced at the API level." />
+          <FeatureCard icon={Activity}   title="Activity Log"       color="bg-orange-500/20"  desc="Full audit trail of who did what, when, across every module." />
         </div>
       </section>
 
@@ -460,19 +463,45 @@ export default function LandingPage() {
           badge="Invoicing"
           title="Full invoice lifecycle in one place"
           subtitle="From draft to paid, automatically."
-          description="Create invoices with a live preview, add line items, apply tax rates and record multiple payments. Status moves from Sent to Partially Paid to Paid automatically as payments come in."
+          description="Create invoices with live preview, add line items, apply tax rates and record payments. Overpayments automatically convert to client credit. Status moves from Sent to Partially Paid to Paid as payments come in."
           images={[
-            { src: S("Invoices1.png"), alt: "Invoice list" },
-            { src: S("Invoices2.png"), alt: "Invoice detail" },
+            { src: S("Screenshot 2026-04-02 at 7.49.52 PM.png"), alt: "Invoice list with stat cards" },
+            { src: S("Screenshot 2026-04-02 at 7.50.07 PM.png"), alt: "Invoice detail with payment history" },
           ]}
         />
 
         <ShowcaseSection
-          badge="AI Assistant"
-          title="Ask your AI anything about your business"
-          subtitle="English, French and Arabic. Fully supported."
-          description="Your AI assistant has full context of your live business data. Ask about revenue, check overdue clients, or tell it to create invoices, add expenses and update records. Every action asks for your confirmation before it runs."
-          images={[{ src: S("Ai assistance.png"), alt: "AI Assistant" }]}
+          badge="Clients"
+          title="Your entire client directory with financials"
+          subtitle="Invoice history, balances and credit — per client."
+          description="Manage clients with full contact details, filter by city, and drill into each client to see their invoices, total billed, paid, pending amounts and credit balance. Export to PDF or record payments directly."
+          images={[
+            { src: S("new-Clients1.png"), alt: "Clients list with pending amounts" },
+            { src: S("new-Clients2.png"), alt: "Client detail with invoice history" },
+          ]}
+          reverse
+        />
+
+        <ShowcaseSection
+          badge="Suppliers"
+          title="Track every supplier bill and payment"
+          subtitle="Total billed, paid and remaining at a glance."
+          description="Add suppliers with contact details, create bills with due dates, and record partial or full payments. See total billed, amount paid and remaining balance across all suppliers with PDF export."
+          images={[
+            { src: S("new-suppliers1.png"), alt: "Supplier list with stat cards" },
+            { src: S("new-suplliers2.png"), alt: "Supplier bill detail with payments" },
+          ]}
+        />
+
+        <ShowcaseSection
+          badge="Stock & Inventory"
+          title="Simple and composite products in one place"
+          subtitle="Auto deduction, low-stock alerts, PDF export."
+          description="Create simple products or composite products built from other items. Stock auto-decrements when invoices are created. Track cost vs price, set low-stock thresholds, filter by category or type, and export to PDF."
+          images={[
+            { src: S("new-stock1.png"), alt: "Stock list with composite products" },
+            { src: S("new-stock2.png"), alt: "Add product form" },
+          ]}
           reverse
         />
 
@@ -480,51 +509,57 @@ export default function LandingPage() {
           badge="Financial Reports"
           title="Profit & Loss in seconds, not hours"
           subtitle="Real numbers, not estimates."
-          description="Select a date range and generate a complete P&L report covering revenue, COGS, operating expenses and net profit, all from live data. Export to PDF with one click."
-          images={[{ src: S("Reports.png"), alt: "Financial Reports" }]}
+          description="Select a date range and generate P&L or comprehensive reports covering revenue, COGS, tax, operating expenses, salaries and net profit — all from live data. Exclude categories, see examples inline, and export to PDF."
+          images={[{ src: S("new-report.png"), alt: "Financial Reports with P&L and comprehensive view" }]}
+        />
+
+        <ShowcaseSection
+          badge="Salary Advances"
+          title="Advance tracking with auto salary deduction"
+          subtitle="Pending, deducted, or returned — always clear."
+          description="Record salary advances given to employees. Advances are automatically deducted from their next salary calculation. Track total advanced, returned and outstanding amounts. Three statuses: Pending, Deducted from Salary, and Returned."
+          images={[{ src: S("new-salaryadvance.png"), alt: "Salary advances with status tracking" }]}
+          reverse
+        />
+
+        <ShowcaseSection
+          badge="AI Assistant"
+          title="Ask your AI anything about your business"
+          subtitle="English, French and Arabic. Fully supported."
+          description="Your AI assistant has full context of your live business data. Ask about revenue, check overdue clients, or tell it to create invoices, add expenses and update records. It can also export PDFs for clients, stock, employees and suppliers."
+          images={[{ src: S("Ai assistance.png"), alt: "AI Assistant" }]}
         />
 
         <ShowcaseSection
           badge="Expenses"
           title="Every expense tracked, categorized, reported"
-          subtitle="No more spreadsheet gymnastics."
-          description="Log expenses with categories like rent, salaries, software, and marketing. Every entry feeds directly into net earnings on the dashboard and your P&L report."
+          subtitle="One-time and recurring, with pro-rata calculations."
+          description="Log expenses with categories like rent, salaries, software and marketing. Set recurring expenses (weekly, monthly, quarterly, yearly) and they auto-calculate pro-rata for any report period."
           images={[{ src: S("Expenses.png"), alt: "Expenses" }]}
           reverse
-        />
-
-        <ShowcaseSection
-          badge="Clients & Stock"
-          title="Everything about your clients and inventory"
-          subtitle="Connected, searchable, always accurate."
-          description="Manage your client directory with invoice history per client. Track product stock levels with low-stock alerts and automatic deduction when invoices are created."
-          images={[
-            { src: S("clients.png"), alt: "Clients" },
-            { src: S("Stock.png"),   alt: "Stock" },
-          ]}
         />
 
         <ShowcaseSection
           badge="Team & Tax"
           title="Control access and stay compliant"
           subtitle="Permissions and tax visibility in one place."
-          description="Set granular view and edit permissions per feature for each team member. Monitor tax collected vs pending across all invoices, broken down by invoice, rate and status."
+          description="Set granular view and edit permissions per feature for each team member. Monitor tax collected across all invoices regardless of payment status, broken down by invoice, rate and amount."
           images={[
             { src: S("Team.png"), alt: "Team management" },
             { src: S("Tax.png"),  alt: "Tax overview" },
           ]}
-          reverse
         />
 
         <ShowcaseSection
           badge="Employees & Activity"
           title="Your team and a full audit trail"
           subtitle="Know who did what, and manage payroll in one place."
-          description="Store employee records with salary data that feeds into expense calculations. Every action across the platform is logged with user, timestamp, and description."
+          description="Store employee records with weekly or monthly salary periods. Salary data feeds into expense calculations and P&L automatically. Every action across the platform is logged with user, timestamp and description."
           images={[
             { src: S("Employee.png"),     alt: "Employees" },
             { src: S("Activity Log.png"), alt: "Activity Log" },
           ]}
+          reverse
         />
       </section>
 
@@ -538,7 +573,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent pricing</h2>
             <p className="text-slate-400">Start free for 15 days. No credit card required.</p>
           </div>
-          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {/* Trial card */}
             <div className="relative rounded-2xl border border-white/10 p-8 bg-white/[0.02]">
               <div className="mb-6">
@@ -549,10 +584,15 @@ export default function LandingPage() {
                 </div>
               </div>
               <ul className="space-y-3 mb-8">
-                {[{ t: "All features included", w: false }, { t: "Up to 2 users", w: true }, { t: "50,000 AI tokens", w: true }, { t: "15 days validity", w: true }].map(f => (
+                {[
+                  { t: "Core features included", ok: true },
+                  { t: "Up to 2 users", ok: false },
+                  { t: "50,000 AI tokens", ok: false },
+                  { t: "15 days validity", ok: false },
+                ].map(f => (
                   <li key={f.t} className="flex items-center gap-2 text-sm">
-                    {f.w ? <TriangleAlert size={14} className="text-amber-400 shrink-0" /> : <CheckCircle size={14} className="text-indigo-400 shrink-0" />}
-                    <span className={f.w ? "text-amber-200/80" : "text-slate-300"}>{f.t}</span>
+                    {f.ok ? <CheckCircle size={14} className="text-indigo-400 shrink-0" /> : <TriangleAlert size={14} className="text-amber-400 shrink-0" />}
+                    <span className={f.ok ? "text-slate-300" : "text-amber-200/80"}>{f.t}</span>
                   </li>
                 ))}
               </ul>
@@ -561,22 +601,55 @@ export default function LandingPage() {
               </Link>
             </div>
 
+            {/* Basic card */}
+            <div className="relative rounded-2xl border border-white/10 p-8 bg-white/[0.02]">
+              <div className="mb-6">
+                <p className="text-slate-400 text-sm mb-1">Basic</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-4xl font-bold text-white">$49.99</span>
+                  <span className="text-slate-400">/month</span>
+                </div>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {[
+                  { t: "Core features included", ok: true },
+                  { t: "1–3 users", ok: true },
+                  { t: "1,000,000 AI tokens", ok: true },
+                  { t: "Priority support", ok: true },
+                ].map(f => (
+                  <li key={f.t} className="flex items-center gap-2 text-sm">
+                    {f.ok ? <CheckCircle size={14} className="text-indigo-400 shrink-0" /> : <X size={14} className="text-red-400 shrink-0" />}
+                    <span className={f.ok ? "text-slate-300" : "text-slate-500"}>{f.t}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => setShowContact(true)}
+                className="block w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-colors border border-white/10 hover:border-white/20 text-slate-300 hover:text-white"
+              >
+                Contact us
+              </button>
+            </div>
+
             {/* Pro card */}
             <div className="relative rounded-2xl border border-indigo-500/50 p-8 bg-indigo-600/10">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>
               <div className="mb-6">
                 <p className="text-slate-400 text-sm mb-1">Pro</p>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-4xl font-bold text-white">$49.99</span>
+                  <span className="text-4xl font-bold text-white">$79.99</span>
                   <span className="text-slate-400">/month</span>
-                </div>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-xs text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full font-medium">First 3 months</span>
-                  <span className="text-xs text-slate-500">then <span className="line-through">$99.99</span>/mo</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8">
-                {[{ t: "All features included", w: false }, { t: "Unlimited users", w: false }, { t: "500,000 AI tokens", w: false }, { t: "Priority support", w: false }].map(f => (
+                {[
+                  { t: "Core features included", ok: true },
+                  { t: "Audit log", ok: true },
+                  { t: "Salary advances", ok: true },
+                  { t: "Unlimited users", ok: true },
+                  { t: "2,000,000 AI tokens", ok: true },
+                  { t: "Priority support", ok: true },
+                ].map(f => (
                   <li key={f.t} className="flex items-center gap-2 text-sm">
                     <CheckCircle size={14} className="text-indigo-400 shrink-0" />
                     <span className="text-slate-300">{f.t}</span>

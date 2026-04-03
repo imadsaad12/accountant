@@ -398,17 +398,29 @@ export default function SuppliersPage() {
 
       {/* Stat boxes */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+        <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+            {totalBilled.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+          </div>
           <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><Receipt size={13} /> Total Billed</div>
           <div className="text-lg sm:text-2xl font-bold text-text-primary">{currencySymbol}{fmtCompact(totalBilled)}</div>
           <div className="text-[10px] text-text-muted mt-0.5">{bills.length} bill{bills.length !== 1 ? "s" : ""}</div>
         </div>
-        <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+        <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+            {totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+          </div>
           <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><CheckCircle2 size={13} /> Amount Paid</div>
           <div className="text-lg sm:text-2xl font-bold text-emerald-400">{currencySymbol}{fmtCompact(totalPaid)}</div>
           <div className="text-[10px] text-text-muted mt-0.5">{bills.filter(b => b.status === "paid").length} fully · {bills.filter(b => b.status === "partially_paid").length} partial</div>
         </div>
-        <div className="bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4">
+        <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+            {totalPending.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
+          </div>
           <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><Clock size={13} /> Remaining</div>
           <div className="text-lg sm:text-2xl font-bold text-amber-400">{currencySymbol}{fmtCompact(totalPending)}</div>
           <div className="text-[10px] text-text-muted mt-0.5">{bills.filter(b => b.status !== "paid").length} unpaid bill{bills.filter(b => b.status !== "paid").length !== 1 ? "s" : ""}</div>

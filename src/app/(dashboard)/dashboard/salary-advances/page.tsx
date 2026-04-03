@@ -83,10 +83,14 @@ function getSalaryPeriodBounds(salaryPeriod: string, today: Date): DateRange {
       label: `This month (${monthName})`,
     };
   } else {
+    // Default to monthly bounds for any other period
+    const start = new Date(year, month, 1).toISOString().split("T")[0];
+    const end = new Date(year, month + 1, 0).toISOString().split("T")[0];
+    const monthName = today.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     return {
-      start: todayStr,
-      end: todayStr,
-      label: "Today only (daily pay period)",
+      start,
+      end,
+      label: `This month (${monthName})`,
     };
   }
 }

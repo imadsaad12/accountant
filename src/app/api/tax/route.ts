@@ -25,7 +25,7 @@ export async function GET() {
       orderBy: { date: "desc" },
     }),
     prisma.invoice.aggregate({
-      where: { organizationId: session.organizationId, status: "paid" },
+      where: { organizationId: session.organizationId },
       _sum: { tax: true },
     }),
   ]);

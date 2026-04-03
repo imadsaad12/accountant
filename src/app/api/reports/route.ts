@@ -105,12 +105,12 @@ export async function GET(req: NextRequest) {
       }),
       prisma.invoice.findMany({
         where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
-        select: { total: true, status: true, items: { select: { description: true, quantity: true, unitPrice: true, unitCost: true, total: true } }, payments: { select: { amount: true } } },
+        select: { total: true, tax: true, status: true, items: { select: { description: true, quantity: true, unitPrice: true, unitCost: true, total: true } }, payments: { select: { amount: true } } },
       }),
     ]);
 
     // Revenue = all payments received within the period (cash basis)
-    // COGS = full unit cost per invoice, counted once even with multiple payments
+    // COGS & Tax = full amount per invoice in the period (like COGS, counted once regardless of payment status)
     let revenue = 0;
     let taxCollected = 0;
     let cogs = 0;
@@ -118,17 +118,21 @@ export async function GET(req: NextRequest) {
 
     for (const payment of payments) {
       revenue += payment.amount;
-      const inv = payment.invoice;
-      if (inv.total > 0) taxCollected += (payment.amount / inv.total) * inv.tax;
       if (!seenInvoices.has(payment.invoiceId)) {
         seenInvoices.add(payment.invoiceId);
+        const inv = payment.invoice;
         for (const item of inv.items) {
           cogs += (item.unitCost ?? 0) * item.quantity;
         }
       }
     }
 
-    const invoiceCount = seenInvoices.size;
+    // Tax is calculated on ALL invoices in the period, regardless of payment status
+    for (const inv of periodInvoices) {
+      taxCollected += inv.tax ?? 0;
+    }
+
+    const invoiceCount = periodInvoices.length;
 
     const grossProfit = revenue - cogs;
 

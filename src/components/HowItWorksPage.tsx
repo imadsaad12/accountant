@@ -326,11 +326,6 @@ export default function HowItWorksPage() {
               </p>
               <div className="space-y-3">
                 <SalaryPeriodBox
-                  period="Daily"
-                  formula="Salary = rate × days"
-                  example="$150/day, worked 20 days = $3000"
-                />
-                <SalaryPeriodBox
                   period="Weekly"
                   formula="Salary = rate × (days ÷ 7)"
                   example="$1000/week, 21 days (3 weeks) = $3000"
@@ -384,7 +379,6 @@ export default function HowItWorksPage() {
                 <strong>When does it auto-change to "Deducted"?</strong>
               </p>
               <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mb-4">
-                <div>• <strong>Daily</strong> employee → when the advance date has passed</div>
                 <div>• <strong>Weekly</strong> employee → when a new week starts after the advance</div>
                 <div>• <strong>Monthly</strong> employee → when a new month starts after the advance</div>
               </div>
@@ -446,20 +440,20 @@ export default function HowItWorksPage() {
 
             <Subsection title="Tax Collection Tracking">
               <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
-                <div><strong>Tax Collected:</strong> Sum of tax from invoices with status = "paid"</div>
-                <div><strong>Tax Pending:</strong> Sum of tax from invoices with status = "sent" or "overdue"</div>
+                <div><strong>Total Tax:</strong> Sum of tax from <strong>all invoices</strong> regardless of status (draft, sent, partially paid, paid)</div>
+                <div>• Tax is treated like COGS — it is recognized in full at invoice creation, not pro-rated by payment</div>
               </div>
             </Subsection>
 
-            <Subsection title="Pro-Rated Tax in Reports">
+            <Subsection title="Tax in P&L Reports">
               <p className="text-text-secondary mb-2">
-                When partially-paid invoice is in P&L report:
+                Tax is calculated on all invoices within the report period:
               </p>
               <p className="text-text-secondary font-mono text-sm">
-                Recognized Tax = (Payment ÷ Invoice Total) × Invoice Tax
+                Tax Collected = SUM(invoice.tax) for all invoices in period
               </p>
               <p className="text-text-secondary text-sm mt-3">
-                <strong>Example:</strong> Invoice $1000 with $190 tax, payment $500 → Recognized tax = ($500÷$1000) × $190 = <strong>$95</strong>
+                <strong>Example:</strong> 3 invoices in January — $190 tax (paid), $95 tax (partially paid), $50 tax (draft) → Total tax = <strong>$335</strong>
               </p>
             </Subsection>
           </Section>
@@ -473,7 +467,8 @@ export default function HowItWorksPage() {
               <FormulaBox
                 formulas={[
                   "Revenue = SUM(payments in period) [cash basis]",
-                  "COGS = SUM(unitCost × qty for paid invoices)",
+                  "COGS = SUM(unitCost × qty) for invoices with payments in period",
+                  "Tax = SUM(invoice.tax) for all invoices in period [full amount regardless of payment status]",
                   "Gross Profit = Revenue − COGS",
                   "Total Expenses = one-time + recurring + salary + bills",
                   "Net Profit = Gross Profit − Expenses",
@@ -487,7 +482,7 @@ export default function HowItWorksPage() {
               </p>
               <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
                 <div><strong>Assets:</strong> Cash + Accounts Receivable + Inventory</div>
-                <div><strong>Liabilities:</strong> Tax Payable (pro-rated on unpaid invoices)</div>
+                <div><strong>Liabilities:</strong> Tax Payable (full tax from all invoices)</div>
                 <div><strong>Equity:</strong> Total Assets − Total Liabilities</div>
               </div>
             </Subsection>

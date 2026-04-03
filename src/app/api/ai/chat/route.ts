@@ -182,7 +182,7 @@ EXPENSES:
 - One-time or recurring (weekly/monthly/quarterly/yearly).
 - Recurring expenses are computed pro-rata for any date range: weekly = rate × (days/7), monthly = rate × calendarMonths, quarterly = rate × (calendarMonths/3), yearly = rate × (days/365).
 - Salaries are computed DYNAMICALLY from employee records (not stored as expense rows). Uses accrual-basis: salary appears in the period the work was done, even if not yet paid.
-- Salary periods: day, week, or month. Daily rate calculation: day → salary × days, week → salary × (days/7), month → salary × calendarMonths.
+- Salary periods: week or month. Rate calculation: week → salary × (days/7), month → salary × calendarMonths.
 - Calendar-accurate month calculation: splits into first month fraction + full months + last month fraction using actual days in each month (not 30-day approximation).
 
 SALARY ADVANCES:
@@ -196,8 +196,8 @@ SALARY ADVANCES:
 - If a user manually changes status to "returned", the advance is excluded from salary deductions.
 
 REPORTS:
-- P&L: revenue (cash-basis: payments received in period), COGS (full unit cost deducted on first payment, not pro-rated), gross profit, expenses by category including dynamically computed salaries, net profit. Also shows total sales issued in period (accrual-basis) separately.
-- Balance Sheet: snapshot at end date — assets (cash, accounts receivable, inventory value), liabilities (tax payable on unpaid invoices), equity.
+- P&L: revenue (cash-basis: payments received in period), COGS (full unit cost deducted on first payment, not pro-rated), tax (full amount from all invoices in period regardless of payment status), gross profit, expenses by category including dynamically computed salaries, net profit. Also shows total sales issued in period (accrual-basis) separately.
+- Balance Sheet: snapshot at end date — assets (cash, accounts receivable, inventory value), liabilities (full tax payable from all invoices), equity.
 - Aging Report: outstanding invoices bucketed by days overdue (current, 1-30, 31-60, 61-90, 90+).
 
 DASHBOARD:
