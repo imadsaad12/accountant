@@ -18,6 +18,26 @@ interface Message {
   bulkResults?: BulkResult[];
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  // Mobile Safari doesn't support programmatic a.click() on blob URLs well.
+  // Use window.open as fallback — it opens the PDF in a new tab for saving.
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.open(url, "_blank");
+    // Don't revoke immediately — give the new tab time to load
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } else {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function AIAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -74,10 +94,11 @@ export default function AIAssistantPage() {
       if (finalTranscript.trim()) {
         if (silenceTimer) clearTimeout(silenceTimer);
         silenceTimer = setTimeout(() => {
+          const text = finalTranscript.trim();
+          finalTranscript = ""; // Clear before stop to prevent double-send from onend
           recognition.stop();
           setIsListening(false);
-          handleSend(finalTranscript.trim());
-          finalTranscript = "";
+          handleSend(text);
         }, 2000);
       }
     };
@@ -90,6 +111,13 @@ export default function AIAssistantPage() {
     recognition.onend = () => {
       if (silenceTimer) clearTimeout(silenceTimer);
       setIsListening(false);
+      // On mobile, continuous mode often doesn't work — recognition ends after
+      // a pause without the silence timer firing. Send the transcript if we have one.
+      if (finalTranscript.trim()) {
+        const text = finalTranscript.trim();
+        finalTranscript = "";
+        handleSend(text);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -182,12 +210,7 @@ export default function AIAssistantPage() {
           body: JSON.stringify({ invoiceId: inv.id, language: action.language === "fr" ? "fr" : "en" }),
         });
         const blob = await pdfRes.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${inv.number}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(blob, `${inv.number}.pdf`);
       }
     } else if (action.type === "export_pdf" && action.invoiceId) {
       const pdfRes = await fetch("/api/invoices/pdf", {
@@ -196,12 +219,7 @@ export default function AIAssistantPage() {
         body: JSON.stringify({ invoiceId: action.invoiceId, language: action.language === "fr" ? "fr" : "en" }),
       });
       const blob = await pdfRes.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `invoice-${action.invoiceId}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, `invoice-${action.invoiceId}.pdf`);
     } else if (action.type === "export_report") {
       const pdfRes = await fetch("/api/ai/report-pdf", {
         method: "POST",
@@ -210,12 +228,7 @@ export default function AIAssistantPage() {
       });
       if (pdfRes.ok) {
         const blob = await pdfRes.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${(action.title || "report").replace(/\s+/g, "-").toLowerCase()}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(blob, `${(action.title || "report").replace(/\s+/g, "-").toLowerCase()}.pdf`);
       }
     } else if (action.type === "export_clients_pdf") {
       const res = await fetch("/api/clients");
@@ -239,7 +252,7 @@ export default function AIAssistantPage() {
           headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
           columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right" } },
         });
-        doc.save(`clients-${new Date().toISOString().split("T")[0]}.pdf`);
+        downloadBlob(doc.output("blob"), `clients-${new Date().toISOString().split("T")[0]}.pdf`);
       }
     } else if (action.type === "export_stock_pdf") {
       const res = await fetch("/api/products");
@@ -265,7 +278,7 @@ export default function AIAssistantPage() {
           headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
           columnStyles: { 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "center" } },
         });
-        doc.save(`stock-${new Date().toISOString().split("T")[0]}.pdf`);
+        downloadBlob(doc.output("blob"), `stock-${new Date().toISOString().split("T")[0]}.pdf`);
       }
     } else if (action.type === "export_employees_pdf") {
       const res = await fetch("/api/employees");
@@ -292,7 +305,7 @@ export default function AIAssistantPage() {
           headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
           columnStyles: { 4: { halign: "right" }, 5: { halign: "right" } },
         });
-        doc.save(`employees-${new Date().toISOString().split("T")[0]}.pdf`);
+        downloadBlob(doc.output("blob"), `employees-${new Date().toISOString().split("T")[0]}.pdf`);
       }
     } else if (action.type === "export_suppliers_pdf") {
       const res = await fetch("/api/suppliers");
@@ -315,7 +328,7 @@ export default function AIAssistantPage() {
           styles: { fontSize: 8 },
           headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 8, fontStyle: "bold" },
         });
-        doc.save(`suppliers-${new Date().toISOString().split("T")[0]}.pdf`);
+        downloadBlob(doc.output("blob"), `suppliers-${new Date().toISOString().split("T")[0]}.pdf`);
       }
     }
   }
