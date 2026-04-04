@@ -128,9 +128,9 @@ export default function SettingsPage() {
 
   async function savePassword() {
     setPasswordError("");
-    if (!currentPassword) { setPasswordError("Current password is required."); return; }
-    if (newPassword.length < 6) { setPasswordError("New password must be at least 6 characters."); return; }
-    if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match."); return; }
+    if (!currentPassword) { setPasswordError(t("settings.password_required")); return; }
+    if (newPassword.length < 6) { setPasswordError(t("settings.password_min")); return; }
+    if (newPassword !== confirmPassword) { setPasswordError(t("settings.password_mismatch")); return; }
     setPasswordSaving(true);
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -145,7 +145,7 @@ export default function SettingsPage() {
       setTimeout(() => setPasswordSaved(false), 2000);
     } else {
       const data = await res.json();
-      setPasswordError(data.error || "Failed to update password");
+      setPasswordError(data.error || t("settings.password_fail"));
     }
     setPasswordSaving(false);
   }
@@ -164,7 +164,7 @@ export default function SettingsPage() {
       setTimeout(() => setEmailSaved(false), 2000);
     } else {
       const data = await res.json();
-      setEmailError(data.error || "Failed to update email");
+      setEmailError(data.error || t("settings.email_fail"));
     }
     setEmailSaving(false);
   }
@@ -286,7 +286,7 @@ export default function SettingsPage() {
             <div>
               <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-2">
                 <Clock size={14} className="text-accent" />
-                Timezone
+                {t("settings.timezone")}
               </label>
               <select
                 value={draft.timezone || "UTC"}
@@ -302,7 +302,7 @@ export default function SettingsPage() {
                 ))}
               </select>
               <p className="text-xs text-text-muted mt-1.5">
-                Used for date defaults in forms, filters, and all date displays across the app.
+                {t("settings.timezone_note")}
               </p>
             </div>
 
@@ -339,14 +339,14 @@ export default function SettingsPage() {
           <div className="px-5 py-4 border-b border-dark-border">
             <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
               <Mail size={16} className="text-accent" />
-              Account
+              {t("settings.account")}
             </h2>
-            <p className="text-xs text-text-muted mt-0.5">Your login email and password</p>
+            <p className="text-xs text-text-muted mt-0.5">{t("settings.account_note")}</p>
           </div>
           <div className="p-5 space-y-5">
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Email address</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">{t("settings.email")}</label>
               {emailError && (
                 <div className="mb-2 bg-red-500/10 text-red-400 border border-red-500/20 p-3 rounded-lg text-sm">{emailError}</div>
               )}
@@ -376,7 +376,7 @@ export default function SettingsPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">Change password</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">{t("settings.change_password")}</label>
               {passwordError && (
                 <div className="mb-2 bg-red-500/10 text-red-400 border border-red-500/20 p-3 rounded-lg text-sm">{passwordError}</div>
               )}
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                   type="password"
                   value={currentPassword}
                   onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(""); }}
-                  placeholder="Current password"
+                  placeholder={t("settings.current_password")}
                   autoComplete="current-password"
                   className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
                 />
@@ -393,7 +393,7 @@ export default function SettingsPage() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => { setNewPassword(e.target.value); setPasswordError(""); }}
-                  placeholder="New password"
+                  placeholder={t("settings.new_password")}
                   autoComplete="new-password"
                   className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
                 />
@@ -401,7 +401,7 @@ export default function SettingsPage() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }}
-                  placeholder="Confirm new password"
+                  placeholder={t("settings.confirm_password")}
                   autoComplete="new-password"
                   className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent focus:outline-none text-sm"
                 />
@@ -496,9 +496,9 @@ export default function SettingsPage() {
           <div className="px-5 py-4 border-b border-red-500/20">
             <h2 className="text-sm font-semibold text-red-400 flex items-center gap-2">
               <AlertTriangle size={16} />
-              Danger Zone
+              {t("settings.danger_zone")}
             </h2>
-            <p className="text-xs text-text-muted mt-0.5">Irreversible actions — proceed with caution</p>
+            <p className="text-xs text-text-muted mt-0.5">{t("settings.danger_note")}</p>
           </div>
           <div className="p-5 space-y-4">
 
@@ -507,12 +507,12 @@ export default function SettingsPage() {
               <div className="flex items-start gap-3">
                 <Database size={16} className="text-text-muted mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-text-primary">Request Data Export</p>
+                  <p className="text-sm font-medium text-text-primary">{t("settings.request_data_export")}</p>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Request a full export of all your organization&apos;s data. Our team will prepare it and send it to you.
+                    {t("settings.request_data_desc")}
                   </p>
                   {dataRequested && (
-                    <p className="text-xs text-emerald-400 mt-1">✓ Request sent — our team will contact you shortly.</p>
+                    <p className="text-xs text-emerald-400 mt-1">✓ {t("settings.data_requested")}</p>
                   )}
                 </div>
               </div>
@@ -528,7 +528,7 @@ export default function SettingsPage() {
                 className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dark-border text-text-secondary rounded-lg hover:bg-dark-card-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {dataRequesting ? <Loader2 size={12} className="animate-spin" /> : <Database size={12} />}
-                {dataRequested ? "Requested" : "Request Data"}
+                {dataRequested ? t("settings.requested") : t("settings.request_data_btn")}
               </button>
             </div>
 
@@ -537,13 +537,12 @@ export default function SettingsPage() {
               <div className="flex items-start gap-3">
                 <Trash2 size={16} className="text-red-400 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-red-400">Delete Organization</p>
+                  <p className="text-sm font-medium text-red-400">{t("settings.delete_org")}</p>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Mark your organization for deletion. You have 30 days to recover your account by contacting support.
-                    After 30 days, all data is permanently deleted.
+                    {t("settings.delete_org_desc")}
                   </p>
                   {deleteRequested && (
-                    <p className="text-xs text-amber-400 mt-1">⚠ Deletion requested — contact support within 30 days to recover your account.</p>
+                    <p className="text-xs text-amber-400 mt-1">⚠ {t("settings.deletion_requested")}</p>
                   )}
                 </div>
               </div>
@@ -553,7 +552,7 @@ export default function SettingsPage() {
                 className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 size={12} />
-                {deleteRequested ? "Deletion Requested" : "Delete Organization"}
+                {deleteRequested ? t("settings.deletion_requested_btn") : t("settings.delete_org")}
               </button>
             </div>
 
@@ -570,7 +569,7 @@ export default function SettingsPage() {
                 <div className="w-8 h-8 rounded-full bg-red-500/15 flex items-center justify-center">
                   <AlertTriangle size={16} className="text-red-400" />
                 </div>
-                <h2 className="text-base font-semibold text-text-primary">Delete Organization</h2>
+                <h2 className="text-base font-semibold text-text-primary">{t("settings.delete_org")}</h2>
               </div>
               <button onClick={() => setShowDeleteModal(false)} className="text-text-muted hover:text-text-primary">
                 <X size={18} />
@@ -578,14 +577,14 @@ export default function SettingsPage() {
             </div>
 
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-5 space-y-2 text-sm text-text-secondary">
-              <p>Your account will be <strong className="text-red-400">marked for deletion</strong>.</p>
-              <p>You can contact support to recover your account within <strong className="text-text-primary">30 days</strong>.</p>
-              <p>After 30 days, <strong className="text-red-400">all your data will be permanently and irreversibly deleted</strong> — including clients, invoices, employees, expenses, and all reports.</p>
+              <p dangerouslySetInnerHTML={{ __html: t("settings.delete_modal_warning1").replace(/<strong>/g, '<strong class="text-red-400">') }} />
+              <p dangerouslySetInnerHTML={{ __html: t("settings.delete_modal_warning2").replace(/<strong>/g, '<strong class="text-text-primary">') }} />
+              <p dangerouslySetInnerHTML={{ __html: t("settings.delete_modal_warning3").replace(/<strong>/g, '<strong class="text-red-400">') }} />
             </div>
 
             <div className="mb-5">
               <label className="block text-xs font-medium text-text-secondary mb-2">
-                Type your organization name <strong className="text-text-primary">&quot;{orgName}&quot;</strong> to confirm
+                {t("settings.delete_confirm_label")} <strong className="text-text-primary">&quot;{orgName}&quot;</strong>
               </label>
               <input
                 value={deleteConfirmName}
@@ -600,7 +599,7 @@ export default function SettingsPage() {
                 onClick={() => setShowDeleteModal(false)}
                 className="flex-1 px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover"
               >
-                Cancel
+                {t("settings.cancel")}
               </button>
               <button
                 disabled={deleteConfirmName !== orgName || deleteSending}
@@ -614,7 +613,7 @@ export default function SettingsPage() {
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {deleteSending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                Request Deletion
+                {t("settings.request_deletion")}
               </button>
             </div>
           </div>
