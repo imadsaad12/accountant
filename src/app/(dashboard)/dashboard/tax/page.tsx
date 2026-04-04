@@ -38,7 +38,6 @@ export default function TaxPage() {
   const fmt = (n: number) => _fmtAmt(n, lang);
   const fmtCompact = (n: number) => _fmtCompact(n, lang);
   const t = useTranslation();
-  const lang = useLang();
   const [invoices, setInvoices] = useState<TaxInvoice[]>([]);
   const [totalTaxCollected, setTotalTaxCollected] = useState(0);
   const [loading, setLoading] = useState(true);
