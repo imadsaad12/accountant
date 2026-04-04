@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "AI token limit reached. Contact your administrator." }, { status: 429 });
   }
 
-  const { message, conversationHistory = [] } = await req.json();
+  const { message, conversationHistory = [], language = "en" } = await req.json();
 
   const context = await getBusinessContext(session.organizationId, session.permissions);
 
@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
 Today's date: ${new Date().toISOString().split("T")[0]}
 
 LANGUAGE & DIALECT HANDLING:
+- The user's app language is set to: ${language === "ar" ? "Arabic (العربية)" : language === "fr" ? "French (Français)" : "English"}. PREFER responding in this language unless the user clearly writes in a different language.
 - The user may speak in English, French, Arabic, or ANY MIX of these languages.
 - The user is Lebanese and often uses Lebanese Arabic dialect (عامية لبنانية) which commonly mixes Arabic with French and English words in the same sentence.
 - Examples of mixed Lebanese speech you should understand:

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Mic, MicOff, Send, Bot, User, Download, Loader2, ShieldCheck, ShieldX, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
+import { useLang } from "@/components/LanguageProvider";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface ActionData { type: string; confirmMessage?: string; actions?: ActionData[]; [key: string]: any; }
@@ -46,6 +47,7 @@ export default function AIAssistantPage() {
   const [userRole, setUserRole] = useState<string>("");
   const [isListening, setIsListening] = useState(false);
   const [speechLang, setSpeechLang] = useState("en-US");
+  const appLang = useLang();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -147,6 +149,7 @@ export default function AIAssistantPage() {
         body: JSON.stringify({
           message: text,
           conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          language: appLang,
         }),
       });
 
@@ -436,7 +439,7 @@ export default function AIAssistantPage() {
                 <Bot size={16} className="text-accent" />
               </div>
             )}
-            <div className={`max-w-[70%] px-4 py-3 rounded-xl text-sm whitespace-pre-wrap ${
+            <div dir="auto" className={`max-w-[70%] px-4 py-3 rounded-xl text-sm whitespace-pre-wrap ${
               msg.role === "user"
                 ? "bg-accent text-white"
                 : "bg-dark-bg border border-dark-border text-text-secondary"
