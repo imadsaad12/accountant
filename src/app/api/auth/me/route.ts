@@ -15,7 +15,7 @@ export async function GET() {
   });
 
   const permissions = user?.role === "admin"
-    ? DEFAULT_ADMIN_PERMISSIONS
+    ? (user?.permissions ? parsePermissions(user.permissions) : DEFAULT_ADMIN_PERMISSIONS)
     : parsePermissions(user?.permissions);
 
   return NextResponse.json({

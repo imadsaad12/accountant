@@ -56,9 +56,9 @@ export default function ActivityLogPage() {
     fetch(`/api/audit-logs?${params}`)
       .then(r => r.json())
       .then(data => {
-        setLogs(data.logs);
-        setTotalPages(data.totalPages);
-        setTotal(data.total);
+        setLogs(data.logs || []);
+        setTotalPages(data.totalPages || 1);
+        setTotal(data.total || 0);
       })
       .finally(() => setLoading(false));
   }, [page, entityFilter, methodFilter, actionFilter, search]);

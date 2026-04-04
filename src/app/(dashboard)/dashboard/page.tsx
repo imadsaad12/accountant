@@ -24,6 +24,7 @@ interface DashboardData {
   lowStockProducts: { id: string; name: string; quantity: number; minStock: number }[];
   recentInvoices: { id: string; number: string; total: number; status: string; date: string; client: { name: string } }[];
   revenueTrend: { month: string; revenue: number }[];
+  revenueTrendDaily: { month: string; revenue: number }[];
   newClientsThisMonth: number;
   newInvoicesThisMonth: number;
 }
@@ -95,16 +96,17 @@ export default function DashboardPage() {
 
   const pieData = Object.entries(invoicesByStatus).map(([name, value]) => ({ name, value }));
 
-  // Slice trend data based on selected period
-  const areaData = data.revenueTrend.slice(-trendPeriod);
-  const currentMonthRevenue = areaData[areaData.length - 1]?.revenue ?? 0;
-  const prevMonthRevenue    = areaData[areaData.length - 2]?.revenue ?? 0;
+  // Slice trend data based on selected period (daily for 1 month)
+  const areaData = trendPeriod === 1 ? data.revenueTrendDaily : data.revenueTrend.slice(-trendPeriod);
+  const monthlyData = data.revenueTrend;
+  const currentMonthRevenue = monthlyData[monthlyData.length - 1]?.revenue ?? 0;
+  const prevMonthRevenue    = monthlyData[monthlyData.length - 2]?.revenue ?? 0;
   const trendUp  = currentMonthRevenue >= prevMonthRevenue;
   const trendPct = prevMonthRevenue > 0
     ? parseFloat((((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100).toFixed(1))
     : currentMonthRevenue > 0 ? 100 : null;
 
-  const periodLabels: Record<number, string> = { 1: "Last month", 3: "3 months", 6: "6 months", 12: "1 year" };
+  const periodLabels: Record<number, string> = { 1: "This month", 3: "3 months", 6: "6 months", 12: "1 year" };
 
   const barData = data.recentInvoices.slice(0, 8).map(inv => ({
     name: inv.number,

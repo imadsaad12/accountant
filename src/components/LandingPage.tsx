@@ -5,10 +5,9 @@ import CashentLogo from "@/components/CashentLogo";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
-  BarChart3, FileText, Package, TrendingUp,
+  FileText, Package,
   Bot, Shield, Globe, ChevronRight, ArrowRight,
-  Receipt, UserCog, Activity, Zap, CheckCircle, X, TriangleAlert, Menu, Mail, MessageCircle,
-  Truck, Banknote,
+  Receipt, UserCog, Zap, CheckCircle, X, TriangleAlert, Menu, Mail, MessageCircle,
 } from "lucide-react";
 
 // ─── Intersection observer fade-in ───────────────────────────────────────────
@@ -438,17 +437,13 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">One platform, zero spreadsheets</h2>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">Replace 6 different tools with one connected system that keeps every number consistent.</p>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-          <FeatureCard icon={FileText}   title="Smart Invoicing"    color="bg-indigo-500/20"  desc="Live preview, payment tracking, overpayment to client credit, and auto status updates." />
-          <FeatureCard icon={TrendingUp} title="Financial Reports"  color="bg-emerald-500/20" desc="P&L, balance sheet and receivables aging from live data. Export to PDF in one click." />
-          <FeatureCard icon={Bot}        title="AI Assistant"       color="bg-purple-500/20"  desc="Ask questions or give commands in English, French, or Arabic. The AI reads and acts on your data." />
-          <FeatureCard icon={Package}    title="Stock & Inventory"  color="bg-amber-500/20"   desc="Simple and composite products, low-stock alerts, auto deduction on invoice, and PDF export." />
-          <FeatureCard icon={Truck}      title="Supplier Management" color="bg-teal-500/20"   desc="Track supplier bills, record payments, monitor outstanding balances and export to PDF." />
-          <FeatureCard icon={Banknote}   title="Salary Advances"    color="bg-pink-500/20"    desc="Record advances, auto-deduct from salary, track pending vs returned vs paid status." />
-          <FeatureCard icon={Receipt}    title="Expense Tracking"   color="bg-red-500/20"     desc="One-time and recurring expenses with pro-rata calculations feed into P&L automatically." />
-          <FeatureCard icon={UserCog}    title="Employee Payroll"   color="bg-cyan-500/20"    desc="Salary records with weekly or monthly periods that flow into financial calculations." />
-          <FeatureCard icon={Shield}     title="Role Permissions"   color="bg-sky-500/20"     desc="Per feature view and edit permissions enforced at the API level." />
-          <FeatureCard icon={Activity}   title="Activity Log"       color="bg-orange-500/20"  desc="Full audit trail of who did what, when, across every module." />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+          <FeatureCard icon={FileText}   title="Invoicing & Clients"       color="bg-indigo-500/20"  desc="Create invoices with live preview, track payments, handle overpayments to client credit, and manage your full client directory with financials." />
+          <FeatureCard icon={Package}    title="Stock & Suppliers"         color="bg-amber-500/20"   desc="Simple and composite products with low-stock alerts. Track supplier bills, record payments and monitor outstanding balances." />
+          <FeatureCard icon={UserCog}    title="Payroll & Advances"        color="bg-pink-500/20"    desc="Employee salary records with weekly or monthly periods. Record salary advances with auto-deduction and status tracking." />
+          <FeatureCard icon={Receipt}    title="Expenses & Reports"        color="bg-emerald-500/20" desc="One-time and recurring expenses feed into P&L, balance sheet, and comprehensive reports. Export everything to PDF." />
+          <FeatureCard icon={Bot}        title="AI Assistant"              color="bg-purple-500/20"  desc="Ask questions or give commands in English, French, or Arabic. The AI reads your live data, takes actions, and exports PDFs." />
+          <FeatureCard icon={Shield}     title="Permissions & Audit Log"   color="bg-cyan-500/20"    desc="Per-feature view and edit permissions enforced at the API level. Full audit trail of who did what, when." />
         </div>
       </section>
 

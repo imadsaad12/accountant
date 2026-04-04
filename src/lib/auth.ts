@@ -43,15 +43,20 @@ export async function getSessionWithPermissions() {
   const session = await getSession();
   if (!session) return null;
 
-  if (session.role === "admin") {
-    const { DEFAULT_ADMIN_PERMISSIONS } = await import("@/lib/permissions");
-    return { ...session, permissions: DEFAULT_ADMIN_PERMISSIONS, isAdmin: true };
-  }
-
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { permissions: true },
   });
+
+  if (session.role === "admin") {
+    // Use stored permissions if set by admin panel (plan-based), otherwise full access
+    const { DEFAULT_ADMIN_PERMISSIONS } = await import("@/lib/permissions");
+    return {
+      ...session,
+      permissions: user?.permissions ? parsePermissions(user.permissions) : DEFAULT_ADMIN_PERMISSIONS,
+      isAdmin: true,
+    };
+  }
 
   return {
     ...session,

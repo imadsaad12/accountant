@@ -90,8 +90,7 @@ export default function Sidebar({
 
   const visibleItems = useMemo(() => {
     const permitted = NAV_ITEMS.filter((item) => {
-      if (isAdmin) return true;
-      if (!permissions) return item.feature === "dashboard";
+      if (!permissions) return isAdmin || item.feature === "dashboard";
       return canView(permissions, item.feature);
     });
     if (!navSearch.trim()) return permitted;

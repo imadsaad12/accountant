@@ -87,7 +87,7 @@ export default function EmployeesPage() {
     setForm({
       firstName: emp.firstName,
       lastName: emp.lastName,
-      email: emp.email,
+      email: emp.email || "",
       phone: emp.phone || "",
       position: emp.position,
       department: emp.department || "",

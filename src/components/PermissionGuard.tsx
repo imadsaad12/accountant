@@ -38,8 +38,8 @@ export function usePermissions() {
     info,
     loading,
     isAdmin,
-    canViewFeature: (f: Feature) => isAdmin || (info ? canView(info.permissions, f) : false),
-    canEditFeature: (f: Feature) => isAdmin || (info ? canEdit(info.permissions, f) : false),
+    canViewFeature: (f: Feature) => info ? canView(info.permissions, f) : false,
+    canEditFeature: (f: Feature) => info ? canEdit(info.permissions, f) : false,
   };
 }
 
@@ -59,7 +59,6 @@ export function PermissionGuard({
 
   useEffect(() => {
     if (loading || !info) return;
-    if (info.role === "admin") return;
     const allowed = requireEdit ? canEdit(info.permissions, feature) : canView(info.permissions, feature);
     if (!allowed) router.replace(redirectTo);
   }, [info, loading, feature, requireEdit, redirectTo, router]);
@@ -73,7 +72,6 @@ export function PermissionGuard({
   }
 
   if (!info) return null;
-  if (info.role === "admin") return <>{children}</>;
 
   const allowed = requireEdit ? canEdit(info.permissions, feature) : canView(info.permissions, feature);
   if (!allowed) return null;

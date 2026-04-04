@@ -190,6 +190,25 @@ export async function GET() {
     return { month: label, revenue: parseFloat(revenue.toFixed(2)) };
   });
 
+  // Daily trend for current month (used when "1 month" is selected)
+  const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+  const dayMap: Record<string, number> = {};
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    dayMap[key] = 0;
+  }
+  for (const inv of trendInvoices) {
+    const d = new Date(inv.date);
+    if (d.getUTCFullYear() === now.getUTCFullYear() && d.getUTCMonth() === now.getUTCMonth()) {
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      if (key in dayMap) dayMap[key] += inv.total;
+    }
+  }
+  const revenueTrendDaily = Object.entries(dayMap).map(([key, revenue]) => {
+    const day = parseInt(key.split("-")[2]);
+    return { month: `${day}`, revenue: parseFloat(revenue.toFixed(2)) };
+  });
+
   return NextResponse.json({
     clientCount,
     productCount,
@@ -205,5 +224,6 @@ export async function GET() {
     newClientsThisMonth,
     newInvoicesThisMonth,
     revenueTrend,
+    revenueTrendDaily,
   });
 }
