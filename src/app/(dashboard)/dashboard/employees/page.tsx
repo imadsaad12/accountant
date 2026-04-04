@@ -6,7 +6,8 @@ import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
 import { useOrgSettings, useOrgTimezone } from "@/components/OrgSettingsProvider";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt } from "@/lib/format-number";
 
 interface Employee {
   id: string;
@@ -53,6 +54,7 @@ export default function EmployeesPage() {
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const t = useTranslation();
+  const lang = useLang();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -205,9 +207,7 @@ export default function EmployeesPage() {
   };
 
   function fmtSalary(n: number) {
-    if (n >= 1_000_000) return (n / 1_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
-    if (n >= 1_000) return (n / 1_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
-    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return _fmtAmt(n, lang);
   }
 
   const [exportingList, setExportingList] = useState(false);
@@ -280,7 +280,7 @@ export default function EmployeesPage() {
         {/* Total monthly salaries */}
         <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-            {currentMonthSalary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {_fmtAmt(currentMonthSalary, lang)}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
           </div>
           <div className="flex items-center justify-between mb-2">
@@ -468,12 +468,12 @@ export default function EmployeesPage() {
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.department || "-"}</td>
                 <td className="px-4 py-3 text-sm text-text-secondary">{emp.email || "-"}</td>
                 <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">
-                  {emp.salary.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span>
+                  {_fmtAmt(emp.salary, lang)} <span className="text-text-muted font-normal">{emp.currency || "USD"}</span>
                   <span className="text-text-muted font-normal text-xs ml-1">/{emp.salaryPeriod || "month"}</span>
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-medium">
                   {emp.outstandingAdvance > 0
-                    ? <span className="text-amber-400">{emp.outstandingAdvance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    ? <span className="text-amber-400">{_fmtAmt(emp.outstandingAdvance, lang)}</span>
                     : <span className="text-text-muted">—</span>
                   }
                 </td>

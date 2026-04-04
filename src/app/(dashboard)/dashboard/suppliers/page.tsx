@@ -6,7 +6,8 @@ import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt, fmtCompact as _fmtCompact } from "@/lib/format-number";
 import { todayInTz } from "@/lib/tz";
 
 interface Supplier {
@@ -57,14 +58,6 @@ const emptyBill = {
   description: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending",
 };
 
-const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtCompact = (n: number) => {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (abs >= 1_000) return (n / 1_000).toFixed(1) + "K";
-  return fmtAmt(n);
-};
-
 export default function SuppliersPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("suppliers");
@@ -72,6 +65,9 @@ export default function SuppliersPage() {
   const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
+  const lang = useLang();
+  const fmtAmt = (n: number) => _fmtAmt(n, lang);
+  const fmtCompact = (n: number) => _fmtCompact(n, lang);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [bills, setBills] = useState<SupplierBill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -400,7 +396,7 @@ export default function SuppliersPage() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-            {totalBilled.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {fmtAmt(totalBilled)}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
           </div>
           <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><Receipt size={13} /> Total Billed</div>
@@ -409,7 +405,7 @@ export default function SuppliersPage() {
         </div>
         <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-            {totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {fmtAmt(totalPaid)}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
           </div>
           <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><CheckCircle2 size={13} /> Amount Paid</div>
@@ -418,7 +414,7 @@ export default function SuppliersPage() {
         </div>
         <div className="relative bg-dark-card border border-dark-border rounded-xl p-3 sm:p-4 group">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-dark-bg border border-dark-border text-text-primary text-xs px-2.5 py-1.5 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-            {totalPending.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {fmtAmt(totalPending)}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-dark-border" />
           </div>
           <div className="flex items-center gap-1.5 text-text-muted text-xs mb-1"><Clock size={13} /> Remaining</div>

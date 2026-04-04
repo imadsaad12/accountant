@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale, Filter, ChevronDown, Check, BookOpen, Info } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt } from "@/lib/format-number";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 import { formatDateInTz, todayInTz, currentYearInTz } from "@/lib/tz";
 import jsPDF from "jspdf";
@@ -65,6 +66,7 @@ const EXPENSE_CATEGORIES: Record<string, string> = {
 
 export default function ReportsPage() {
   const t = useTranslation();
+  const lang = useLang();
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
@@ -110,7 +112,7 @@ export default function ReportsPage() {
     setLoading(false);
   }
 
-  function fmt(n: number) { return `${currencySymbol}${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+  function fmt(n: number) { return `${currencySymbol}${_fmtAmt(n, lang)}`; }
   function pct(n: number, total: number) { return total > 0 ? `${((n / total) * 100).toFixed(1)}%` : "0%"; }
 
   function exportPDF() {

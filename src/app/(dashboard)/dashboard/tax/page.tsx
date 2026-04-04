@@ -7,6 +7,7 @@ import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
 import { formatDateInTz } from "@/lib/tz";
 import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt, fmtCompact as _fmtCompact } from "@/lib/format-number";
 import { generateTaxPDF } from "@/lib/generate-tax-pdf";
 
 interface TaxInvoice {
@@ -29,22 +30,13 @@ const STATUS_STYLES: Record<string, string> = {
   partially_paid: "bg-amber-500/15 text-amber-400",
 };
 
-function fmt(n: number) {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function fmtCompact(n: number) {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
-  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
-  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
-  return fmt(n);
-}
-
 export default function TaxPage() {
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const sym = currencySymbol(orgSettings.defaultCurrency);
+  const lang = useLang();
+  const fmt = (n: number) => _fmtAmt(n, lang);
+  const fmtCompact = (n: number) => _fmtCompact(n, lang);
   const t = useTranslation();
   const lang = useLang();
   const [invoices, setInvoices] = useState<TaxInvoice[]>([]);

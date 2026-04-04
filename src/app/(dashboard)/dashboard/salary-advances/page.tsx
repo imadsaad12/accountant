@@ -6,7 +6,8 @@ import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 import { todayInTz, formatDateInTz } from "@/lib/tz";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt, fmtCompact as _fmtCompact } from "@/lib/format-number";
 
 interface Employee {
   id: string;
@@ -34,14 +35,7 @@ interface DateRange {
   label: string;
 }
 
-const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtCompact = (n: number) => {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
-  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
-  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
-  return fmtAmt(n);
-};
+// fmtAmt / fmtCompact created inside the component to pick up the current lang
 
 const emptyForm = {
   employeeId: "",
@@ -99,6 +93,9 @@ export default function SalaryAdvancesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("salary_advances");
   const t = useTranslation();
+  const lang = useLang();
+  const fmtAmt = (n: number) => _fmtAmt(n, lang);
+  const fmtCompact = (n: number) => _fmtCompact(n, lang);
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const sym = getCurrencySymbol(orgSettings.defaultCurrency);

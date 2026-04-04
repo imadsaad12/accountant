@@ -5,7 +5,8 @@ import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown,
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, currencySymbol } from "@/components/OrgSettingsProvider";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt } from "@/lib/format-number";
 
 interface ComponentInfo {
   id: string;
@@ -72,8 +73,6 @@ function generateSKU(categoryName: string, existingProducts: { sku: string }[]):
   return `${prefix}-${String(next).padStart(3, "0")}`;
 }
 
-const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 function canMakeQty(product: Product): number {
   if (product.type !== "composite" || !product.components.length) return 0;
   return Math.floor(Math.min(...product.components.map(c => c.component.quantity / c.quantity)));
@@ -85,6 +84,8 @@ export default function StockPage() {
   const { orgSettings } = useOrgSettings();
   const currSym = currencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
+  const lang = useLang();
+  const fmtAmt = (n: number) => _fmtAmt(n, lang);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);

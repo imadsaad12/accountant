@@ -6,7 +6,8 @@ import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { useOrgSettings, useOrgTimezone, currencySymbol } from "@/components/OrgSettingsProvider";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { formatDateInTz } from "@/lib/tz";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt, fmtCompact } from "@/lib/format-number";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -37,22 +38,15 @@ const STATUS_COLORS: Record<string, string> = {
   overdue: "#ef4444",
 };
 
-const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const fmtCompact = (n: number) => {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
-  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
-  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
-  return fmtAmt(n);
-};
-
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const sym = currencySymbol(orgSettings.defaultCurrency);
   const t = useTranslation();
+  const lang = useLang();
+  const fmt = (n: number) => fmtAmt(n, lang);
+  const fmtC = (n: number) => fmtCompact(n, lang);
   const [isLight, setIsLight] = useState(false);
   const [trendPeriod, setTrendPeriod] = useState<1 | 3 | 6 | 12>(6);
 
@@ -80,9 +74,9 @@ export default function DashboardPage() {
   }
 
   const stats = [
-    { label: t("dashboard.gross"),     value: `${sym}${fmtCompact(data.grossEarning)}`,   tooltip: `${sym}${fmtAmt(data.grossEarning)}`,   icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
-    { label: t("dashboard.net"),       value: `${sym}${fmtCompact(data.netEarning)}`,     tooltip: `${sym}${fmtAmt(data.netEarning)}`,     icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5",    iconBg: "bg-teal-500/20",    iconColor: "text-teal-400",    trend: null, up: true },
-    { label: t("dashboard.pending"),   value: `${sym}${fmtCompact(data.pendingAmount)}`,  tooltip: `${sym}${fmtAmt(data.pendingAmount)}`,  icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5",  iconBg: "bg-amber-500/20",   iconColor: "text-amber-400",   trend: null, up: false },
+    { label: t("dashboard.gross"),     value: `${sym}${fmtC(data.grossEarning)}`,   tooltip: `${sym}${fmt(data.grossEarning)}`,   icon: DollarSign, gradient: "from-emerald-500/20 to-emerald-600/5", iconBg: "bg-emerald-500/20", iconColor: "text-emerald-400", trend: null, up: true },
+    { label: t("dashboard.net"),       value: `${sym}${fmtC(data.netEarning)}`,     tooltip: `${sym}${fmt(data.netEarning)}`,     icon: TrendingUp, gradient: "from-teal-500/20 to-teal-600/5",    iconBg: "bg-teal-500/20",    iconColor: "text-teal-400",    trend: null, up: true },
+    { label: t("dashboard.pending"),   value: `${sym}${fmtC(data.pendingAmount)}`,  tooltip: `${sym}${fmt(data.pendingAmount)}`,  icon: TrendingUp, gradient: "from-amber-500/20 to-amber-600/5",  iconBg: "bg-amber-500/20",   iconColor: "text-amber-400",   trend: null, up: false },
     { label: t("dashboard.clients"),   value: data.clientCount,   tooltip: data.clientCount.toString(),   icon: Users,    gradient: "from-blue-500/20 to-blue-600/5",  iconBg: "bg-blue-500/20",  iconColor: "text-blue-400",  trend: data.newClientsThisMonth  > 0 ? `+${data.newClientsThisMonth} this month`  : null, up: true },
     { label: t("dashboard.employees"), value: data.employeeCount, tooltip: data.employeeCount.toString(), icon: UserCog,  gradient: "from-pink-500/20 to-pink-600/5",  iconBg: "bg-pink-500/20",  iconColor: "text-pink-400",  trend: null, up: true },
     { label: t("dashboard.invoices"),  value: data.invoiceCount,  tooltip: data.invoiceCount.toString(),  icon: FileText, gradient: "from-cyan-500/20 to-cyan-600/5",  iconBg: "bg-cyan-500/20",  iconColor: "text-cyan-400",  trend: data.newInvoicesThisMonth > 0 ? `+${data.newInvoicesThisMonth} this month` : null, up: true },
@@ -262,7 +256,7 @@ export default function DashboardPage() {
                   contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: "8px" }}
                   labelStyle={{ color: tooltipLabel }}
                   itemStyle={{ color: tooltipItem }}
-                  formatter={(value) => [`${sym}${fmtAmt(Number(value))}`, t("dashboard.amount")]}
+                  formatter={(value) => [`${sym}${fmt(Number(value))}`, t("dashboard.amount")]}
                 />
                 <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                   {barData.map((_, i) => (
@@ -345,7 +339,7 @@ export default function DashboardPage() {
                   <td className="px-5 py-3.5 text-sm font-mono font-medium text-accent">{inv.number}</td>
                   <td className="px-5 py-3.5 text-sm text-text-secondary">{inv.client.name}</td>
                   <td className="px-5 py-3.5 text-sm text-text-muted">{formatDateInTz(inv.date, tz)}</td>
-                  <td className="px-5 py-3.5 text-sm text-text-primary text-right font-medium">{sym}{fmtAmt(inv.total)}</td>
+                  <td className="px-5 py-3.5 text-sm text-text-primary text-right font-medium">{sym}{fmt(inv.total)}</td>
                   <td className="px-5 py-3.5 text-center">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       inv.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :

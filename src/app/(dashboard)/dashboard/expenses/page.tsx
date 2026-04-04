@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Plus, Trash2, X, Edit2, TrendingDown, ChevronUp, ChevronDown, Loader2, Settings2 } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
-import { useTranslation } from "@/components/LanguageProvider";
+import { useTranslation, useLang } from "@/components/LanguageProvider";
+import { fmtAmt as _fmtAmt, fmtCompact as _fmtCompact } from "@/lib/format-number";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 import { todayInTz, formatDateInTz, formatMonthInTz, lastMonthRangeInTz } from "@/lib/tz";
 
@@ -69,20 +70,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   supplier_bill: "bg-violet-500/10 text-violet-400 border-violet-500/20",
 };
 
-const fmtAmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const fmtCompact = (n: number) => {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "B";
-  if (abs >= 1_000_000)     return (n / 1_000_000).toLocaleString("en-US",     { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "M";
-  if (abs >= 1_000)         return (n / 1_000).toLocaleString("en-US",         { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + "K";
-  return fmtAmt(n);
-};
-
 export default function ExpensesPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("expenses");
   const t = useTranslation();
+  const lang = useLang();
+  const fmtAmt = (n: number) => _fmtAmt(n, lang);
+  const fmtCompact = (n: number) => _fmtCompact(n, lang);
   const { orgSettings } = useOrgSettings();
   const tz = useOrgTimezone();
   const currencySymbol = getCurrencySymbol(orgSettings.defaultCurrency);
