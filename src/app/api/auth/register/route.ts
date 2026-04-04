@@ -64,6 +64,26 @@ export async function POST(req: NextRequest) {
       description: `Organization "${organization.name}" registered by "${user.name}"`,
     });
 
+    // Discord notification (fire-and-forget)
+    if (process.env.DISCORD_WEBHOOK_URL) {
+      fetch(process.env.DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          embeds: [{
+            title: "New Signup",
+            color: 0x22c55e,
+            fields: [
+              { name: "Organization", value: organization.name, inline: true },
+              { name: "User", value: user.name, inline: true },
+              { name: "Email", value: user.email, inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+          }],
+        }),
+      }).catch(() => {});
+    }
+
     const token = await createToken({
       userId: user.id,
       email: user.email,
