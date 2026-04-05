@@ -22,6 +22,7 @@ interface Employee {
   currency: string;
   hireDate: string;
   status: string;
+  inactiveDate: string | null;
   address: string | null;
   notes: string | null;
   outstandingAdvance: number;
@@ -46,7 +47,7 @@ const SALARY_PERIODS = [
   { value: "month", label: "Per Month" },
 ];
 
-const emptyForm = { firstName: "", lastName: "", email: "", phone: "", position: "", department: "", salary: "", salaryPeriod: "month", currency: "USD", hireDate: "", status: "active", address: "", notes: "" };
+const emptyForm = { firstName: "", lastName: "", email: "", phone: "", position: "", department: "", salary: "", salaryPeriod: "month", currency: "USD", hireDate: "", status: "active", inactiveDate: "", address: "", notes: "" };
 
 export default function EmployeesPage() {
   const { canEditFeature } = usePermissions();
@@ -98,6 +99,7 @@ export default function EmployeesPage() {
       currency: orgSettings.defaultCurrency,
       hireDate: emp.hireDate ? emp.hireDate.split("T")[0] : "",
       status: emp.status,
+      inactiveDate: emp.inactiveDate ? emp.inactiveDate.split("T")[0] : "",
       address: emp.address || "",
       notes: emp.notes || "",
     });
@@ -409,13 +411,20 @@ export default function EmployeesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.status")}</label>
-                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
+                  <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value, inactiveDate: e.target.value === "inactive" ? form.inactiveDate || new Date().toISOString().split("T")[0] : "" })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
                     <option value="active">{t("status.active")}</option>
                     <option value="inactive">{t("status.inactive")}</option>
                     <option value="on_leave">{t("status.on_leave")}</option>
                   </select>
                 </div>
               </div>
+              {form.status === "inactive" && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("employees.inactive_date")}</label>
+                  <input type="date" value={form.inactiveDate} onChange={e => setForm({ ...form, inactiveDate: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
+                  <p className="text-xs text-text-muted mt-1">{t("employees.inactive_date_note")}</p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.address")}</label>
                 <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />

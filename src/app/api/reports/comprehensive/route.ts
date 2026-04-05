@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.employee.findMany({
       where: { organizationId: orgId, hireDate: { lte: toDate } },
-      select: { id: true, firstName: true, lastName: true, salary: true, salaryPeriod: true, hireDate: true },
+      select: { id: true, firstName: true, lastName: true, salary: true, salaryPeriod: true, hireDate: true, inactiveDate: true },
     }),
     prisma.supplierBill.findMany({
       where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
@@ -190,16 +190,19 @@ export async function GET(req: NextRequest) {
   const daysInPeriod = calcDays(fromDate, toDate);
   for (const emp of employees) {
     const hireDate = new Date(emp.hireDate);
+    // Cap salary end date at inactiveDate if set
+    const empEnd = emp.inactiveDate ? new Date(Math.min(new Date(emp.inactiveDate).getTime(), toDate.getTime())) : toDate;
+    if (empEnd <= fromDate) continue;
     if (hireDate > toDate) continue;
     const eff = hireDate > fromDate ? hireDate : fromDate;
-    const days = calcDays(eff, toDate);
+    const days = calcDays(eff, empEnd);
     const rate = Number(emp.salary);
     const period = emp.salaryPeriod || "month";
     let salary = 0;
     if (period === "day") salary = rate * days;
     else if (period === "week") salary = rate * (days / 7);
     else if (period === "year") salary = rate * (days / 365);
-    else salary = rate * calcMonths(eff, toDate);
+    else salary = rate * calcMonths(eff, empEnd);
     salary = parseFloat(salary.toFixed(2));
 
     // Deduct each advance pro-rated over remaining days in its pay period from advance date
@@ -218,7 +221,7 @@ export async function GET(req: NextRequest) {
       const remainingDays = calcDays(advDate, periodEnd);
       if (remainingDays <= 0) continue;
       const overlapStart = advDate > fromDate ? advDate : fromDate;
-      const overlapEnd = periodEnd < toDate ? periodEnd : toDate;
+      const overlapEnd = periodEnd < empEnd ? periodEnd : empEnd;
       if (overlapStart > overlapEnd) continue;
       deduction += (adv.amount / remainingDays) * calcDays(overlapStart, overlapEnd);
     }

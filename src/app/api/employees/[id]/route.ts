@@ -34,6 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       salary: newSalary,
       salaryPeriod: newPeriod,
       hireDate: data.hireDate ? new Date(data.hireDate) : undefined,
+      inactiveDate: data.status === "inactive" && data.inactiveDate ? new Date(data.inactiveDate) : data.status === "active" ? null : undefined,
     },
   });
 

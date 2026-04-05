@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       prisma.employee.findMany({
         where: { organizationId: orgId, hireDate: { lte: toDate } },
         select: {
-          id: true, salary: true, salaryPeriod: true, hireDate: true,
+          id: true, salary: true, salaryPeriod: true, hireDate: true, inactiveDate: true,
           salaryAdvances: {
             where: { organizationId: orgId, status: { in: ["pending", "paid"] } },
             select: { amount: true, date: true },
@@ -161,8 +161,11 @@ export async function GET(req: NextRequest) {
     if (!excludedCategories.has("salaries"))
     for (const emp of employees) {
       const hireDate = new Date(emp.hireDate);
+      // Cap salary end date at inactiveDate if set
+      const empEnd = emp.inactiveDate ? new Date(Math.min(new Date(emp.inactiveDate).getTime(), toDate.getTime())) : toDate;
+      if (empEnd <= fromDate) continue;
       const empStart = hireDate > fromDate ? hireDate : fromDate;
-      const days = calcDays(empStart, toDate);
+      const days = calcDays(empStart, empEnd);
       if (days <= 0) continue;
       const rate = Number(emp.salary);
       const period = emp.salaryPeriod || "month";
@@ -172,7 +175,7 @@ export async function GET(req: NextRequest) {
       } else if (period === "week") {
         salaryAmount = parseFloat((rate * (days / 7)).toFixed(2));
       } else {
-        salaryAmount = parseFloat((rate * calcMonths(empStart, toDate)).toFixed(2));
+        salaryAmount = parseFloat((rate * calcMonths(empStart, empEnd)).toFixed(2));
       }
       // Deduct each advance pro-rated over remaining days in its pay period from advance date
       let totalDeduction = 0;
@@ -190,7 +193,7 @@ export async function GET(req: NextRequest) {
         const remainingDays = calcDays(advDate, periodEnd);
         if (remainingDays <= 0) continue;
         const overlapStart = advDate > fromDate ? advDate : fromDate;
-        const overlapEnd = periodEnd < toDate ? periodEnd : toDate;
+        const overlapEnd = periodEnd < empEnd ? periodEnd : empEnd;
         if (overlapStart > overlapEnd) continue;
         totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(overlapStart, overlapEnd);
       }
