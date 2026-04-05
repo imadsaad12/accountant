@@ -186,11 +186,12 @@ export async function GET(req: NextRequest) {
     const eff = hireDate > fromDate ? hireDate : fromDate;
     const days = calcDays(eff, toDate);
     const rate = Number(emp.salary);
+    const period = emp.salaryPeriod || "month";
     let salary = 0;
-    if (emp.salaryPeriod === "month") salary = rate * Math.round(calcMonths(eff, toDate));
-    else if (emp.salaryPeriod === "week") salary = rate * (days / 7);
-    else if (emp.salaryPeriod === "day") salary = rate * days;
-    else if (emp.salaryPeriod === "year") salary = rate * (days / 365);
+    if (period === "day") salary = rate * days;
+    else if (period === "week") salary = rate * (days / 7);
+    else if (period === "year") salary = rate * (days / 365);
+    else salary = rate * calcMonths(eff, toDate);
     salary = parseFloat(salary.toFixed(2));
 
     // Deduct each advance pro-rated over remaining days in its pay period from advance date
@@ -198,9 +199,9 @@ export async function GET(req: NextRequest) {
     for (const adv of (advancesByEmployee[emp.id] ?? [])) {
       const advDate = adv.date;
       let periodEnd: Date;
-      if (emp.salaryPeriod === "month") {
+      if (period === "month") {
         periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-      } else if (emp.salaryPeriod === "week") {
+      } else if (period === "week") {
         const satDate = advDate.getUTCDate() + (6 - advDate.getUTCDay());
         periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), satDate, 23, 59, 59, 999));
       } else {
