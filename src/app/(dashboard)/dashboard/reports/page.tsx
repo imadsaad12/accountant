@@ -189,6 +189,7 @@ export default function ReportsPage() {
           ["Total Pending", fmt(pl.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(pl.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(pl.totalSalesInPeriod.grossProfit)],
+          ["Net Profit (Gross − Expenses)", fmt(pl.totalSalesInPeriod.grossProfit - pl.totalExpenses)],
           ["Invoice Count", `${pl.totalSalesInPeriod.invoiceCount} (${pl.totalSalesInPeriod.paidCount} paid, ${pl.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
@@ -301,6 +302,7 @@ export default function ReportsPage() {
           ["Total Pending", fmt(cr.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(cr.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(cr.totalSalesInPeriod.grossProfit)],
+          ["Net Profit (Gross − Expenses)", fmt(cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses)],
           ["Invoice Count", `${cr.totalSalesInPeriod.invoiceCount} (${cr.totalSalesInPeriod.paidCount} paid, ${cr.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 8 },
@@ -549,6 +551,11 @@ export default function ReportsPage() {
                       <div className="text-xs text-text-muted mb-1">Gross Profit</div>
                       <div className={`text-lg font-bold ${pl.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(pl.totalSalesInPeriod.grossProfit)}</div>
                       <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.revenue > 0 ? pct(pl.totalSalesInPeriod.grossProfit, pl.totalSalesInPeriod.revenue) : "—"} margin</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
+                      <div className="text-xs text-text-muted mb-1">Net Profit (Gross − Expenses)</div>
+                      <div className={`text-lg font-bold ${pl.totalSalesInPeriod.grossProfit - pl.totalExpenses >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(pl.totalSalesInPeriod.grossProfit - pl.totalExpenses)}</div>
+                      <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.revenue > 0 ? pct(pl.totalSalesInPeriod.grossProfit - pl.totalExpenses, pl.totalSalesInPeriod.revenue) : "—"} margin</div>
                     </div>
                   </div>
                 </div>
@@ -945,6 +952,11 @@ export default function ReportsPage() {
                       <div className="text-xs text-text-muted mb-1">Gross Profit</div>
                       <div className={`text-lg font-bold ${cr.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.grossProfit)}</div>
                       <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
+                      <div className="text-xs text-text-muted mb-1">Net Profit (Gross − Expenses)</div>
+                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
                     </div>
                   </div>
                 </div>
