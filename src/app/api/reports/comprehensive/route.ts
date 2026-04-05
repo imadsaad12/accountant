@@ -185,11 +185,12 @@ export async function GET(req: NextRequest) {
     if (hireDate > toDate) continue;
     const eff = hireDate > fromDate ? hireDate : fromDate;
     const days = calcDays(eff, toDate);
+    const rate = Number(emp.salary);
     let salary = 0;
-    if (emp.salaryPeriod === "month") salary = emp.salary * Math.round(calcMonths(eff, toDate));
-    else if (emp.salaryPeriod === "week") salary = emp.salary * (days / 7);
-    else if (emp.salaryPeriod === "day") salary = emp.salary * days;
-    else if (emp.salaryPeriod === "year") salary = emp.salary * (days / 365);
+    if (emp.salaryPeriod === "month") salary = rate * Math.round(calcMonths(eff, toDate));
+    else if (emp.salaryPeriod === "week") salary = rate * (days / 7);
+    else if (emp.salaryPeriod === "day") salary = rate * days;
+    else if (emp.salaryPeriod === "year") salary = rate * (days / 365);
     salary = parseFloat(salary.toFixed(2));
 
     // Deduct each advance pro-rated over remaining days in its pay period from advance date

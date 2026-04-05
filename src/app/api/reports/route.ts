@@ -204,6 +204,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Add supplier bill payments made in period
+    if (!excludedCategories.has("supplier_bill"))
     for (const bp of paidBills) {
       expensesByCategory["supplier_bill"] = (expensesByCategory["supplier_bill"] ?? 0) + bp.amount;
     }
