@@ -71,7 +71,7 @@ export async function GET() {
     prisma.employee.findMany({
       where: { organizationId: orgId },
       select: {
-        hireDate: true, salary: true, salaryPeriod: true,
+        hireDate: true, inactiveDate: true, salary: true, salaryPeriod: true,
         salaryAdvances: { select: { amount: true, date: true, status: true } },
       },
     }),
@@ -136,7 +136,9 @@ export async function GET() {
   for (const emp of allEmployees) {
     const hireDate = new Date(emp.hireDate);
     if (hireDate > today) continue;
-    const days = calcDays(hireDate, today);
+    const empEnd = emp.inactiveDate ? new Date(Math.min(new Date(emp.inactiveDate).getTime(), today.getTime())) : today;
+    if (empEnd <= hireDate) continue;
+    const days = calcDays(hireDate, empEnd);
     if (days <= 0) continue;
     const rate = Number(emp.salary);
     const period = emp.salaryPeriod || "month";
@@ -146,7 +148,7 @@ export async function GET() {
     } else if (period === "week") {
       amount = parseFloat((rate * (days / 7)).toFixed(2));
     } else {
-      amount = parseFloat((rate * calcMonths(hireDate, today)).toFixed(2));
+      amount = parseFloat((rate * calcMonths(hireDate, empEnd)).toFixed(2));
     }
     // Deduct advances (same logic as expenses page)
     let totalDeduction = 0;
@@ -163,7 +165,9 @@ export async function GET() {
       }
       const remainingDays = calcDays(advDate, periodEnd);
       if (remainingDays <= 0) continue;
-      totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(advDate, periodEnd);
+      const overlapEnd = periodEnd < empEnd ? periodEnd : empEnd;
+      if (advDate > overlapEnd) continue;
+      totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(advDate, overlapEnd);
     }
     totalSalaries += Math.max(0, amount - parseFloat(totalDeduction.toFixed(2)));
   }

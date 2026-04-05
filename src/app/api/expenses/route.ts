@@ -183,8 +183,10 @@ export async function GET(req: NextRequest) {
 
     for (const emp of employees) {
       const hireDate = new Date(emp.hireDate);
+      const empEnd = emp.inactiveDate ? new Date(Math.min(new Date(emp.inactiveDate).getTime(), toDate.getTime())) : toDate;
+      if (empEnd <= fromDate) continue;
       const empStart = hireDate > fromDate ? hireDate : fromDate;
-      const days = calcDays(empStart, toDate);
+      const days = calcDays(empStart, empEnd);
       if (days <= 0) continue;
 
       const rate = Number(emp.salary);
@@ -200,7 +202,7 @@ export async function GET(req: NextRequest) {
         const weeks = parseFloat((days / 7).toFixed(2));
         description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/week × ${weeks} weeks)`;
       } else {
-        const months = calcMonths(empStart, toDate);
+        const months = calcMonths(empStart, empEnd);
         amount = parseFloat((rate * months).toFixed(2));
         const monthsDisplay = parseFloat(months.toFixed(2));
         description = `Salary — ${emp.firstName} ${emp.lastName} (${rate}/month × ${monthsDisplay} month${months === 1 ? "" : "s"})`;
@@ -222,7 +224,7 @@ export async function GET(req: NextRequest) {
         const remainingDays = calcDays(advDate, periodEnd);
         if (remainingDays <= 0) continue;
         const overlapStart = advDate > fromDate ? advDate : fromDate;
-        const overlapEnd = periodEnd < toDate ? periodEnd : toDate;
+        const overlapEnd = periodEnd < empEnd ? periodEnd : empEnd;
         if (overlapStart > overlapEnd) continue;
         totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(overlapStart, overlapEnd);
       }
