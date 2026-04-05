@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     data: {
       supplierId: data.supplierId,
       amount: parseFloat(data.amount),
+      billType: data.billType || "expense",
       description: data.description,
       reference: data.reference || null,
       date: new Date(data.date),

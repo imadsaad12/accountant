@@ -179,6 +179,12 @@ PRODUCTS & STOCK:
 - Products can be assigned to categories (Electronics, Clothing, Food & Beverages, Office Supplies, etc.).
 - Products that are used in invoices or as components in composites cannot be deleted.
 
+SUPPLIER BILLS:
+- Each supplier bill has a "billType": either "stock" or "expense".
+- "stock" = bill is for purchasing inventory/raw materials. Its cost is already captured in COGS when products are sold, so it is NOT included in operating expenses (avoids double-counting).
+- "expense" = bill is for services, rent, utilities, or other operational costs. It IS included in operating expenses on reports, dashboard, and expense listings.
+- Only "expense" type bill payments appear in the expenses page and are counted in P&L/comprehensive report expenses and dashboard net earnings.
+
 EXPENSES:
 - One-time or recurring (weekly/monthly/quarterly/yearly).
 - Recurring expenses are computed pro-rata for any date range: weekly = rate × (days/7), monthly = rate × calendarMonths, quarterly = rate × (calendarMonths/3), yearly = rate × (days/365).

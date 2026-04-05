@@ -66,6 +66,7 @@ model SupplierBill {
   supplierId     String
   supplier       Supplier             @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   amount         Float
+  billType       String               @default("expense")  // stock | expense
   description    String
   reference      String?
   date           DateTime

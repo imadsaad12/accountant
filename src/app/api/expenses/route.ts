@@ -263,6 +263,7 @@ export async function GET(req: NextRequest) {
       where: {
         organizationId: session.organizationId,
         date: { gte: fromDate, lte: toDate },
+        bill: { billType: "expense" },
       },
       include: {
         bill: {

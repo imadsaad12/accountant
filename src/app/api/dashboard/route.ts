@@ -66,7 +66,7 @@ export async function GET() {
     }),
     prisma.invoice.findMany({ where: { organizationId: orgId }, take: 5, orderBy: { createdAt: "desc" }, include: { client: true } }),
     prisma.payment.findMany({ where: { organizationId: orgId }, select: { invoiceId: true, amount: true } }),
-    prisma.supplierBill.aggregate({ where: { organizationId: orgId }, _sum: { amount: true } }),
+    prisma.supplierBill.aggregate({ where: { organizationId: orgId, billType: "expense" }, _sum: { amount: true } }),
     prisma.expense.findMany({ where: { organizationId: orgId }, select: { amount: true, recurrence: true, date: true } }),
     prisma.employee.findMany({
       where: { organizationId: orgId },

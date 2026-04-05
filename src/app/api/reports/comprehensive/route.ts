@@ -247,9 +247,9 @@ export async function GET(req: NextRequest) {
   }
   void daysInPeriod;
 
-  // Supplier bill payments made in period (by payment date)
+  // Supplier bill payments made in period (by payment date) — only "expense" type bills (stock bills are already in COGS)
   const billPaymentsForExpenses = await prisma.supplierBillPayment.findMany({
-    where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
+    where: { organizationId: orgId, date: { gte: fromDate, lte: toDate }, bill: { billType: "expense" } },
     include: { bill: { include: { supplier: { select: { name: true } } } } },
     orderBy: { date: "asc" },
   });

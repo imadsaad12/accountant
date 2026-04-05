@@ -33,6 +33,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     data: {
       amount: newAmount,
+      billType: data.billType || existing.billType || "expense",
       description: data.description,
       reference: data.reference || null,
       date: new Date(data.date),

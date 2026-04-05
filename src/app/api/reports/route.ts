@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
         },
       }),
       prisma.supplierBillPayment.findMany({
-        where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
+        where: { organizationId: orgId, date: { gte: fromDate, lte: toDate }, bill: { billType: "expense" } },
         select: { amount: true },
       }),
       prisma.invoice.findMany({

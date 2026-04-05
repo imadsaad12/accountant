@@ -36,6 +36,7 @@ interface SupplierBill {
   supplierId: string;
   amount: number;
   amountPaid: number;
+  billType: "stock" | "expense";
   description: string;
   reference: string | null;
   date: string;
@@ -55,7 +56,7 @@ const emptySupplier = {
 };
 
 const emptyBill = {
-  description: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending",
+  description: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending", billType: "expense",
 };
 
 export default function SuppliersPage() {
@@ -209,6 +210,7 @@ export default function SuppliersPage() {
       reference: bill.reference || "",
       note: bill.note || "",
       status: bill.status,
+      billType: bill.billType || "expense",
     });
     setShowBillForm(true);
   }
@@ -662,13 +664,25 @@ export default function SuppliersPage() {
                       <input type="date" value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
-                    <select value={billForm.status} onChange={e => setBillForm({ ...billForm, status: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
-                      <option value="pending">Pending</option>
-                      <option value="paid">Paid</option>
-                    </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
+                      <select value={billForm.status} onChange={e => setBillForm({ ...billForm, status: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-2">{t("suppliers.bill_type")}</label>
+                      <select value={billForm.billType} onChange={e => setBillForm({ ...billForm, billType: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
+                        <option value="stock">{t("suppliers.bill_type_stock")}</option>
+                        <option value="expense">{t("suppliers.bill_type_expense")}</option>
+                      </select>
+                    </div>
                   </div>
+                  <p className="text-xs text-text-muted -mt-2">
+                    {billForm.billType === "stock" ? t("suppliers.bill_type_stock_desc") : t("suppliers.bill_type_expense_desc")}
+                  </p>
                   {/* Initial Payment (create only) */}
                   {!editingBill && (
                     <div className="border border-dark-border rounded-lg overflow-hidden">
@@ -778,7 +792,7 @@ export default function SuppliersPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <p className="text-base font-semibold text-text-primary">{bill.description}</p>
+                                <p className="text-base font-semibold text-text-primary flex items-center gap-2">{bill.description} <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${bill.billType === "stock" ? "bg-blue-500/20 text-blue-400" : "bg-violet-500/20 text-violet-400"}`}>{bill.billType === "stock" ? t("suppliers.bill_type_stock") : t("suppliers.bill_type_expense")}</span></p>
                                 <div className="flex flex-wrap gap-3 mt-2 text-sm text-text-muted">
                                   <span className="flex items-center gap-1">
                                     📅 {new Date(bill.date).toLocaleDateString("en-GB")}

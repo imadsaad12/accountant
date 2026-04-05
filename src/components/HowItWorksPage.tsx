@@ -402,6 +402,22 @@ export default function HowItWorksPage() {
 
           {/* Supplier Bills */}
           <Section id="supplier-bills" title="Supplier Bills & Payables">
+            <Subsection title="Bill Type">
+              <p className="text-text-secondary mb-4">
+                Each supplier bill has a <strong>type</strong> that determines how it is treated in financial calculations:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-3 text-sm text-text-secondary">
+                <div>
+                  <strong className="text-blue-400">Stock / Inventory</strong> — The bill is for purchasing stock or raw materials.
+                  <span className="block mt-1 text-text-muted">This cost is already reflected in <strong>COGS</strong> when products are sold, so it is <strong>NOT</strong> included in operating expenses. This avoids double-counting.</span>
+                </div>
+                <div>
+                  <strong className="text-violet-400">Operating Expense</strong> — The bill is for services, rent, utilities, or other operational costs.
+                  <span className="block mt-1 text-text-muted">This <strong>IS</strong> included in operating expenses on reports, dashboard, and expense listings.</span>
+                </div>
+              </div>
+            </Subsection>
+
             <Subsection title="Bill Payment Tracking">
               <p className="text-text-secondary mb-4">
                 Similar to invoices, supplier bills track:
