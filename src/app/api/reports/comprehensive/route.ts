@@ -28,9 +28,17 @@ function computeRecurring(rate: number, recurrence: string, expStart: Date, from
   const days = calcDays(eff, toDate);
   if (days <= 0) return 0;
   if (recurrence === "weekly") return parseFloat((rate * (days / 7)).toFixed(2));
-  if (recurrence === "monthly") return parseFloat((rate * Math.round(calcMonths(eff, toDate))).toFixed(2));
+  if (recurrence === "monthly") return parseFloat((rate * calcMonths(eff, toDate)).toFixed(2));
   if (recurrence === "quarterly") return parseFloat((rate * (calcMonths(eff, toDate) / 3)).toFixed(2));
-  if (recurrence === "yearly") return parseFloat((rate * (days / 365)).toFixed(2));
+  if (recurrence === "yearly") {
+    const sm = eff.getUTCMonth(), sd = eff.getUTCDate();
+    const em = toDate.getUTCMonth(), ed = toDate.getUTCDate();
+    const lastDay = new Date(Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth() + 1, 0)).getUTCDate();
+    const years = (sm === 0 && sd === 1 && em === 11 && ed === lastDay)
+      ? toDate.getUTCFullYear() - eff.getUTCFullYear() + 1
+      : parseFloat((days / 365).toFixed(2));
+    return parseFloat((rate * years).toFixed(2));
+  }
   return 0;
 }
 
@@ -64,7 +72,7 @@ export async function GET(req: NextRequest) {
       orderBy: { date: "asc" },
     }),
     prisma.employee.findMany({
-      where: { organizationId: orgId, status: "active" },
+      where: { organizationId: orgId, hireDate: { lte: toDate } },
       select: { id: true, firstName: true, lastName: true, salary: true, salaryPeriod: true, hireDate: true },
     }),
     prisma.supplierBill.findMany({
