@@ -11,6 +11,7 @@ const SECTIONS = [
   { id: "expenses", label: "Expenses & Recurring" },
   { id: "salary", label: "Employees & Payroll" },
   { id: "supplier-bills", label: "Supplier Bills" },
+  { id: "excel-import", label: "Excel Import" },
   { id: "tax", label: "Tax Calculations" },
   { id: "reports", label: "Financial Reports" },
   { id: "dashboard", label: "Dashboard KPIs" },
@@ -171,22 +172,23 @@ export default function HowItWorksPage() {
               <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
                 <div>• <strong>Total Invoiced</strong> = Sum of all invoice totals</div>
                 <div>• <strong>Total Paid</strong> = Sum of all payments applied</div>
-                <div>• <strong>Total Pending</strong> = Total Invoiced − Total Paid</div>
+                <div>• <strong>Pending Balance</strong> = Amount owed without invoices (e.g. from Excel imports)</div>
+                <div>• <strong>Total Pending</strong> = (Total Invoiced − Total Paid) + Pending Balance</div>
                 <div>• <strong>Client Balance</strong> = Available credit from overpayments</div>
               </div>
             </Subsection>
 
             <Subsection title="Bulk Payment Distribution (FIFO)">
               <p className="text-text-secondary mb-4">
-                Payments are distributed oldest invoice first:
+                Payments are distributed in 3 priority steps:
               </p>
               <ol className="text-text-secondary space-y-2 list-decimal list-inside">
-                <li>Fetch unpaid invoices, oldest first</li>
-                <li>Apply payment to each (minimum of: payment available OR remaining balance)</li>
-                <li>If payment exceeds all balances, excess becomes Client Balance</li>
+                <li><strong>Invoices first:</strong> Apply to unpaid invoices, oldest first (FIFO)</li>
+                <li><strong>Pending Balance:</strong> If remaining, reduce the client's pending balance (imported amounts with no invoices)</li>
+                <li><strong>Credit Balance:</strong> Any remaining excess goes to client credit balance</li>
               </ol>
               <p className="text-text-secondary text-sm mt-4">
-                <strong>Example:</strong> Invoice 1: $500 unpaid, Invoice 2: $300 unpaid. Client pays $600 → Invoice 1 fully paid ($500), Invoice 2 partially paid ($100), Client Balance = $0.
+                <strong>Example:</strong> Invoice 1: $500 unpaid, Pending Balance: $200. Client pays $800 → Invoice 1 fully paid ($500), Pending Balance reduced by $200, Client Balance += $100.
               </p>
             </Subsection>
           </Section>
@@ -393,9 +395,19 @@ export default function HowItWorksPage() {
               </div>
             </Subsection>
 
-            <Subsection title="Active Employee Filter">
-              <p className="text-text-secondary">
-                Only <strong>active</strong> employees are included in payroll calculations. Inactive employees are excluded from salary and advance deductions.
+            <Subsection title="Employee Inactive Date">
+              <p className="text-text-secondary mb-4">
+                Employees can have an <strong>inactive date</strong> that stops salary calculation from that date:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• If <strong>inactiveDate</strong> is set, salary is only calculated up to that date</div>
+                <div>• The salary end date = min(inactiveDate, report end date)</div>
+                <div>• If inactiveDate is before the report start date, the employee is excluded entirely</div>
+                <div>• This applies to both P&L and Comprehensive report salary calculations</div>
+                <div>• Dashboard earnings also respect the inactive date</div>
+              </div>
+              <p className="text-text-secondary text-sm mt-4">
+                <strong>Example:</strong> Employee earns $3,000/month, hired Jan 1, inactive date = Feb 15. For a Jan 1 – Mar 31 report: salary is calculated for Jan 1 – Feb 15 only (1.5 months = $4,500), not the full 3 months.
               </p>
             </Subsection>
           </Section>
@@ -437,6 +449,52 @@ export default function HowItWorksPage() {
               <p className="text-text-secondary text-sm">
                 Aging categories: <strong>Current</strong> (0 days), <strong>1-30</strong>, <strong>31-60</strong>, <strong>61-90</strong>, <strong>90+</strong>
               </p>
+            </Subsection>
+          </Section>
+
+          {/* Excel Import */}
+          <Section id="excel-import" title="Excel Import">
+            <Subsection title="Client Import">
+              <p className="text-text-secondary mb-4">
+                Import clients in bulk from an Excel or CSV file. Supported columns:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mb-4">
+                <div>• <strong>name</strong> (required) — Client name</div>
+                <div>• <strong>email, phone</strong> — Contact details (duplicates within the org are skipped)</div>
+                <div>• <strong>address, city, country</strong> — Location info</div>
+                <div>• <strong>balance</strong> — Credit balance (overpayment credits)</div>
+                <div>• <strong>pending</strong> — Pending balance (amount owed without invoices)</div>
+                <div>• <strong>notes</strong> — Free text notes</div>
+              </div>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• Rows with duplicate email or phone (within the org) are <strong>skipped</strong> with a reason</div>
+                <div>• Rows without a name are skipped</div>
+                <div>• The <strong>balance</strong> column sets the client's credit balance directly</div>
+                <div>• The <strong>pending</strong> column sets the client's <strong>pendingBalance</strong> — this is included in totalPending calculations and can be reduced via bulk payments</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Supplier Import">
+              <p className="text-text-secondary mb-4">
+                Import suppliers in bulk from an Excel or CSV file. Only details are imported — no bills are created. Supported columns:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mb-4">
+                <div>• <strong>name</strong> (required) — Supplier name</div>
+                <div>• <strong>contact_name</strong> — Contact person</div>
+                <div>��� <strong>email, phone</strong> — Contact details (duplicate emails are skipped)</div>
+                <div>• <strong>address, city, country</strong> — Location info</div>
+                <div>• <strong>payment_terms</strong> — Payment terms in days</div>
+                <div>• <strong>notes</strong> — Free text notes</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Import Behavior">
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• Column headers are case-insensitive and spaces/underscores are normalized</div>
+                <div>• Alternative column names are supported (e.g. "supplier_name", "contact", "telephone", "mobile")</div>
+                <div>• After import, a summary shows: count imported, count skipped, and details for each skip</div>
+                <div>• All imports are logged in the Activity Log</div>
+              </div>
             </Subsection>
           </Section>
 
@@ -514,6 +572,26 @@ export default function HowItWorksPage() {
                 <li>Payable aging (supplier bills)</li>
                 <li>Profit margins (COGS, Gross, Net)</li>
               </ul>
+            </Subsection>
+
+            <Subsection title="Cash Out (Total Sales Section)">
+              <p className="text-text-secondary mb-4">
+                Both P&L and Comprehensive reports include a "Total Sales in Period" section with a <strong>Cash Out</strong> metric:
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Cash Out = One-Time Expenses + All Supplier Bill Payments",
+                  "Net Profit (Sales) = Total Paid − Cash Out",
+                ]}
+              />
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mt-4">
+                <div>• <strong>One-Time Expenses:</strong> Only expenses with recurrence = "none" (no recurring, no salaries)</div>
+                <div>• <strong>Supplier Bill Payments:</strong> All types (both stock and expense bills)</div>
+                <div>• <strong>Excluded:</strong> Recurring expenses and salaries — these are estimated/prorated amounts, not actual one-time payments</div>
+              </div>
+              <p className="text-text-secondary text-sm mt-4">
+                <strong>Why?</strong> Cash Out shows what you actually paid out as discrete payments, so you can compare it to the cash received (Total Paid) to see real cash flow.
+              </p>
             </Subsection>
 
             <Subsection title="Profit Margins">
@@ -661,6 +739,26 @@ export default function HowItWorksPage() {
                   question: "What happens if a client overpays an invoice?",
                   answer:
                     "The payment is capped at the remaining invoice balance and the invoice is marked as paid. The excess amount is automatically added to the client's credit balance, which will be auto-applied to their next invoice.",
+                },
+                {
+                  question: "What is pendingBalance and how does it work?",
+                  answer:
+                    "pendingBalance tracks amounts owed by a client without associated invoices (e.g. from Excel imports). It is included in the client's Total Pending. When a bulk payment is made, invoices are paid first, then pendingBalance is reduced, then any excess goes to credit balance.",
+                },
+                {
+                  question: "How does Excel import handle duplicates?",
+                  answer:
+                    "For clients, rows with duplicate email or phone (within your organization) are skipped. For suppliers, rows with duplicate email are skipped. A summary of imported vs. skipped rows (with reasons) is shown after import.",
+                },
+                {
+                  question: "What is Cash Out and how is it calculated?",
+                  answer:
+                    "Cash Out = one-time expenses + all supplier bill payments (stock and expense types). It excludes recurring expenses and salaries because those are estimated amounts, not actual discrete payments. It shows the real cash you paid out, so you can compare it against cash received.",
+                },
+                {
+                  question: "What happens when an employee has an inactive date?",
+                  answer:
+                    "Salary is only calculated up to the inactive date. If the inactive date is before the report period, the employee is excluded entirely. This affects P&L, Comprehensive reports, and dashboard earnings.",
                 },
               ]}
             />

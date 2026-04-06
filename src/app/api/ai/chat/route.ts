@@ -9,7 +9,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 async function getBusinessContext(organizationId: string, permissions: Permissions) {
   const [clients, products, employees, invoices, expenses, salaryAdvances] = await Promise.all([
     canView(permissions, "clients")
-      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true, balance: true } })
+      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true, balance: true, pendingBalance: true } })
       : Promise.resolve(null),
     canView(permissions, "products")
       ? prisma.product.findMany({
@@ -127,7 +127,7 @@ IMPORTANT PERMISSION RULES:
 
 You have access to the following live business data:
 
-${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null;balance:number}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"}, Credit Balance: $${c.balance.toFixed(2)})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
+${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null;balance:number;pendingBalance:number}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"}, Credit Balance: $${c.balance.toFixed(2)}${c.pendingBalance > 0 ? `, Imported Pending: $${c.pendingBalance.toFixed(2)}` : ""})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
 
 ${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string;components:{quantity:number;component:{name:string;quantity:number}}[]}) => {
   if (p.type === "composite" && p.components.length > 0) {
@@ -167,7 +167,7 @@ PAYMENTS & OVERPAYMENT:
 - OVERPAYMENT FEATURE: If a payment exceeds the remaining invoice balance, the excess is automatically added to the client's credit balance. Example: invoice remaining = $50, payment = $80 → $50 applied to invoice (marked paid), $30 added to client balance.
 - Client credit balance is auto-applied when creating a new invoice for that client: up to the invoice total is deducted from balance, and a payment with method "balance" is auto-created.
 - Payment methods: cash, bank_transfer, check, credit_card, balance (auto-applied credit).
-- Bulk client payment: can pay a lump sum to a client → applied to oldest unpaid invoices first (FIFO), any remainder goes to client credit balance.
+- Bulk client payment: can pay a lump sum to a client → applied to oldest unpaid invoices first (FIFO), then reduces pendingBalance, then any remainder goes to client credit balance.
 
 PRODUCTS & STOCK:
 - Two types: "simple" (direct stock) and "composite" (assembled from component products).
@@ -185,11 +185,28 @@ SUPPLIER BILLS:
 - "expense" = bill is for services, rent, utilities, or other operational costs. It IS included in operating expenses on reports, dashboard, and expense listings.
 - Only "expense" type bill payments appear in the expenses page and are counted in P&L/comprehensive report expenses and dashboard net earnings.
 
+EXCEL IMPORT:
+- Clients can be imported from Excel/CSV files with columns: name, email, phone, address, city, country, notes, balance, pending. Duplicate emails/phones within the organization are skipped.
+- Imported clients get their "balance" (credit) and "pendingBalance" (amount owed without invoices) set directly. The pendingBalance is included in totalPending calculations.
+- Suppliers can be imported from Excel/CSV files with columns: name, contact_name, email, phone, address, city, country, payment_terms, notes. No bills are imported.
+
+CLIENT PENDING BALANCE:
+- Clients have a "pendingBalance" field that tracks amounts owed without associated invoices (e.g., from imports or manual entry).
+- When a bulk payment is made: first applied to open invoices (oldest first), then reduces pendingBalance, then any excess goes to credit balance.
+- The client's totalPending = (sum of unpaid invoice amounts) + pendingBalance.
+
+CASH OUT (REPORTS):
+- Both P&L and Comprehensive reports have a "Total Sales in Period" section with a "Cash Out" box.
+- Cash Out = one-time expenses (non-recurring, excluding salaries and supplier bills) + ALL supplier bill payments (both stock and expense types).
+- This shows only actual one-time payments made, excluding recurring expenses and salaries so users can see exactly what they paid out.
+- Net Profit in Total Sales = Paid (cash received) - Cash Out.
+
 EXPENSES:
 - One-time or recurring (weekly/monthly/quarterly/yearly).
 - Recurring expenses are computed pro-rata for any date range: weekly = rate × (days/7), monthly = rate × calendarMonths, quarterly = rate × (calendarMonths/3), yearly = rate × (days/365).
 - Salaries are computed DYNAMICALLY from employee records (not stored as expense rows). Uses accrual-basis: salary appears in the period the work was done, even if not yet paid.
 - Salary periods: week or month. Rate calculation: week → salary × (days/7), month → salary × calendarMonths.
+- Employees with an inactiveDate have salary calculated only up to that date. If inactiveDate is before the report start, the employee is excluded entirely.
 - Calendar-accurate month calculation: splits into first month fraction + full months + last month fraction using actual days in each month (not 30-day approximation).
 
 SALARY ADVANCES:
@@ -214,13 +231,14 @@ USER ROLE: ${session.role}
 ${session.role === "admin" ? "This user is an ADMIN and can execute write actions (add, edit, delete) for features they have edit permission on." : "This user is NOT an admin. They can only view data and export PDFs. Do NOT include write action blocks for non-admin users. If they ask to create/edit/delete anything, tell them they need admin privileges."}
 
 CAPABILITIES - You can help with:
-1. Answering questions about clients (including credit balances), products, invoices, expenses, employees, salary advances
-2. Financial summaries: revenue, expenses (including salaries), net profit, COGS, tax collected
-3. Identifying issues: low stock, overdue invoices, outstanding salary advances, high expenses, clients with credit balances
+1. Answering questions about clients (including credit balances and imported pending balances), products, invoices, expenses, employees, salary advances
+2. Financial summaries: revenue, expenses (including salaries), net profit, COGS, tax collected, cash out
+3. Identifying issues: low stock, overdue invoices, outstanding salary advances, high expenses, clients with credit balances or imported pending balances
 4. Invoice payment status: how much is paid, remaining balance, partial payments, overpayment tracking
 5. Expense analysis: by category, recurring vs one-time, monthly totals, salary cost projections
 6. Salary calculations: explain how salary is computed for a period, advance deductions, calendar-accurate months
 7. Exporting as PDF: invoices (en/fr), clients list, stock/products list, employees list, suppliers list, AI summary reports
+8. Explaining import features: clients and suppliers can be bulk-imported from Excel/CSV files
 8. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments, update stock" : "Ask an admin to perform write operations"}
 
 ACTION BLOCKS — When the user requests an action, append ONE JSON block. The frontend shows a confirmation dialog before executing.

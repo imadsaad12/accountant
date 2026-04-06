@@ -144,6 +144,7 @@ export async function GET(req: NextRequest) {
     // - One-time (recurrence=none): count only if date falls within [fromDate, toDate]
     // - Recurring: pro-rate over the period (same logic as expenses page)
     const expensesByCategory: Record<string, number> = {};
+    let oneTimeExpenseTotal = 0;
     for (const exp of allExpenses) {
       if (excludedCategories.has(exp.category)) continue;
       const recurrence = exp.recurrence || "none";
@@ -151,7 +152,10 @@ export async function GET(req: NextRequest) {
       let amount = 0;
 
       if (recurrence === "none") {
-        if (expDate >= fromDate && expDate <= toDate) amount = exp.amount;
+        if (expDate >= fromDate && expDate <= toDate) {
+          amount = exp.amount;
+          oneTimeExpenseTotal += amount;
+        }
       } else {
         amount = computeRecurringAmount(exp.amount, recurrence, expDate, fromDate, toDate);
       }
@@ -265,6 +269,7 @@ export async function GET(req: NextRequest) {
         partialCount: partialInvoiceCount,
       },
       totalSupplierBills: parseFloat(allBillPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)),
+      oneTimeExpenseTotal: parseFloat(oneTimeExpenseTotal.toFixed(2)),
       mostSoldProducts,
     });
   }

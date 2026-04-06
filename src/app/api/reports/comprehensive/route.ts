@@ -166,11 +166,13 @@ export async function GET(req: NextRequest) {
   const expenseRows: { category: string; description: string; amount: number; recurrence: string; vendor: string | null; date: string; salary?: number; salaryAdvance?: number; amountPaid?: number }[] = [];
 
   // Stored one-time & recurring expenses
+  let oneTimeExpenseTotal = 0;
   for (const e of expenses) {
     const eDate = new Date(e.date);
     if (e.recurrence === "none") {
       if (eDate >= fromDate && eDate <= toDate) {
         expenseRows.push({ category: e.category, description: e.description, amount: e.amount, recurrence: "none", vendor: e.vendor, date: eDate.toISOString().split("T")[0] });
+        if (!excludedCategories.has(e.category)) oneTimeExpenseTotal += e.amount;
       }
     } else {
       if (eDate <= toDate) {
@@ -462,6 +464,7 @@ export async function GET(req: NextRequest) {
       partialCount: partialInvoiceCount,
     },
     totalSupplierBills: parseFloat(allBillPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)),
+    oneTimeExpenseTotal: parseFloat(oneTimeExpenseTotal.toFixed(2)),
     mostSoldProducts,
   });
 }

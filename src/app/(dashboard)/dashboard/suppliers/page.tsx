@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Receipt, CheckCircle2, Clock, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Receipt, CheckCircle2, Clock, Download, Upload } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -324,6 +324,43 @@ export default function SuppliersPage() {
     return sortDir === "asc" ? <ChevronUp size={12} className="text-accent" /> : <ChevronDown size={12} className="text-accent" />;
   }
 
+  // Import state
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; skippedDetails: { row: number; name: string; reason: string }[]; importedNames: string[] } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  async function handleImport() {
+    if (!importFile) return;
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      const res = await fetch("/api/suppliers/import", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportError(data.error || t("common.error"));
+        return;
+      }
+      setImportResult(data);
+      loadAll();
+    } catch {
+      setImportError(t("common.error"));
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function closeImportModal() {
+    setShowImport(false);
+    setImportFile(null);
+    setImportResult(null);
+    setImportError(null);
+  }
+
   const [exportingList, setExportingList] = useState(false);
   async function exportListPDF() {
     setExportingList(true);
@@ -387,6 +424,11 @@ export default function SuppliersPage() {
             {exportingList ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t("suppliers.export_pdf")}
           </button>
           {canEdit && (
+            <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 px-3 py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-sm font-medium">
+              <Upload size={16} /> {t("suppliers.import_excel")}
+            </button>
+          )}
+          {canEdit && (
             <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
               <Plus size={16} /> {t("suppliers.add")}
             </button>
@@ -445,6 +487,68 @@ export default function SuppliersPage() {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-text-primary">{t("suppliers.import_excel")}</h2>
+              <button onClick={closeImportModal} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+            </div>
+
+            {!importResult ? (
+              <div className="space-y-4">
+                <p className="text-sm text-text-secondary">{t("suppliers.import_description")}</p>
+                <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
+                  <p className="text-xs font-medium text-text-muted mb-2">{t("suppliers.import_columns")}</p>
+                  <p className="text-xs text-text-secondary font-mono">name, contact_name, email, phone, address, city, country, payment_terms, notes</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("suppliers.import_file")}</label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={e => setImportFile(e.target.files?.[0] || null)}
+                    className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-accent file:text-white file:cursor-pointer"
+                  />
+                </div>
+                {importError && (
+                  <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{importError}</p>
+                )}
+                <div className="flex gap-3 justify-end">
+                  <button type="button" onClick={closeImportModal} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
+                  <button onClick={handleImport} disabled={!importFile || importing} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                    {importing && <Loader2 size={14} className="animate-spin" />}
+                    {t("suppliers.import_start")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-green-400/10 border border-green-400/20 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-green-400">{t("suppliers.import_success", { count: String(importResult.imported) })}</p>
+                </div>
+                {importResult.skipped > 0 && (
+                  <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-amber-400 mb-2">{t("suppliers.import_skipped", { count: String(importResult.skipped) })}</p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {importResult.skippedDetails.map((s, i) => (
+                        <p key={i} className="text-xs text-text-secondary">
+                          Row {s.row}: <span className="font-medium">{s.name}</span> — {s.reason}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button onClick={closeImportModal} className="w-full px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">
+                  {t("common.close")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Supplier form modal */}
       {showForm && (

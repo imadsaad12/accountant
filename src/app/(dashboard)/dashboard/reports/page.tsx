@@ -23,6 +23,7 @@ interface PLReport {
   invoiceCount: number;
   totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number; totalPaid: number; totalPending: number; paidCount: number; partialCount: number };
   totalSupplierBills: number;
+  oneTimeExpenseTotal: number;
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -55,6 +56,7 @@ interface ComprehensiveReport {
   receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string; periodPayment: number; totalPaidToDate: number }[]; total: number };
   totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number; totalPaid: number; totalPending: number; paidCount: number; partialCount: number };
   totalSupplierBills: number;
+  oneTimeExpenseTotal: number;
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -191,8 +193,8 @@ export default function ReportsPage() {
           ["Total Pending", fmt(pl.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(pl.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(pl.totalSalesInPeriod.grossProfit)],
-          (() => { const co = pl.totalExpenses - (pl.expensesByCategory.supplier_bill || 0) + pl.totalSupplierBills; return ["Cash Out (Expenses + Supplier Bills)", fmt(co)]; })(),
-          (() => { const co = pl.totalExpenses - (pl.expensesByCategory.supplier_bill || 0) + pl.totalSupplierBills; return ["Net Profit (Paid − Cash Out)", fmt(pl.totalSalesInPeriod.totalPaid - co)]; })(),
+          (() => { const co = pl.oneTimeExpenseTotal + pl.totalSupplierBills; return ["Cash Out (One-Time Expenses + Supplier Bills)", fmt(co)]; })(),
+          (() => { const co = pl.oneTimeExpenseTotal + pl.totalSupplierBills; return ["Net Profit (Paid − Cash Out)", fmt(pl.totalSalesInPeriod.totalPaid - co)]; })(),
           ["Invoice Count", `${pl.totalSalesInPeriod.invoiceCount} (${pl.totalSalesInPeriod.paidCount} paid, ${pl.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
@@ -211,8 +213,8 @@ export default function ReportsPage() {
           ["Total Pending", fmt(cr.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(cr.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(cr.totalSalesInPeriod.grossProfit)],
-          (() => { const co = cr.summary.totalExpenses - (cr.expenses.byCategory.supplier_bill || 0) + cr.totalSupplierBills; return ["Cash Out (Expenses + Supplier Bills)", fmt(co)]; })(),
-          (() => { const co = cr.summary.totalExpenses - (cr.expenses.byCategory.supplier_bill || 0) + cr.totalSupplierBills; return ["Net Profit (Paid − Cash Out)", fmt(cr.totalSalesInPeriod.totalPaid - co)]; })(),
+          (() => { const co = cr.oneTimeExpenseTotal + cr.totalSupplierBills; return ["Cash Out (One-Time Expenses + Supplier Bills)", fmt(co)]; })(),
+          (() => { const co = cr.oneTimeExpenseTotal + cr.totalSupplierBills; return ["Net Profit (Paid − Cash Out)", fmt(cr.totalSalesInPeriod.totalPaid - co)]; })(),
           ["Invoice Count", `${cr.totalSalesInPeriod.invoiceCount} (${cr.totalSalesInPeriod.paidCount} paid, ${cr.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
@@ -429,7 +431,7 @@ export default function ReportsPage() {
         {!loading && report?.type === "pl" && (() => {
           const pl = report as PLReport;
           const isProfit = pl.netProfit >= 0;
-          const plCashOut = pl.totalExpenses - (pl.expensesByCategory.supplier_bill || 0) + pl.totalSupplierBills;
+          const plCashOut = pl.oneTimeExpenseTotal + pl.totalSupplierBills;
           return (
             <div className="space-y-4">
               {excludedCategories.size > 0 && (
@@ -558,7 +560,7 @@ export default function ReportsPage() {
                       <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.revenue > 0 ? pct(pl.totalSalesInPeriod.grossProfit, pl.totalSalesInPeriod.revenue) : "—"} margin</div>
                     </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3 border border-orange-500/20">
-                      <div className="text-xs text-text-muted mb-1">Cash Out (Expenses + Supplier Bills)</div>
+                      <div className="text-xs text-text-muted mb-1">Cash Out (One-Time Expenses + Supplier Bills)</div>
                       <div className="text-lg font-bold text-orange-400">{fmt(plCashOut)}</div>
                     </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
@@ -652,7 +654,7 @@ export default function ReportsPage() {
         {!loading && report?.type === "comprehensive" && (() => {
           const cr = report as ComprehensiveReport;
           const isProfit = cr.summary.netProfit >= 0;
-          const crCashOut = cr.summary.totalExpenses - (cr.expenses.byCategory.supplier_bill || 0) + cr.totalSupplierBills;
+          const crCashOut = cr.oneTimeExpenseTotal + cr.totalSupplierBills;
           function Eg({ text }: { text: string }) {
             return (
               <div className="mt-2 px-3 py-2 bg-dark-bg/60 border border-dark-border/50 rounded-lg text-xs text-text-muted leading-relaxed">
@@ -707,7 +709,7 @@ export default function ReportsPage() {
                       <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
                     </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3 border border-orange-500/20">
-                      <div className="text-xs text-text-muted mb-1">Cash Out (Expenses + Supplier Bills)</div>
+                      <div className="text-xs text-text-muted mb-1">Cash Out (One-Time Expenses + Supplier Bills)</div>
                       <div className="text-lg font-bold text-orange-400">{fmt(crCashOut)}</div>
                     </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
