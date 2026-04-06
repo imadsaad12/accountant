@@ -65,13 +65,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     remaining = parseFloat((remaining - paymentAmount).toFixed(2));
   }
 
+  // After applying to invoices, apply remaining to pendingBalance
+  let appliedToPending = 0;
+  if (remaining > 0 && client.pendingBalance > 0) {
+    appliedToPending = parseFloat(Math.min(remaining, client.pendingBalance).toFixed(2));
+    remaining = parseFloat((remaining - appliedToPending).toFixed(2));
+  }
+
   const totalApplied = parseFloat((amount - remaining).toFixed(2));
 
-  // If there's remaining amount after all invoices are paid, add to client balance
+  // Update client: reduce pendingBalance and/or add excess to balance
+  const clientUpdate: { pendingBalance?: { decrement: number }; balance?: { increment: number } } = {};
+  if (appliedToPending > 0) {
+    clientUpdate.pendingBalance = { decrement: appliedToPending };
+  }
   if (remaining > 0) {
+    clientUpdate.balance = { increment: remaining };
+  }
+  if (Object.keys(clientUpdate).length > 0) {
     await prisma.client.update({
       where: { id: clientId },
-      data: { balance: { increment: remaining } },
+      data: clientUpdate,
     });
   }
 

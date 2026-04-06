@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Eye, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, ChevronUp, ChevronDown, Loader2, Eye, Download, Upload } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -19,6 +19,7 @@ interface Client {
   taxId: string | null;
   notes: string | null;
   balance: number;
+  pendingBalance: number;
   _count?: { invoices: number };
   totalInvoiced: number;
   totalPaid: number;
@@ -78,6 +79,7 @@ export default function ClientsPage() {
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -188,7 +190,7 @@ export default function ClientsPage() {
       if (editing) {
         patchClient({ id: editing.id, ...form });
       } else {
-        setClients(prev => [{ ...data, balance: 0, totalInvoiced: 0, totalPaid: 0, totalPending: 0, _count: { invoices: 0 } }, ...prev]);
+        setClients(prev => [{ ...data, balance: 0, pendingBalance: 0, totalInvoiced: 0, totalPaid: 0, totalPending: 0, _count: { invoices: 0 } }, ...prev]);
       }
       setShowForm(false);
     } finally {
@@ -198,14 +200,19 @@ export default function ClientsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("clients.delete_confirm"))) return;
-    const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json();
-      alert(data.error || t("common.error"));
-      return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || t("common.error"));
+        return;
+      }
+      setClients(prev => prev.filter(c => c.id !== id));
+      if (detailClient?.id === id) setDetailClient(null);
+    } finally {
+      setDeletingId(null);
     }
-    setClients(prev => prev.filter(c => c.id !== id));
-    if (detailClient?.id === id) setDetailClient(null);
   }
 
   async function handleBulkPayment(e: React.FormEvent) {
@@ -359,7 +366,7 @@ export default function ClientsPage() {
           new Date(p.date).toLocaleDateString("en-GB"),
           fmt(p.applied),
           p.method,
-          p.invoices.map(inv => `#${inv.invoiceNumber} (${fmt(inv.amount)})`).join(", "),
+          p.invoices.length === 0 ? "—" : p.invoices.map(inv => `#${inv.invoiceNumber} (${fmt(inv.amount)})`).join(", "),
           p.reference || p.note || "-",
         ]),
         styles: { fontSize: 8 },
@@ -368,6 +375,43 @@ export default function ClientsPage() {
     }
 
     doc.save(`${detailClient.name}-invoices.pdf`);
+  }
+
+  // Import state
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; skippedDetails: { row: number; name: string; reason: string }[]; importedNames: string[] } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  async function handleImport() {
+    if (!importFile) return;
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      const res = await fetch("/api/clients/import", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportError(data.error || t("common.error"));
+        return;
+      }
+      setImportResult(data);
+      loadClients();
+    } catch {
+      setImportError(t("common.error"));
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function closeImportModal() {
+    setShowImport(false);
+    setImportFile(null);
+    setImportResult(null);
+    setImportError(null);
   }
 
   const [exportingList, setExportingList] = useState(false);
@@ -419,6 +463,11 @@ export default function ClientsPage() {
           <button onClick={exportListPDF} disabled={exportingList} className="flex items-center gap-1.5 px-3 py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-sm font-medium">
             {exportingList ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t("clients.export_pdf")}
           </button>
+          {canEdit && (
+            <button onClick={() => setShowImport(true)} className="flex items-center gap-1.5 px-3 py-2 bg-dark-card text-text-secondary border border-dark-border rounded-lg hover:bg-dark-card-hover text-sm font-medium">
+              <Upload size={16} /> {t("clients.import_excel")}
+            </button>
+          )}
           {canEdit && (
             <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
               <Plus size={16} /> {t("clients.add")}
@@ -504,6 +553,68 @@ export default function ClientsPage() {
         </div>
       )}
 
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-text-primary">{t("clients.import_excel")}</h2>
+              <button onClick={closeImportModal} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+            </div>
+
+            {!importResult ? (
+              <div className="space-y-4">
+                <p className="text-sm text-text-secondary">{t("clients.import_description")}</p>
+                <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
+                  <p className="text-xs font-medium text-text-muted mb-2">{t("clients.import_columns")}</p>
+                  <p className="text-xs text-text-secondary font-mono">name, email, phone, address, city, country, notes, balance, pending</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("clients.import_file")}</label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={e => setImportFile(e.target.files?.[0] || null)}
+                    className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-accent file:text-white file:cursor-pointer"
+                  />
+                </div>
+                {importError && (
+                  <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{importError}</p>
+                )}
+                <div className="flex gap-3 justify-end">
+                  <button type="button" onClick={closeImportModal} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
+                  <button onClick={handleImport} disabled={!importFile || importing} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                    {importing && <Loader2 size={14} className="animate-spin" />}
+                    {t("clients.import_start")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-green-400/10 border border-green-400/20 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-green-400">{t("clients.import_success", { count: String(importResult.imported) })}</p>
+                </div>
+                {importResult.skipped > 0 && (
+                  <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-amber-400 mb-2">{t("clients.import_skipped", { count: String(importResult.skipped) })}</p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {importResult.skippedDetails.map((s, i) => (
+                        <p key={i} className="text-xs text-text-secondary">
+                          Row {s.row}: <span className="font-medium">{s.name}</span> — {s.reason}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button onClick={closeImportModal} className="w-full px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">
+                  {t("common.close")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Detail Modal */}
       {detailClient && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -563,31 +674,39 @@ export default function ClientsPage() {
               {paymentResult && (
                 <div className="bg-green-400/10 border border-green-400/20 rounded-lg p-4">
                   <p className="text-sm font-semibold text-green-400 mb-3">{t("clients.bulk_payment.success")}</p>
-                  {paymentResult.payments.filter(p => p.newStatus === "paid").length > 0 && (
+                  {paymentResult.payments.length === 0 ? (
                     <div className="mb-3">
-                      <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.invoices_closed")}</p>
-                      <div className="space-y-1">
-                        {paymentResult.payments.filter(p => p.newStatus === "paid").map(p => (
-                          <div key={p.invoiceId} className="flex justify-between text-xs bg-green-400/10 border border-green-400/20 rounded px-2 py-1">
-                            <span className="text-text-secondary">#{p.invoiceNumber}</span>
-                            <span className="text-green-400 font-medium">{fmt(p.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <p className="text-xs text-text-muted">{t("clients.bulk_payment.affected_invoices")}: —</p>
                     </div>
-                  )}
-                  {paymentResult.payments.filter(p => p.newStatus === "partially_paid").length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.partial_invoice")}</p>
-                      <div className="space-y-1">
-                        {paymentResult.payments.filter(p => p.newStatus === "partially_paid").map(p => (
-                          <div key={p.invoiceId} className="flex justify-between text-xs bg-amber-400/10 border border-amber-400/20 rounded px-2 py-1">
-                            <span className="text-text-secondary">#{p.invoiceNumber}</span>
-                            <span className="text-amber-400 font-medium">{fmt(p.amount)}</span>
+                  ) : (
+                    <>
+                      {paymentResult.payments.filter(p => p.newStatus === "paid").length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.invoices_closed")}</p>
+                          <div className="space-y-1">
+                            {paymentResult.payments.filter(p => p.newStatus === "paid").map(p => (
+                              <div key={p.invoiceId} className="flex justify-between text-xs bg-green-400/10 border border-green-400/20 rounded px-2 py-1">
+                                <span className="text-text-secondary">#{p.invoiceNumber}</span>
+                                <span className="text-green-400 font-medium">{fmt(p.amount)}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                        </div>
+                      )}
+                      {paymentResult.payments.filter(p => p.newStatus === "partially_paid").length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.partial_invoice")}</p>
+                          <div className="space-y-1">
+                            {paymentResult.payments.filter(p => p.newStatus === "partially_paid").map(p => (
+                              <div key={p.invoiceId} className="flex justify-between text-xs bg-amber-400/10 border border-amber-400/20 rounded px-2 py-1">
+                                <span className="text-text-secondary">#{p.invoiceNumber}</span>
+                                <span className="text-amber-400 font-medium">{fmt(p.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                   {paymentResult.remaining > 0 && (
                     <p className="text-xs text-blue-400 mt-2">
@@ -660,11 +779,15 @@ export default function ClientsPage() {
                             <td className="px-3 py-2 text-sm text-right text-green-400 font-medium">{fmt(p.applied)}</td>
                             <td className="px-3 py-2 text-sm text-right text-text-secondary">{t(`payments.method.${p.method}` as Parameters<typeof t>[0])}</td>
                             <td className="px-3 py-2 text-sm text-text-secondary">
-                              {p.invoices.map(inv => (
-                                <span key={inv.invoiceId} className="inline-block mr-1.5 mb-0.5 px-1.5 py-0.5 rounded text-xs bg-dark-bg border border-dark-border">
-                                  #{inv.invoiceNumber} <span className="text-green-400">{fmt(inv.amount)}</span>
-                                </span>
-                              ))}
+                              {p.invoices.length === 0 ? (
+                                <span className="text-text-muted">—</span>
+                              ) : (
+                                p.invoices.map(inv => (
+                                  <span key={inv.invoiceId} className="inline-block mr-1.5 mb-0.5 px-1.5 py-0.5 rounded text-xs bg-dark-bg border border-dark-border">
+                                    #{inv.invoiceNumber} <span className="text-green-400">{fmt(inv.amount)}</span>
+                                  </span>
+                                ))
+                              )}
                             </td>
                             <td className="px-3 py-2 text-sm text-text-muted max-w-[150px] truncate">{p.reference || p.note || "-"}</td>
                           </tr>
@@ -676,7 +799,7 @@ export default function ClientsPage() {
               )}
 
               {/* Collapsable Record Payment Form */}
-              {detailClient.totalPending > 0 && (
+              {(detailClient.totalPending > 0 || canEdit) && (
                 <div className="bg-dark-bg border border-dark-border/50 rounded-lg">
                   <button
                     onClick={() => setShowPaymentForm(!showPaymentForm)}
@@ -750,31 +873,39 @@ export default function ClientsPage() {
                       ) : (
                         <div>
                           <p className="text-sm font-semibold text-green-400 mb-3">{t("clients.bulk_payment.success")}</p>
-                          {paymentResult.payments.filter(p => p.newStatus === "paid").length > 0 && (
+                          {paymentResult.payments.length === 0 ? (
                             <div className="mb-3">
-                              <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.invoices_closed")}</p>
-                              <div className="space-y-1">
-                                {paymentResult.payments.filter(p => p.newStatus === "paid").map(p => (
-                                  <div key={p.invoiceId} className="flex justify-between text-xs bg-green-400/10 border border-green-400/20 rounded px-2 py-1">
-                                    <span className="text-text-secondary">#{p.invoiceNumber}</span>
-                                    <span className="text-green-400 font-medium">{fmt(p.amount)}</span>
-                                  </div>
-                                ))}
-                              </div>
+                              <p className="text-xs text-text-muted">{t("clients.bulk_payment.affected_invoices")}: —</p>
                             </div>
-                          )}
-                          {paymentResult.payments.filter(p => p.newStatus === "partially_paid").length > 0 && (
-                            <div className="mb-3">
-                              <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.partial_invoice")}</p>
-                              <div className="space-y-1">
-                                {paymentResult.payments.filter(p => p.newStatus === "partially_paid").map(p => (
-                                  <div key={p.invoiceId} className="flex justify-between text-xs bg-amber-400/10 border border-amber-400/20 rounded px-2 py-1">
-                                    <span className="text-text-secondary">#{p.invoiceNumber}</span>
-                                    <span className="text-amber-400 font-medium">{fmt(p.amount)}</span>
+                          ) : (
+                            <>
+                              {paymentResult.payments.filter(p => p.newStatus === "paid").length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.invoices_closed")}</p>
+                                  <div className="space-y-1">
+                                    {paymentResult.payments.filter(p => p.newStatus === "paid").map(p => (
+                                      <div key={p.invoiceId} className="flex justify-between text-xs bg-green-400/10 border border-green-400/20 rounded px-2 py-1">
+                                        <span className="text-text-secondary">#{p.invoiceNumber}</span>
+                                        <span className="text-green-400 font-medium">{fmt(p.amount)}</span>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            </div>
+                                </div>
+                              )}
+                              {paymentResult.payments.filter(p => p.newStatus === "partially_paid").length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-xs font-medium text-text-muted mb-1">{t("clients.bulk_payment.partial_invoice")}</p>
+                                  <div className="space-y-1">
+                                    {paymentResult.payments.filter(p => p.newStatus === "partially_paid").map(p => (
+                                      <div key={p.invoiceId} className="flex justify-between text-xs bg-amber-400/10 border border-amber-400/20 rounded px-2 py-1">
+                                        <span className="text-text-secondary">#{p.invoiceNumber}</span>
+                                        <span className="text-amber-400 font-medium">{fmt(p.amount)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
                           {paymentResult.remaining > 0 && (
                             <p className="text-xs text-amber-400 mt-2">
@@ -844,7 +975,9 @@ export default function ClientsPage() {
                       <Eye size={16} />
                     </button>
                     <button onClick={() => openEdit(client)} className="text-text-muted hover:text-accent p-1"><Pencil size={16} /></button>
-                    <button onClick={() => handleDelete(client.id)} className="text-text-muted hover:text-danger p-1"><Trash2 size={16} /></button>
+                    <button onClick={() => handleDelete(client.id)} disabled={deletingId === client.id} className="text-text-muted hover:text-danger p-1 disabled:opacity-60">
+                      {deletingId === client.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
                   </td>
                 )}
               </tr>

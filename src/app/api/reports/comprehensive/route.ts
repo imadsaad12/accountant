@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   const toDate = new Date(toStr + "T23:59:59Z");
   const orgId = session.organizationId;
 
-  const [invoices, expenses, employees, bills, receivedPayments, allInvoicePayments] = await Promise.all([
+  const [invoices, expenses, employees, bills, receivedPayments, allInvoicePayments, allBillPayments] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
       include: {
@@ -99,6 +99,11 @@ export async function GET(req: NextRequest) {
     prisma.payment.findMany({
       where: { organizationId: orgId },
       select: { invoiceId: true, amount: true },
+    }),
+    // All supplier bill payments in period (all types, for cash out calculation)
+    prisma.supplierBillPayment.findMany({
+      where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
+      select: { amount: true },
     }),
   ]);
 
@@ -456,6 +461,7 @@ export async function GET(req: NextRequest) {
       paidCount: paidInvoiceCount,
       partialCount: partialInvoiceCount,
     },
+    totalSupplierBills: parseFloat(allBillPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)),
     mostSoldProducts,
   });
 }

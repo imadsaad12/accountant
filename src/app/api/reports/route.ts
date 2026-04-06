@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
   if (type === "pl") {
     // Profit & Loss
-    const [payments, allExpenses, employees, paidBills, periodInvoices] = await Promise.all([
+    const [payments, allExpenses, employees, paidBills, allBillPayments, periodInvoices] = await Promise.all([
       prisma.payment.findMany({
         where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
         select: {
@@ -101,6 +101,10 @@ export async function GET(req: NextRequest) {
       }),
       prisma.supplierBillPayment.findMany({
         where: { organizationId: orgId, date: { gte: fromDate, lte: toDate }, bill: { billType: "expense" } },
+        select: { amount: true },
+      }),
+      prisma.supplierBillPayment.findMany({
+        where: { organizationId: orgId, date: { gte: fromDate, lte: toDate } },
         select: { amount: true },
       }),
       prisma.invoice.findMany({
@@ -260,6 +264,7 @@ export async function GET(req: NextRequest) {
         paidCount: paidInvoiceCount,
         partialCount: partialInvoiceCount,
       },
+      totalSupplierBills: parseFloat(allBillPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)),
       mostSoldProducts,
     });
   }

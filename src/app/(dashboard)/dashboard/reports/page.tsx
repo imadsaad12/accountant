@@ -22,6 +22,7 @@ interface PLReport {
   netProfit: number;
   invoiceCount: number;
   totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number; totalPaid: number; totalPending: number; paidCount: number; partialCount: number };
+  totalSupplierBills: number;
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -53,6 +54,7 @@ interface ComprehensiveReport {
   payableAging: { rows: { billId: string; supplier: string; description: string; amount: number; amountPaid: number; remaining: number; daysOverdue: number; bucket: string; status: string; dueDate: string | null; periodPayment: number; totalPaidToDate: number }[]; total: number };
   receivedPayments: { rows: { id: string; date: string; amount: number; method: string; reference: string | null; invoiceNumber: string; invoiceTotal: number; client: string; periodPayment: number; totalPaidToDate: number }[]; total: number };
   totalSalesInPeriod: { revenue: number; cogs: number; grossProfit: number; invoiceCount: number; totalPaid: number; totalPending: number; paidCount: number; partialCount: number };
+  totalSupplierBills: number;
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -189,16 +191,37 @@ export default function ReportsPage() {
           ["Total Pending", fmt(pl.totalSalesInPeriod.totalPending)],
           ["Cost of Goods Sold (COGS)", `(${fmt(pl.totalSalesInPeriod.cogs)})`],
           ["Gross Profit", fmt(pl.totalSalesInPeriod.grossProfit)],
-          ["Net Profit (Gross − Expenses)", fmt(pl.totalSalesInPeriod.grossProfit - pl.totalExpenses)],
+          (() => { const co = pl.totalExpenses - (pl.expensesByCategory.supplier_bill || 0) + pl.totalSupplierBills; return ["Cash Out (Expenses + Supplier Bills)", fmt(co)]; })(),
+          (() => { const co = pl.totalExpenses - (pl.expensesByCategory.supplier_bill || 0) + pl.totalSupplierBills; return ["Net Profit (Paid − Cash Out)", fmt(pl.totalSalesInPeriod.totalPaid - co)]; })(),
           ["Invoice Count", `${pl.totalSalesInPeriod.invoiceCount} (${pl.totalSalesInPeriod.paidCount} paid, ${pl.totalSalesInPeriod.partialCount} partial)`],
         ],
         theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
       });
     } else if (report.type === "comprehensive") {
       const cr = report as ComprehensiveReport;
-      // 1. P&L Summary
+      // 1. Total Sales in Period (moved to top)
+      doc.setFontSize(11); doc.setTextColor(51, 200, 102);
+      doc.text("Total Sales in Period", 14, headerY + 7);
       autoTable(doc, {
-        startY: headerY + 7,
+        startY: headerY + 11,
+        head: [["Metric", "Amount"]],
+        body: [
+          ["Total Revenue (All Invoices)", fmt(cr.totalSalesInPeriod.revenue)],
+          ["Total Paid", fmt(cr.totalSalesInPeriod.totalPaid)],
+          ["Total Pending", fmt(cr.totalSalesInPeriod.totalPending)],
+          ["Cost of Goods Sold (COGS)", `(${fmt(cr.totalSalesInPeriod.cogs)})`],
+          ["Gross Profit", fmt(cr.totalSalesInPeriod.grossProfit)],
+          (() => { const co = cr.summary.totalExpenses - (cr.expenses.byCategory.supplier_bill || 0) + cr.totalSupplierBills; return ["Cash Out (Expenses + Supplier Bills)", fmt(co)]; })(),
+          (() => { const co = cr.summary.totalExpenses - (cr.expenses.byCategory.supplier_bill || 0) + cr.totalSupplierBills; return ["Net Profit (Paid − Cash Out)", fmt(cr.totalSalesInPeriod.totalPaid - co)]; })(),
+          ["Invoice Count", `${cr.totalSalesInPeriod.invoiceCount} (${cr.totalSalesInPeriod.paidCount} paid, ${cr.totalSalesInPeriod.partialCount} partial)`],
+        ],
+        theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 9 },
+      });
+      // 2. P&L Summary
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const plStartY = (doc as any).lastAutoTable.finalY + 8;
+      autoTable(doc, {
+        startY: plStartY,
         head: [["Profit & Loss", "Amount"]],
         body: [
           ["Total Revenue (Collected)", fmt(cr.summary.totalRevenue)],
@@ -288,26 +311,7 @@ export default function ReportsPage() {
           theme: "striped", headStyles: { fillColor: [37, 99, 235] }, styles: { fontSize: 8 },
         });
       }
-      // 6. Total Sales in Period
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const totalSalesY = (doc as any).lastAutoTable?.finalY ?? 220;
-      doc.setFontSize(11); doc.setTextColor(51, 200, 102);
-      doc.text(`Total Sales in Period — Revenue: ${fmt(cr.totalSalesInPeriod.revenue)}, COGS: ${fmt(cr.totalSalesInPeriod.cogs)}, Gross Profit: ${fmt(cr.totalSalesInPeriod.grossProfit)}`, 14, totalSalesY + 8);
-      autoTable(doc, {
-        startY: totalSalesY + 12,
-        head: [["Metric", "Amount"]],
-        body: [
-          ["Total Revenue (All Invoices)", fmt(cr.totalSalesInPeriod.revenue)],
-          ["Total Paid", fmt(cr.totalSalesInPeriod.totalPaid)],
-          ["Total Pending", fmt(cr.totalSalesInPeriod.totalPending)],
-          ["Cost of Goods Sold (COGS)", `(${fmt(cr.totalSalesInPeriod.cogs)})`],
-          ["Gross Profit", fmt(cr.totalSalesInPeriod.grossProfit)],
-          ["Net Profit (Gross − Expenses)", fmt(cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses)],
-          ["Invoice Count", `${cr.totalSalesInPeriod.invoiceCount} (${cr.totalSalesInPeriod.paidCount} paid, ${cr.totalSalesInPeriod.partialCount} partial)`],
-        ],
-        theme: "striped", headStyles: { fillColor: [51, 200, 102] }, styles: { fontSize: 8 },
-      });
-      // 7. Most Sold Products
+      // 6. Most Sold Products
       if (cr.mostSoldProducts.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const productsY = (doc as any).lastAutoTable.finalY + 8;
@@ -425,6 +429,7 @@ export default function ReportsPage() {
         {!loading && report?.type === "pl" && (() => {
           const pl = report as PLReport;
           const isProfit = pl.netProfit >= 0;
+          const plCashOut = pl.totalExpenses - (pl.expensesByCategory.supplier_bill || 0) + pl.totalSupplierBills;
           return (
             <div className="space-y-4">
               {excludedCategories.size > 0 && (
@@ -528,7 +533,7 @@ export default function ReportsPage() {
                   <p className="text-xs text-text-muted mt-0.5">Includes all invoices (all statuses) created in this period. COGS deducted to show gross profit.</p>
                 </div>
                 <div className="px-4 py-4">
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
                     <div className="bg-dark-bg/50 rounded-lg p-3">
                       <div className="text-xs text-text-muted mb-1">Revenue</div>
                       <div className="text-lg font-bold text-emerald-400">{fmt(pl.totalSalesInPeriod.revenue)}</div>
@@ -552,10 +557,14 @@ export default function ReportsPage() {
                       <div className={`text-lg font-bold ${pl.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(pl.totalSalesInPeriod.grossProfit)}</div>
                       <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.revenue > 0 ? pct(pl.totalSalesInPeriod.grossProfit, pl.totalSalesInPeriod.revenue) : "—"} margin</div>
                     </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3 border border-orange-500/20">
+                      <div className="text-xs text-text-muted mb-1">Cash Out (Expenses + Supplier Bills)</div>
+                      <div className="text-lg font-bold text-orange-400">{fmt(plCashOut)}</div>
+                    </div>
                     <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
-                      <div className="text-xs text-text-muted mb-1">Net Profit (Gross − Expenses)</div>
-                      <div className={`text-lg font-bold ${pl.totalSalesInPeriod.grossProfit - pl.totalExpenses >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(pl.totalSalesInPeriod.grossProfit - pl.totalExpenses)}</div>
-                      <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.revenue > 0 ? pct(pl.totalSalesInPeriod.grossProfit - pl.totalExpenses, pl.totalSalesInPeriod.revenue) : "—"} margin</div>
+                      <div className="text-xs text-text-muted mb-1">Net Profit (Paid − Cash Out)</div>
+                      <div className={`text-lg font-bold ${pl.totalSalesInPeriod.totalPaid - plCashOut >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(pl.totalSalesInPeriod.totalPaid - plCashOut)}</div>
+                      <div className="text-xs text-text-muted mt-1">{pl.totalSalesInPeriod.totalPaid > 0 ? pct(pl.totalSalesInPeriod.totalPaid - plCashOut, pl.totalSalesInPeriod.totalPaid) : "—"} margin</div>
                     </div>
                   </div>
                 </div>
@@ -643,6 +652,7 @@ export default function ReportsPage() {
         {!loading && report?.type === "comprehensive" && (() => {
           const cr = report as ComprehensiveReport;
           const isProfit = cr.summary.netProfit >= 0;
+          const crCashOut = cr.summary.totalExpenses - (cr.expenses.byCategory.supplier_bill || 0) + cr.totalSupplierBills;
           function Eg({ text }: { text: string }) {
             return (
               <div className="mt-2 px-3 py-2 bg-dark-bg/60 border border-dark-border/50 rounded-lg text-xs text-text-muted leading-relaxed">
@@ -665,37 +675,46 @@ export default function ReportsPage() {
                   <span>Excluding: {Array.from(excludedCategories).map(c => EXPENSE_CATEGORIES[c] || c).join(", ")}</span>
                 </div>
               )}
-              {/* Executive Summary */}
-              <div>
-                <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">Executive Summary</h2>
-                <Eg text="Revenue comes from two sources: payments on invoices issued this period ($3,000 collected from new invoices) plus payments received on older invoices ($1,000 from last month's invoice) = $4,000 total. Products cost $800 to source (COGS, full cost even if invoice is only partially paid). Gross Profit = $4,000 − $800 = $3,200. After $1,200 in salaries (minus any advances) and rent, Net Profit = $2,000." />
-                <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
-                    <div className="text-xs text-text-muted mb-1">Revenue</div>
-                    <div className="text-lg font-bold text-emerald-400">{fmt(cr.summary.totalRevenue)}</div>
-                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.invoiceCount} invoices</div>
-                  </div>
-                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
-                    <div className="text-xs text-text-muted mb-1">COGS</div>
-                    <div className="text-lg font-bold text-red-400">{fmt(cr.summary.totalCogs)}</div>
-                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.cogsMargin}% of revenue</div>
-                  </div>
-                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
-                    <div className="text-xs text-text-muted mb-1">Gross Profit</div>
-                    <div className="text-lg font-bold text-blue-400">{fmt(cr.summary.grossProfit)}</div>
-                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.grossMargin}% margin</div>
-                  </div>
-                  <div className="bg-dark-card border border-dark-border rounded-xl p-4">
-                    <div className="text-xs text-text-muted mb-1">Expenses</div>
-                    <div className="text-lg font-bold text-orange-400">{fmt(cr.summary.totalExpenses)}</div>
-                  </div>
-                  <div className={`rounded-xl border p-4 col-span-2 sm:col-span-1 ${isProfit ? "bg-emerald-500/5 border-emerald-500/20" : "bg-red-500/5 border-red-500/20"}`}>
-                    <div className="text-xs text-text-muted mb-1">Net Profit</div>
-                    <div className={`text-lg font-bold flex items-center gap-1 ${isProfit ? "text-emerald-400" : "text-red-400"}`}>
-                      {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                      {fmt(cr.summary.netProfit)}
+              {/* Total Sales in Period */}
+              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
+                  <h2 className="text-sm font-semibold text-emerald-400">Total Sales in Period</h2>
+                  <Eg text="Includes all invoices (draft, sent, partially paid, paid) created in this period. COGS is deducted to show gross profit. For example: 5 invoices totaling $5,000 with COGS of $2,000 = $3,000 gross profit." />
+                </div>
+                <div className="px-4 py-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Revenue</div>
+                      <div className="text-lg font-bold text-emerald-400">{fmt(cr.totalSalesInPeriod.revenue)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.invoiceCount} invoices</div>
                     </div>
-                    <div className="text-xs text-text-muted mt-0.5">{cr.summary.netMargin}% net margin</div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Paid</div>
+                      <div className="text-lg font-bold text-green-400">{fmt(cr.totalSalesInPeriod.totalPaid)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.paidCount} paid · {cr.totalSalesInPeriod.partialCount} partial</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Pending</div>
+                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.totalPending > 0 ? "text-amber-400" : "text-text-muted"}`}>{fmt(cr.totalSalesInPeriod.totalPending)}</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">COGS</div>
+                      <div className="text-lg font-bold text-red-400">{fmt(cr.totalSalesInPeriod.cogs)}</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3">
+                      <div className="text-xs text-text-muted mb-1">Gross Profit</div>
+                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.grossProfit)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3 border border-orange-500/20">
+                      <div className="text-xs text-text-muted mb-1">Cash Out (Expenses + Supplier Bills)</div>
+                      <div className="text-lg font-bold text-orange-400">{fmt(crCashOut)}</div>
+                    </div>
+                    <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
+                      <div className="text-xs text-text-muted mb-1">Net Profit (Paid − Cash Out)</div>
+                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.totalPaid - crCashOut >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.totalPaid - crCashOut)}</div>
+                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.totalPaid > 0 ? pct(cr.totalSalesInPeriod.totalPaid - crCashOut, cr.totalSalesInPeriod.totalPaid) : "—"} margin</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -920,46 +939,6 @@ export default function ReportsPage() {
                     </table>
                   </div>
                 )}
-              </div>
-
-              {/* Total Sales in Period */}
-              <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
-                  <h2 className="text-sm font-semibold text-emerald-400">Total Sales in Period</h2>
-                  <Eg text="Includes all invoices (draft, sent, partially paid, paid) created in this period. COGS is deducted to show gross profit. For example: 5 invoices totaling $5,000 with COGS of $2,000 = $3,000 gross profit." />
-                </div>
-                <div className="px-4 py-4">
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                    <div className="bg-dark-bg/50 rounded-lg p-3">
-                      <div className="text-xs text-text-muted mb-1">Revenue</div>
-                      <div className="text-lg font-bold text-emerald-400">{fmt(cr.totalSalesInPeriod.revenue)}</div>
-                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.invoiceCount} invoices</div>
-                    </div>
-                    <div className="bg-dark-bg/50 rounded-lg p-3">
-                      <div className="text-xs text-text-muted mb-1">Paid</div>
-                      <div className="text-lg font-bold text-green-400">{fmt(cr.totalSalesInPeriod.totalPaid)}</div>
-                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.paidCount} paid · {cr.totalSalesInPeriod.partialCount} partial</div>
-                    </div>
-                    <div className="bg-dark-bg/50 rounded-lg p-3">
-                      <div className="text-xs text-text-muted mb-1">Pending</div>
-                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.totalPending > 0 ? "text-amber-400" : "text-text-muted"}`}>{fmt(cr.totalSalesInPeriod.totalPending)}</div>
-                    </div>
-                    <div className="bg-dark-bg/50 rounded-lg p-3">
-                      <div className="text-xs text-text-muted mb-1">COGS</div>
-                      <div className="text-lg font-bold text-red-400">{fmt(cr.totalSalesInPeriod.cogs)}</div>
-                    </div>
-                    <div className="bg-dark-bg/50 rounded-lg p-3">
-                      <div className="text-xs text-text-muted mb-1">Gross Profit</div>
-                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.grossProfit)}</div>
-                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
-                    </div>
-                    <div className="bg-dark-bg/50 rounded-lg p-3 border border-blue-500/20">
-                      <div className="text-xs text-text-muted mb-1">Net Profit (Gross − Expenses)</div>
-                      <div className={`text-lg font-bold ${cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses >= 0 ? "text-blue-400" : "text-red-400"}`}>{fmt(cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses)}</div>
-                      <div className="text-xs text-text-muted mt-1">{cr.totalSalesInPeriod.revenue > 0 ? pct(cr.totalSalesInPeriod.grossProfit - cr.summary.totalExpenses, cr.totalSalesInPeriod.revenue) : "—"} margin</div>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Most Sold Products */}

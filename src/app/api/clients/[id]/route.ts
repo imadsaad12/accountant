@@ -96,7 +96,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     paymentHistory,
     totalInvoiced: parseFloat(totalInvoiced.toFixed(2)),
     totalPaid: parseFloat(totalPaid.toFixed(2)),
-    totalPending: parseFloat((totalInvoiced - totalPaid).toFixed(2)),
+    pendingBalance: client.pendingBalance || 0,
+    totalPending: parseFloat((totalInvoiced - totalPaid + (client.pendingBalance || 0)).toFixed(2)),
     invoiceCount: invoices.length,
   });
 }

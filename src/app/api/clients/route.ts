@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
   const result = clients.map(c => {
     const totalInvoiced = c.invoices.reduce((s, inv) => s + inv.total, 0);
     const totalPaid = c.invoices.reduce((s, inv) => s + inv.payments.reduce((ps, p) => ps + p.amount, 0), 0);
+    const invoicePending = parseFloat((totalInvoiced - totalPaid).toFixed(2));
     return {
       id: c.id,
       name: c.name,
@@ -47,13 +48,14 @@ export async function GET(req: NextRequest) {
       taxId: c.taxId,
       notes: c.notes,
       balance: c.balance,
+      pendingBalance: c.pendingBalance,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       organizationId: c.organizationId,
       _count: c._count,
       totalInvoiced: parseFloat(totalInvoiced.toFixed(2)),
       totalPaid: parseFloat(totalPaid.toFixed(2)),
-      totalPending: parseFloat((totalInvoiced - totalPaid).toFixed(2)),
+      totalPending: parseFloat((invoicePending + (c.pendingBalance || 0)).toFixed(2)),
     };
   });
 

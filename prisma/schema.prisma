@@ -112,6 +112,7 @@ model Client {
   taxId          String?
   notes          String?         @db.Text
   balance        Float           @default(0)
+  pendingBalance Float           @default(0)
   organizationId String
   organization   Organization    @relation(fields: [organizationId], references: [id])
   createdAt      DateTime        @default(now())
