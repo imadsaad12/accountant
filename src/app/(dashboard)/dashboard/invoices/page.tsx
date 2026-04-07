@@ -103,14 +103,14 @@ export default function InvoicesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
   const [sortField, setSortField] = useState<InvSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const defaultTaxRate = String(orgSettings.defaultTaxRate ?? 0);
-  const [form, setForm] = useState({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: "fr", notes: "", status: "draft" });
+  const [form, setForm] = useState({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: lang, notes: "", status: "draft" });
   const [items, setItems] = useState<typeof emptyItem[]>([{ ...emptyItem }]);
   const [fees, setFees] = useState<InvoiceFee[]>([]);
 
@@ -348,8 +348,18 @@ export default function InvoicesPage() {
   };
 
   async function exportPDF(invoice: Invoice, lang: string) {
-    setDownloadingId(invoice.id);
+    setDownloadingKey(`${invoice.id}-${lang}`);
     try {
+      if (lang === "ar") {
+        // Use server-side API for Arabic (requires Amiri font for proper rendering)
+        const res = await fetch("/api/invoices/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ invoiceId: invoice.id, language: "ar" }) });
+        if (!res.ok) throw new Error("Failed to generate PDF");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = `${invoice.number}-ar.pdf`; a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
       const res = await fetch(`/api/invoices/${invoice.id}`);
       if (!res.ok) throw new Error("Failed to fetch invoice");
       const fullInvoice = await res.json();
@@ -403,7 +413,7 @@ export default function InvoicesPage() {
       console.error("PDF export error:", err);
       alert(t("invoices.pdf_error"));
     } finally {
-      setDownloadingId(null);
+      setDownloadingKey(null);
     }
   }
 
@@ -463,7 +473,7 @@ export default function InvoicesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: "fr", notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
+          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: lang, notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> {t("invoices.add")}
           </button>
         )}
@@ -751,11 +761,14 @@ export default function InvoicesPage() {
 
               <div className="flex gap-2 justify-end pt-4 border-t border-dark-border">
                 <span className="text-sm text-text-muted mr-2 self-center">{t("invoices.download_pdf")}:</span>
-                <button onClick={() => exportPDF(viewInvoice, "fr")} disabled={!!downloadingId} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
-                  {downloadingId === viewInvoice.id ? <Loader2 size={12} className="animate-spin" /> : null}Français
+                <button onClick={() => exportPDF(viewInvoice, "fr")} disabled={!!downloadingKey} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
+                  {downloadingKey === `${viewInvoice.id}-fr` ? <Loader2 size={12} className="animate-spin" /> : null}Français
                 </button>
-                <button onClick={() => exportPDF(viewInvoice, "en")} disabled={!!downloadingId} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
-                  {downloadingId === viewInvoice.id ? <Loader2 size={12} className="animate-spin" /> : null}English
+                <button onClick={() => exportPDF(viewInvoice, "en")} disabled={!!downloadingKey} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
+                  {downloadingKey === `${viewInvoice.id}-en` ? <Loader2 size={12} className="animate-spin" /> : null}English
+                </button>
+                <button onClick={() => exportPDF(viewInvoice, "ar")} disabled={!!downloadingKey} className="px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium flex items-center gap-1">
+                  {downloadingKey === `${viewInvoice.id}-ar` ? <Loader2 size={12} className="animate-spin" /> : null}العربية
                 </button>
               </div>
             </div>
@@ -809,6 +822,7 @@ export default function InvoicesPage() {
                   <select value={form.language} onChange={e => setForm({ ...form, language: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
                     <option value="fr">Français</option>
                     <option value="en">English</option>
+                    <option value="ar">العربية</option>
                   </select>
                 </div>
               </div>
@@ -1089,8 +1103,8 @@ export default function InvoicesPage() {
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openViewInvoice(inv)} className="text-text-muted hover:text-accent p-1" title="View"><Eye size={16} /></button>
-                  <button onClick={() => exportPDF(inv, inv.language || "fr")} disabled={downloadingId === inv.id} className="text-text-muted hover:text-success p-1" title="Download PDF">
-                    {downloadingId === inv.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  <button onClick={() => exportPDF(inv, inv.language || "fr")} disabled={!!downloadingKey && downloadingKey.startsWith(inv.id)} className="text-text-muted hover:text-success p-1" title="Download PDF">
+                    {downloadingKey && downloadingKey.startsWith(inv.id) ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                   </button>
                   {canEdit && (
                     <button onClick={() => openEdit(inv)} className="text-text-muted hover:text-accent p-1" title="Edit"><Edit2 size={16} /></button>

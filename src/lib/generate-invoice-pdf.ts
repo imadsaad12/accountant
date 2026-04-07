@@ -1,13 +1,13 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { processArabicText } from "./arabic-pdf";
+import { processArabicText, toArabicNumerals } from "./arabic-pdf";
 import { amiriRegular } from "./fonts/amiri-regular";
 import { amiriBold } from "./fonts/amiri-bold";
 
 const translations: Record<string, Record<string, string>> = {
   en: { invoice: "INVOICE", invoiceNumber: "Invoice #", date: "Date", dueDate: "Due Date", billTo: "Bill To", description: "Description", quantity: "Quantity", unitPrice: "Unit Price", total: "Total", subtotal: "Subtotal", tax: "Tax", grandTotal: "Total Due", notes: "Notes", thankYou: "Thank you for your business!", status: "Status" },
   fr: { invoice: "FACTURE", invoiceNumber: "Facture N°", date: "Date", dueDate: "Date d'échéance", billTo: "Facturer à", description: "Description", quantity: "Quantité", unitPrice: "Prix unitaire", total: "Total", subtotal: "Sous-total", tax: "Taxe", grandTotal: "Total à payer", notes: "Notes", thankYou: "Merci pour votre confiance !", status: "Statut" },
-  ar: { invoice: "\u0641\u0627\u062a\u0648\u0631\u0629", invoiceNumber: "\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629", date: "\u0627\u0644\u062a\u0627\u0631\u064a\u062e", dueDate: "\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0627\u0633\u062a\u062d\u0642\u0627\u0642", billTo: "\u0641\u0627\u062a\u0648\u0631\u0629 \u0625\u0644\u0649", description: "\u0627\u0644\u0648\u0635\u0641", quantity: "\u0627\u0644\u0643\u0645\u064a\u0629", unitPrice: "\u0633\u0639\u0631 \u0627\u0644\u0648\u062d\u062f\u0629", total: "\u0627\u0644\u0645\u062c\u0645\u0648\u0639", subtotal: "\u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0641\u0631\u0639\u064a", tax: "\u0627\u0644\u0636\u0631\u064a\u0628\u0629", grandTotal: "\u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a", notes: "\u0645\u0644\u0627\u062d\u0638\u0627\u062a", thankYou: "\u0634\u0643\u0631\u0627\u064b \u0644\u062a\u0639\u0627\u0645\u0644\u0643\u0645 \u0645\u0639\u0646\u0627!", status: "\u0627\u0644\u062d\u0627\u0644\u0629" },
+  ar: { invoice: "فاتورة", invoiceNumber: "رقم الفاتورة", date: "التاريخ", dueDate: "تاريخ الاستحقاق", billTo: "فاتورة إلى", description: "الوصف", quantity: "الكمية", unitPrice: "سعر الوحدة", total: "المجموع", subtotal: "المجموع الفرعي", tax: "الضريبة", grandTotal: "المبلغ الإجمالي", notes: "ملاحظات", thankYou: "شكراً لتعاملكم معنا!", status: "الحالة" },
 };
 
 interface InvoiceData {
@@ -21,9 +21,16 @@ interface InvoiceData {
   total: number;
   notes: string | null;
   language: string | null;
+  currencySymbol?: string;
   client: { name: string; email?: string | null };
   items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>;
 }
+
+const statusTranslations: Record<string, Record<string, string>> = {
+  en: { draft: "DRAFT", sent: "SENT", paid: "PAID", partially_paid: "PARTIALLY PAID", overdue: "OVERDUE", cancelled: "CANCELLED" },
+  fr: { draft: "BROUILLON", sent: "ENVOYÉE", paid: "PAYÉE", partially_paid: "PARTIELLEMENT PAYÉE", overdue: "EN RETARD", cancelled: "ANNULÉE" },
+  ar: { draft: "مسودة", sent: "مرسلة", paid: "مدفوعة", partially_paid: "مدفوعة جزئياً", overdue: "متأخرة", cancelled: "ملغاة" },
+};
 
 function registerArabicFonts(doc: jsPDF) {
   doc.addFileToVFS("Amiri-Regular.ttf", amiriRegular);
@@ -36,11 +43,24 @@ export function generateInvoicePDF(invoice: InvoiceData, language?: string): Buf
   const lang = language || invoice.language || "fr";
   const t = translations[lang] || translations.fr;
   const isRTL = lang === "ar";
+  const sym = invoice.currencySymbol || "$";
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Helper to process text for Arabic
-  const txt = (s: string) => (isRTL ? processArabicText(s) : s);
+  const ar = (s: string) => (isRTL ? processArabicText(s) : s);
+  const arNum = (s: string) => (isRTL ? toArabicNumerals(s).replace(/\./g, ",") : s);
+  const arLine = (label: string, value: string) => {
+    if (!isRTL) return `${label}: ${value}`;
+    return `${ar(label)}: ${arNum(value)}`;
+  };
+  const arLineP = (label: string, detail: string, value: string) => {
+    if (!isRTL) return `${label} (${detail}): ${value}`;
+    return `${ar(label)} )${arNum(detail)}(: ${arNum(value)}`;
+  };
+  const setFont = (style: "normal" | "bold") => {
+    if (isRTL) doc.setFont("Amiri", style);
+    else doc.setFont("helvetica", style);
+  };
 
   if (isRTL) {
     registerArabicFonts(doc);
@@ -50,14 +70,13 @@ export function generateInvoicePDF(invoice: InvoiceData, language?: string): Buf
   // Header
   doc.setFontSize(24);
   doc.setTextColor(37, 99, 235);
-  if (isRTL) doc.setFont("Amiri", "bold");
-  doc.text(txt(t.invoice), isRTL ? pageWidth - 20 : 20, 30, { align: isRTL ? "right" : "left" });
+  setFont("bold");
+  doc.text(ar(t.invoice), isRTL ? pageWidth - 20 : 20, 30, { align: isRTL ? "right" : "left" });
 
   // Company info
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  if (isRTL) doc.setFont("Amiri", "normal");
-  else doc.setFont("helvetica", "normal");
+  setFont("normal");
   const companyX = isRTL ? 20 : pageWidth - 20;
   const companyAlign: "left" | "right" = isRTL ? "left" : "right";
   doc.text("Cashent", companyX, 20, { align: companyAlign });
@@ -70,40 +89,37 @@ export function generateInvoicePDF(invoice: InvoiceData, language?: string): Buf
   const detailsAlign: "left" | "right" = isRTL ? "right" : "left";
   let y = 45;
 
-  if (isRTL) doc.setFont("Amiri", "bold");
-  else doc.setFont("helvetica", "bold");
-  doc.text(txt(`${t.invoiceNumber}: ${invoice.number}`), detailsX, y, { align: detailsAlign });
+  setFont("bold");
+  doc.text(arLine(t.invoiceNumber, invoice.number), detailsX, y, { align: detailsAlign });
   y += 6;
 
-  if (isRTL) doc.setFont("Amiri", "normal");
-  else doc.setFont("helvetica", "normal");
-  doc.text(txt(`${t.date}: ${new Date(invoice.date).toLocaleDateString()}`), detailsX, y, { align: detailsAlign });
+  setFont("normal");
+  doc.text(arLine(t.date, new Date(invoice.date).toLocaleDateString()), detailsX, y, { align: detailsAlign });
   y += 6;
   if (invoice.dueDate) {
-    doc.text(txt(`${t.dueDate}: ${new Date(invoice.dueDate).toLocaleDateString()}`), detailsX, y, { align: detailsAlign });
+    doc.text(arLine(t.dueDate, new Date(invoice.dueDate).toLocaleDateString()), detailsX, y, { align: detailsAlign });
     y += 6;
   }
-  doc.text(txt(`${t.status}: ${invoice.status.toUpperCase()}`), detailsX, y, { align: detailsAlign });
+  const statusText = statusTranslations[lang]?.[invoice.status] || invoice.status.toUpperCase();
+  doc.text(arLine(t.status, statusText), detailsX, y, { align: detailsAlign });
 
   // Client info
   y = 45;
   const clientX = isRTL ? 20 : pageWidth - 20;
   const clientAlign: "left" | "right" = isRTL ? "left" : "right";
-  if (isRTL) doc.setFont("Amiri", "bold");
-  else doc.setFont("helvetica", "bold");
-  doc.text(txt(t.billTo), clientX, y, { align: clientAlign });
+  setFont("bold");
+  doc.text(ar(t.billTo), clientX, y, { align: clientAlign });
   y += 6;
-  if (isRTL) doc.setFont("Amiri", "normal");
-  else doc.setFont("helvetica", "normal");
-  doc.text(invoice.client.name, clientX, y, { align: clientAlign });
+  setFont("normal");
+  doc.text(ar(invoice.client.name), clientX, y, { align: clientAlign });
 
   // Items table
-  const tableHead = [[txt(t.description), txt(t.quantity), txt(t.unitPrice), txt(t.total)]];
+  const tableHead = [[ar(t.description), ar(t.quantity), ar(t.unitPrice), ar(t.total)]];
   const tableBody = invoice.items.map((item) => [
-    txt(item.description),
-    String(item.quantity),
-    `$${Number(item.unitPrice).toFixed(2)}`,
-    `$${Number(item.total).toFixed(2)}`,
+    ar(item.description),
+    arNum(String(item.quantity)),
+    arNum(`${sym}${Number(item.unitPrice).toFixed(2)}`),
+    arNum(`${sym}${Number(item.total).toFixed(2)}`),
   ]);
 
   autoTable(doc, {
@@ -112,17 +128,19 @@ export function generateInvoicePDF(invoice: InvoiceData, language?: string): Buf
     body: tableBody,
     theme: "striped",
     headStyles: {
-      fillColor: [37, 99, 235],
-      textColor: 255,
-      fontSize: 10,
-      fontStyle: "bold",
-      ...(isRTL ? { font: "Amiri" } : {}),
+      fillColor: [37, 99, 235], textColor: 255, fontSize: 10, fontStyle: "bold",
+      ...(isRTL ? { font: "Amiri", halign: "right" as const } : {}),
     },
     bodyStyles: {
       fontSize: 9,
       ...(isRTL ? { font: "Amiri" } : {}),
     },
-    columnStyles: {
+    columnStyles: isRTL ? {
+      0: { cellWidth: "auto", halign: "right" },
+      1: { cellWidth: 25, halign: "center" },
+      2: { cellWidth: 30, halign: "right" },
+      3: { cellWidth: 30, halign: "right" },
+    } : {
       0: { cellWidth: "auto" },
       1: { cellWidth: 25, halign: "center" },
       2: { cellWidth: 30, halign: "right" },
@@ -139,28 +157,26 @@ export function generateInvoicePDF(invoice: InvoiceData, language?: string): Buf
 
   doc.setFontSize(10);
   doc.setTextColor(60, 60, 60);
-  doc.text(txt(`${t.subtotal}: $${Number(invoice.subtotal).toFixed(2)}`), totalsX, finalY, { align: totalsAlign });
-  doc.text(txt(`${t.tax} (${invoice.taxRate}%): $${Number(invoice.tax).toFixed(2)}`), totalsX, finalY + 7, { align: totalsAlign });
+  doc.text(arLine(t.subtotal, `${sym}${Number(invoice.subtotal).toFixed(2)}`), totalsX, finalY, { align: totalsAlign });
+  doc.text(arLineP(t.tax, `${invoice.taxRate}%`, `${sym}${Number(invoice.tax).toFixed(2)}`), totalsX, finalY + 7, { align: totalsAlign });
 
   doc.setFontSize(14);
-  if (isRTL) doc.setFont("Amiri", "bold");
-  else doc.setFont("helvetica", "bold");
+  setFont("bold");
   doc.setTextColor(37, 99, 235);
-  doc.text(txt(`${t.grandTotal}: $${Number(invoice.total).toFixed(2)}`), totalsX, finalY + 18, { align: totalsAlign });
+  doc.text(arLine(t.grandTotal, `${sym}${Number(invoice.total).toFixed(2)}`), totalsX, finalY + 18, { align: totalsAlign });
 
   // Notes
   if (invoice.notes) {
     doc.setFontSize(9);
-    if (isRTL) doc.setFont("Amiri", "normal");
-    else doc.setFont("helvetica", "normal");
+    setFont("normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(txt(`${t.notes}: ${invoice.notes}`), isRTL ? pageWidth - 20 : 20, finalY + 35, { align: detailsAlign });
+    doc.text(arLine(t.notes, invoice.notes), isRTL ? pageWidth - 20 : 20, finalY + 35, { align: detailsAlign });
   }
 
   // Footer
   doc.setFontSize(9);
   doc.setTextColor(150, 150, 150);
-  doc.text(txt(t.thankYou), pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
+  doc.text(ar(t.thankYou), pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: "center" });
 
   return Buffer.from(doc.output("arraybuffer"));
 }
