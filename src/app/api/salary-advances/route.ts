@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { journalSalaryAdvance } from "@/lib/auto-journal";
 
 export async function GET() {
   const session = await getSessionWithPermissions();
@@ -45,6 +46,15 @@ export async function POST(req: NextRequest) {
       organizationId: session.organizationId,
     },
     include: { employee: { select: { id: true, firstName: true, lastName: true, position: true } } },
+  });
+
+  // Auto-journal: Debit Salaries Expense, Credit Cash
+  await journalSalaryAdvance({
+    organizationId: session.organizationId,
+    advanceId: advance.id,
+    amount: advance.amount,
+    date: advance.date,
+    employeeName: `${advance.employee.firstName} ${advance.employee.lastName}`,
   });
 
   await logAudit({

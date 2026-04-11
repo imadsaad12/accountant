@@ -38,6 +38,7 @@ model Organization {
   journalEntries  JournalEntry[]
   salaryAdvances  SalaryAdvance[]
   clientPayments  ClientPayment[]
+  budgets         Budget[]
 }
 
 model User {
@@ -312,15 +313,20 @@ model Account {
   subtype        String?
   description    String?
   isDefault      Boolean       @default(false)
+  parentId       String?
+  parent         Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children       Account[]     @relation("AccountHierarchy")
   organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id])
   expenses       Expense[]
   journalLines   JournalLine[]
+  budgetLines    BudgetLine[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   @@unique([code, organizationId])
   @@index([organizationId])
+  @@index([parentId])
 }
 
 model JournalEntry {
@@ -351,6 +357,44 @@ model JournalLine {
   description    String?
 
   @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model Budget {
+  id             String       @id @default(cuid())
+  name           String
+  fiscalYear     Int
+  status         String       @default("active") // active | archived
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  lines          BudgetLine[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model BudgetLine {
+  id        String  @id @default(cuid())
+  budgetId  String
+  budget    Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id])
+  month1    Float   @default(0)
+  month2    Float   @default(0)
+  month3    Float   @default(0)
+  month4    Float   @default(0)
+  month5    Float   @default(0)
+  month6    Float   @default(0)
+  month7    Float   @default(0)
+  month8    Float   @default(0)
+  month9    Float   @default(0)
+  month10   Float   @default(0)
+  month11   Float   @default(0)
+  month12   Float   @default(0)
+
+  @@unique([budgetId, accountId])
+  @@index([budgetId])
   @@index([accountId])
 }
 

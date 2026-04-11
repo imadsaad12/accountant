@@ -27,14 +27,27 @@ interface PLReport {
   mostSoldProducts: { description: string; quantity: number; unitPrice: number; total: number }[];
 }
 
-interface BSReport {
-  type: "bs";
-  asOf: string;
-  assets: { cash: number; ar: number; inventory: number; total: number };
-  liabilities: { taxPayable: number; total: number };
-  equity: number;
+interface BSAccountRow {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  balance: number;
 }
 
+interface BSReport {
+  type: "bs";
+  assets: BSAccountRow[];
+  liabilities: BSAccountRow[];
+  equityAccounts: BSAccountRow[];
+  retainedEarnings: number;
+  totalAssets: number;
+  totalLiabilities: number;
+  totalEquityAccounts: number;
+  totalEquity: number;
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+}
 
 interface ComprehensiveReport {
   type: "comprehensive";
@@ -101,7 +114,13 @@ export default function ReportsPage() {
 
   async function generate() {
     setLoading(true);
-    if (activeTab === "comprehensive") {
+    if (activeTab === "bs") {
+      const params = new URLSearchParams();
+      params.set("asOf", to);
+      const res = await fetch(`/api/balance-sheet?${params}`);
+      const data = res.ok ? await res.json() : null;
+      setReport(data ? { ...data, type: "bs" } : null);
+    } else if (activeTab === "comprehensive") {
       const params = new URLSearchParams({ from, to });
       if (excludedCategories.size > 0) params.set("exclude", Array.from(excludedCategories).join(","));
       const res = await fetch(`/api/reports/comprehensive?${params}`);
@@ -334,7 +353,7 @@ export default function ReportsPage() {
 
   const tabs = [
     { id: "pl" as const, label: t("reports.pl"), icon: BarChart2 },
-    // { id: "bs" as const, label: t("reports.bs"), icon: Scale },
+    { id: "bs" as const, label: t("reports.bs"), icon: Scale },
     { id: "comprehensive" as const, label: "Comprehensive", icon: BookOpen },
   ];
 
@@ -362,13 +381,15 @@ export default function ReportsPage() {
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
           <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+            {activeTab !== "bs" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-text-muted whitespace-nowrap">{t("reports.from")}</span>
+                <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+              </div>
+            )}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-text-muted whitespace-nowrap">{t("reports.from")}</span>
-              <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-text-muted whitespace-nowrap">{t("reports.to")}</span>
-              <input type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
+              <span className="text-sm text-text-muted whitespace-nowrap">{activeTab === "bs" ? t("balance_sheet.as_of") : t("reports.to")}</span>
+              <input type="date" value={to} min={activeTab !== "bs" ? from : undefined} onChange={e => setTo(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm" />
             </div>
           </div>
           {(activeTab === "pl" || activeTab === "comprehensive") && (
@@ -579,72 +600,94 @@ export default function ReportsPage() {
         {/* Balance Sheet */}
         {!loading && report?.type === "bs" && (() => {
           const bs = report as BSReport;
-          return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Assets */}
+          function BsSection({ title, accounts, total, totalLabel, color, extra }: {
+            title: string; accounts: BSAccountRow[]; total: number; totalLabel: string; color: string;
+            extra?: { label: string; amount: number }[];
+          }) {
+            return (
               <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-dark-border bg-emerald-500/5">
-                  <h3 className="text-sm font-bold text-emerald-400">{t("reports.assets")}</h3>
+                <div className="px-4 py-3 border-b border-dark-border bg-dark-bg/30">
+                  <h3 className={`text-sm font-bold uppercase ${color}`}>{title}</h3>
                 </div>
                 <table className="w-full text-sm">
-                  <tbody>
-                    <tr className="border-b border-dark-border/50">
-                      <td className="px-4 py-3 text-text-secondary">{t("reports.cash")}</td>
-                      <td className="px-4 py-3 text-right font-medium text-text-primary">{fmt(bs.assets.cash)}</td>
-                    </tr>
-                    <tr className="border-b border-dark-border/50">
-                      <td className="px-4 py-3 text-text-secondary">{t("reports.ar")}</td>
-                      <td className="px-4 py-3 text-right font-medium text-text-primary">{fmt(bs.assets.ar)}</td>
-                    </tr>
-                    <tr className="border-b border-dark-border/50">
-                      <td className="px-4 py-3 text-text-secondary">{t("reports.inventory")}</td>
-                      <td className="px-4 py-3 text-right font-medium text-text-primary">{fmt(bs.assets.inventory)}</td>
-                    </tr>
-                    <tr className="bg-dark-bg/30">
-                      <td className="px-4 py-3 font-bold text-text-primary">{t("reports.total_assets")}</td>
-                      <td className="px-4 py-3 text-right font-bold text-emerald-400">{fmt(bs.assets.total)}</td>
-                    </tr>
+                  <tbody className="divide-y divide-dark-border/30">
+                    {accounts.map((acc) => (
+                      <tr key={acc.id} className="hover:bg-dark-card-hover transition-colors">
+                        <td className="px-4 py-2.5"><span className="font-mono text-accent mr-2">{acc.code}</span><span className="text-text-primary">{acc.name}</span></td>
+                        <td className="px-4 py-2.5 text-right font-mono text-text-primary">{fmt(acc.balance)}</td>
+                      </tr>
+                    ))}
+                    {accounts.length === 0 && !extra?.length && (
+                      <tr><td colSpan={2} className="px-4 py-3 text-sm text-text-muted text-center">-</td></tr>
+                    )}
+                    {extra?.map((item) => (
+                      <tr key={item.label} className="hover:bg-dark-card-hover transition-colors">
+                        <td className="px-4 py-2.5 text-text-primary italic">{item.label}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-text-primary">{fmt(item.amount)}</td>
+                      </tr>
+                    ))}
                   </tbody>
+                  <tfoot className="border-t-2 border-dark-border">
+                    <tr className="font-bold">
+                      <td className="px-4 py-3 text-text-primary">{totalLabel}</td>
+                      <td className={`px-4 py-3 text-right font-mono ${color}`}>{fmt(total)}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
+            );
+          }
+          return (
+            <div className="space-y-4">
+              {/* Balance check */}
+              <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${
+                bs.isBalanced ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" : "bg-red-500/5 border-red-500/20 text-red-400"
+              }`}>
+                {bs.isBalanced ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                <span className="text-sm font-medium">
+                  {bs.isBalanced ? t("balance_sheet.balanced") : t("balance_sheet.unbalanced")}
+                </span>
+                {!bs.isBalanced && (
+                  <span className="text-xs ml-2 opacity-70">({t("trial_balance.difference")}: {fmt(Math.abs(bs.totalAssets - bs.totalLiabilitiesAndEquity))})</span>
+                )}
+              </div>
 
-              {/* Liabilities + Equity */}
-              <div className="space-y-4">
-                <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-dark-border bg-red-500/5">
-                    <h3 className="text-sm font-bold text-red-400">{t("reports.liabilities")}</h3>
-                  </div>
-                  <table className="w-full text-sm">
-                    <tbody>
-                      <tr className="border-b border-dark-border/50">
-                        <td className="px-4 py-3 text-text-secondary">Tax Payable</td>
-                        <td className="px-4 py-3 text-right font-medium text-text-primary">{fmt(bs.liabilities.taxPayable)}</td>
-                      </tr>
-                      <tr className="bg-dark-bg/30">
-                        <td className="px-4 py-3 font-bold text-text-primary">{t("reports.total_liabilities")}</td>
-                        <td className="px-4 py-3 text-right font-bold text-red-400">{fmt(bs.liabilities.total)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+              {/* Summary cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-dark-card border border-dark-border rounded-xl p-3">
+                  <div className="text-xs text-text-muted mb-1">{t("balance_sheet.total_assets")}</div>
+                  <div className="text-xl font-bold text-blue-400">{fmt(bs.totalAssets)}</div>
                 </div>
+                <div className="bg-dark-card border border-dark-border rounded-xl p-3">
+                  <div className="text-xs text-text-muted mb-1">{t("balance_sheet.total_liabilities")}</div>
+                  <div className="text-xl font-bold text-orange-400">{fmt(bs.totalLiabilities)}</div>
+                </div>
+                <div className="bg-dark-card border border-dark-border rounded-xl p-3">
+                  <div className="text-xs text-text-muted mb-1">{t("balance_sheet.total_equity")}</div>
+                  <div className="text-xl font-bold text-purple-400">{fmt(bs.totalEquity)}</div>
+                </div>
+              </div>
 
-                <div className="bg-dark-card border border-purple-500/20 rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-dark-border bg-purple-500/5">
-                    <h3 className="text-sm font-bold text-purple-400">{t("reports.equity")}</h3>
-                  </div>
-                  <table className="w-full text-sm">
-                    <tbody>
-                      <tr className="bg-dark-bg/30">
-                        <td className="px-4 py-4 font-bold text-text-primary">{t("reports.net_assets")}</td>
-                        <td className="px-4 py-4 text-right text-2xl font-bold text-purple-400">{fmt(bs.equity)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              {/* Accounting equation */}
+              <div className="bg-dark-card border border-dark-border rounded-xl px-4 py-3 text-center">
+                <span className="text-sm text-text-muted">{t("balance_sheet.equation")}: </span>
+                <span className="text-sm font-bold text-blue-400">{fmt(bs.totalAssets)}</span>
+                <span className="text-sm text-text-muted mx-2">=</span>
+                <span className="text-sm font-bold text-orange-400">{fmt(bs.totalLiabilities)}</span>
+                <span className="text-sm text-text-muted mx-2">+</span>
+                <span className="text-sm font-bold text-purple-400">{fmt(bs.totalEquity)}</span>
+              </div>
 
-                <div className="text-xs text-text-muted text-center">
-                  Assets ({fmt(bs.assets.total)}) = Liabilities ({fmt(bs.liabilities.total)}) + Equity ({fmt(bs.equity)})
-                </div>
+              {/* Sections */}
+              <BsSection title={t("reports.assets")} accounts={bs.assets} total={bs.totalAssets} totalLabel={t("balance_sheet.total_assets")} color="text-blue-400" />
+              <BsSection title={t("reports.liabilities")} accounts={bs.liabilities} total={bs.totalLiabilities} totalLabel={t("balance_sheet.total_liabilities")} color="text-orange-400" />
+              <BsSection title={t("reports.equity")} accounts={bs.equityAccounts} total={bs.totalEquity} totalLabel={t("balance_sheet.total_equity")} color="text-purple-400"
+                extra={[{ label: t("balance_sheet.retained_earnings"), amount: bs.retainedEarnings }]} />
+
+              {/* Final total */}
+              <div className="bg-dark-card border-2 border-dark-border rounded-xl px-4 py-3 flex justify-between items-center">
+                <span className="text-sm font-bold text-text-primary">{t("balance_sheet.total_liabilities_and_equity")}</span>
+                <span className="text-lg font-bold font-mono text-text-primary">{fmt(bs.totalLiabilitiesAndEquity)}</span>
               </div>
             </div>
           );

@@ -30,6 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       type: data.type,
       subtype: data.subtype || null,
       description: data.description || null,
+      parentId: data.parentId || null,
     },
   });
 
@@ -43,8 +44,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!canEdit(session.permissions, "accounts")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const account = await prisma.account.findFirst({ where: { id, organizationId: session.organizationId } });
+  const account = await prisma.account.findFirst({
+    where: { id, organizationId: session.organizationId },
+    include: { children: { select: { id: true } } },
+  });
   if (account?.isDefault) return NextResponse.json({ error: "Cannot delete default accounts" }, { status: 400 });
+  if (account?.children?.length) return NextResponse.json({ error: "Cannot delete account with sub-accounts" }, { status: 400 });
 
   await prisma.account.deleteMany({ where: { id, organizationId: session.organizationId } });
   await logAudit({ session, action: "delete", entity: "account", entityId: id, description: `Deleted account` });

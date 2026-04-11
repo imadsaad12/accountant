@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canEdit, canView } from "@/lib/permissions";
+import { journalInvoicePayment, deleteJournalEntriesBySource } from "@/lib/auto-journal";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -60,6 +61,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await prisma.invoice.update({ where: { id }, data: { status: "partially_paid" } });
   }
 
+  // Auto-journal: Debit Cash, Credit Accounts Receivable
+  await journalInvoicePayment({
+    organizationId: session.organizationId,
+    paymentId: payment.id,
+    amount: appliedToInvoice,
+    date: payment.date,
+    invoiceNumber: invoice.number,
+  });
+
   // Add excess to client balance
   if (excessAmount > 0) {
     await prisma.client.update({
@@ -89,6 +99,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const paymentId = searchParams.get("paymentId");
   if (!paymentId) return NextResponse.json({ error: "paymentId required" }, { status: 400 });
 
+  await deleteJournalEntriesBySource(paymentId);
   await prisma.payment.deleteMany({ where: { id: paymentId, organizationId: session.organizationId } });
 
   // Recalculate invoice status after payment deletion

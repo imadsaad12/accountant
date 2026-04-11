@@ -24,6 +24,9 @@ import {
   Banknote,
   HelpCircle,
   Search,
+  BookOpen,
+  Scale,
+  Wallet,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { canView, type Permissions } from "@/lib/permissions";
@@ -39,7 +42,10 @@ const NAV_ITEMS = [
   { href: "/dashboard/invoices", labelKey: "nav.invoices", icon: FileText, feature: "invoices" as const },
   { href: "/dashboard/expenses", labelKey: "nav.expenses", icon: TrendingDown, feature: "expenses" as const },
   { href: "/dashboard/salary-advances", labelKey: "nav.salary_advances", icon: Banknote, feature: "salary_advances" as const },
-  // { href: "/dashboard/accounts", labelKey: "nav.accounts", icon: BookOpen, feature: "accounts" as const },
+  { href: "/dashboard/accounts", labelKey: "nav.accounts", icon: BookOpen, feature: "accounts" as const },
+  { href: "/dashboard/journal-entries", labelKey: "nav.journal", icon: ScrollText, feature: "accounts" as const },
+  { href: "/dashboard/trial-balance", labelKey: "nav.trial_balance", icon: Scale, feature: "accounts" as const },
+  { href: "/dashboard/budgets", labelKey: "nav.budgets", icon: Wallet, feature: "budgets" as const },
   { href: "/dashboard/reports", labelKey: "nav.reports", icon: BarChart2, feature: "reports" as const },
   { href: "/dashboard/ai-assistant", labelKey: "nav.ai", icon: Mic, feature: "ai" as const },
   { href: "/dashboard/activity-log", labelKey: "nav.activity", icon: ScrollText, feature: "activity_log" as const },

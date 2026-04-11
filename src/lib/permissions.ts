@@ -1,4 +1,4 @@
-export type Feature = "dashboard" | "clients" | "suppliers" | "products" | "employees" | "invoices" | "ai" | "activity_log" | "tax" | "settings" | "expenses" | "reports" | "salary_advances";
+export type Feature = "dashboard" | "clients" | "suppliers" | "products" | "employees" | "invoices" | "ai" | "activity_log" | "tax" | "settings" | "expenses" | "reports" | "salary_advances" | "accounts" | "budgets";
 
 export interface Permission {
   view: boolean;
@@ -7,7 +7,7 @@ export interface Permission {
 
 export type Permissions = Record<Feature, Permission>;
 
-export const ALL_FEATURES: Feature[] = ["dashboard", "clients", "suppliers", "products", "employees", "invoices", "expenses", "salary_advances", "reports", "ai", "activity_log", "tax", "settings"];
+export const ALL_FEATURES: Feature[] = ["dashboard", "clients", "suppliers", "products", "employees", "invoices", "expenses", "salary_advances", "accounts", "budgets", "reports", "ai", "activity_log", "tax", "settings"];
 
 export const FEATURE_LABELS: Record<Feature, string> = {
   dashboard: "Dashboard",
@@ -22,6 +22,8 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   ai: "AI Assistant",
   activity_log: "Activity Log",
   tax: "Tax",
+  accounts: "Chart of Accounts",
+  budgets: "Budgets",
   settings: "Edit Org Settings",
 };
 
@@ -38,6 +40,8 @@ export const DEFAULT_ADMIN_PERMISSIONS: Permissions = {
   ai: { view: true, edit: true },
   activity_log: { view: true, edit: true },
   tax: { view: true, edit: true },
+  accounts: { view: true, edit: true },
+  budgets: { view: true, edit: true },
   settings: { view: true, edit: true },
 };
 
@@ -54,6 +58,8 @@ export const DEFAULT_EMPLOYEE_PERMISSIONS: Permissions = {
   ai: { view: false, edit: false },
   activity_log: { view: false, edit: false },
   tax: { view: false, edit: false },
+  accounts: { view: false, edit: false },
+  budgets: { view: false, edit: false },
   settings: { view: false, edit: false },
 };
 

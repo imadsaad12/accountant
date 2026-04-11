@@ -5,6 +5,7 @@ import { getSessionWithPermissions } from "@/lib/auth";
 // import { sendInvoiceEmail } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { journalInvoicePayment, deleteJournalEntriesBySource } from "@/lib/auto-journal";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -95,9 +96,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  // When reverting to draft/sent, delete all payment records
+  // When reverting to draft/sent, delete all payment records and their journal entries
   if ((invoiceData.status === "draft" || invoiceData.status === "sent") &&
       (existing.status === "paid" || existing.status === "partially_paid")) {
+    const payments = await prisma.payment.findMany({ where: { invoiceId: id, organizationId: session.organizationId }, select: { id: true } });
+    for (const p of payments) await deleteJournalEntriesBySource(p.id);
     await prisma.payment.deleteMany({ where: { invoiceId: id, organizationId: session.organizationId } });
   }
 
@@ -113,8 +116,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const alreadyPaid = existingPayments._sum.amount ?? 0;
     const remaining = invoice.total - alreadyPaid;
     if (remaining > 0) {
-      await prisma.payment.create({
+      const autoPayment = await prisma.payment.create({
         data: { invoiceId: id, organizationId: session.organizationId, amount: remaining, date: new Date(), method: "cash", note: "Auto-recorded when status set to Paid" },
+      });
+      await journalInvoicePayment({
+        organizationId: session.organizationId,
+        paymentId: autoPayment.id,
+        amount: remaining,
+        date: autoPayment.date,
+        invoiceNumber: invoice.number,
       });
     }
   }

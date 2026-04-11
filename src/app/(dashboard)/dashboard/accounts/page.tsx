@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, X, Edit2, BookOpen } from "lucide-react";
+import { Plus, Trash2, X, Edit2, BookOpen, Calendar, ArrowLeft } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
+import { useOrgSettings } from "@/components/OrgSettingsProvider";
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$", EUR: "€", LBP: "ل.ل", XOF: "CFA", GNF: "FG", SLE: "Le", GHS: "₵", CDF: "FC", NGN: "₦",
+};
 
 interface Account {
   id: string;
@@ -13,6 +18,11 @@ interface Account {
   subtype: string | null;
   description: string | null;
   isDefault: boolean;
+  parentId: string | null;
+  children?: { id: string }[];
+  totalDebit?: number;
+  totalCredit?: number;
+  balance?: number;
 }
 
 const ACCOUNT_TYPES = ["asset", "liability", "equity", "revenue", "expense"];
@@ -25,12 +35,14 @@ const TYPE_COLORS: Record<string, string> = {
   expense: "bg-orange-500/10 text-orange-400 border-orange-500/20",
 };
 
-const emptyForm = { code: "", name: "", type: "asset", subtype: "", description: "" };
+const emptyForm = { code: "", name: "", type: "asset", subtype: "", description: "", parentId: "" };
 
 export default function AccountsPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("accounts");
   const t = useTranslation();
+  const { orgSettings } = useOrgSettings();
+  const sym = CURRENCY_SYMBOLS[orgSettings.defaultCurrency] ?? orgSettings.defaultCurrency;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -38,14 +50,31 @@ export default function AccountsPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [filterType, setFilterType] = useState("");
   const [error, setError] = useState("");
+  const [asOfDate, setAsOfDate] = useState("");
+  const [ledger, setLedger] = useState<{ account: { id: string; code: string; name: string; type: string }; entries: { id: string; date: string; description: string; type: string; reference: string | null; debit: number; credit: number; balance: number }[] } | null>(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
-    const res = await fetch("/api/accounts");
+    const params = new URLSearchParams();
+    if (asOfDate) params.set("asOf", asOfDate);
+    const res = await fetch(`/api/accounts/balances?${params}`);
     setAccounts(res.ok ? await res.json() : []);
     setLoading(false);
+  }
+
+  async function openLedger(acc: Account) {
+    setLedgerLoading(true);
+    setLedger(null);
+    const res = await fetch(`/api/accounts/${acc.id}/ledger`);
+    if (res.ok) setLedger(await res.json());
+    setLedgerLoading(false);
+  }
+
+  function fmt(n: number) {
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function openAdd() {
@@ -57,7 +86,7 @@ export default function AccountsPage() {
 
   function openEdit(acc: Account) {
     setEditId(acc.id);
-    setForm({ code: acc.code, name: acc.name, type: acc.type, subtype: acc.subtype || "", description: acc.description || "" });
+    setForm({ code: acc.code, name: acc.name, type: acc.type, subtype: acc.subtype || "", description: acc.description || "", parentId: acc.parentId || "" });
     setError("");
     setShowForm(true);
   }
@@ -90,11 +119,26 @@ export default function AccountsPage() {
 
   const filtered = filterType ? accounts.filter(a => a.type === filterType) : accounts;
 
+  // Build hierarchical list: parents first, then children indented
+  function buildTree(accs: Account[]): (Account & { depth: number })[] {
+    const result: (Account & { depth: number })[] = [];
+    const roots = accs.filter(a => !a.parentId || !accs.find(p => p.id === a.parentId));
+    const childrenOf = (pid: string) => accs.filter(a => a.parentId === pid);
+    function addWithChildren(acc: Account, depth: number) {
+      result.push({ ...acc, depth });
+      for (const child of childrenOf(acc.id)) {
+        addWithChildren(child, depth + 1);
+      }
+    }
+    for (const root of roots) addWithChildren(root, 0);
+    return result;
+  }
+
   // Group by type for display
-  const grouped: Record<string, Account[]> = {};
-  for (const acc of filtered) {
-    if (!grouped[acc.type]) grouped[acc.type] = [];
-    grouped[acc.type].push(acc);
+  const grouped: Record<string, (Account & { depth: number })[]> = {};
+  for (const type of ACCOUNT_TYPES) {
+    const typeAccounts = filtered.filter(a => a.type === type);
+    if (typeAccounts.length) grouped[type] = buildTree(typeAccounts);
   }
 
   return (
@@ -118,19 +162,95 @@ export default function AccountsPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-5 gap-3">
           {ACCOUNT_TYPES.map(type => {
-            const count = accounts.filter(a => a.type === type).length;
+            const typeAccounts = accounts.filter(a => a.type === type);
+            const totalBalance = typeAccounts.reduce((s, a) => s + (a.balance || 0), 0);
             return (
               <button key={type} onClick={() => setFilterType(filterType === type ? "" : type)}
                 className={`rounded-xl border p-3 text-left transition-all ${filterType === type ? TYPE_COLORS[type] + " border-current" : "bg-dark-card border-dark-border hover:border-dark-border-hover"}`}>
                 <div className="text-xs text-text-muted mb-1">{t(`accounts.type.${type}`)}</div>
-                <div className="text-xl font-bold text-text-primary">{count}</div>
-                <div className="text-xs text-text-muted">accounts</div>
+                <div className="text-lg font-bold text-text-primary">{sym}{fmt(totalBalance)}</div>
+                <div className="text-xs text-text-muted">{typeAccounts.length} accounts</div>
               </button>
             );
           })}
         </div>
 
-        {/* Modal */}
+        {/* Date filter */}
+        <div className="flex items-center gap-3">
+          <Calendar size={14} className="text-text-muted" />
+          <span className="text-sm text-text-muted">{t("accounts.as_of")}</span>
+          <input
+            type="date"
+            value={asOfDate}
+            onChange={e => setAsOfDate(e.target.value)}
+            className="px-3 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
+          />
+          <button onClick={loadData} className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium">
+            {t("common.apply")}
+          </button>
+          {asOfDate && (
+            <button onClick={() => { setAsOfDate(""); setTimeout(loadData, 0); }} className="text-xs text-text-muted hover:text-text-primary">
+              {t("common.clear")}
+            </button>
+          )}
+        </div>
+
+        {/* Ledger Modal */}
+        {(ledger || ledgerLoading) && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setLedger(null)} className="text-text-muted hover:text-text-primary"><ArrowLeft size={18} /></button>
+                  <h2 className="text-lg font-semibold text-text-primary">
+                    {ledger ? `${ledger.account.code} - ${ledger.account.name}` : t("common.loading")}
+                  </h2>
+                </div>
+                <button onClick={() => setLedger(null)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+              </div>
+              {ledgerLoading ? (
+                <div className="flex items-center justify-center h-32"><div className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent" /></div>
+              ) : ledger && ledger.entries.length === 0 ? (
+                <p className="text-center text-text-muted py-8">{t("accounts.ledger_empty")}</p>
+              ) : ledger && (
+                <div className="overflow-auto flex-1">
+                  <table className="w-full">
+                    <thead className="bg-dark-bg/30 sticky top-0">
+                      <tr>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-text-muted">{t("field.date")}</th>
+                        <th className="text-left px-4 py-2 text-xs font-medium text-text-muted">{t("field.description")}</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-text-muted">{t("journal.debit")}</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-text-muted">{t("journal.credit")}</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-text-muted">{t("accounts.balance")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-border/30">
+                      {ledger.entries.map(entry => (
+                        <tr key={entry.id} className="hover:bg-dark-card-hover">
+                          <td className="px-4 py-2 text-sm text-text-muted whitespace-nowrap">{new Date(entry.date).toLocaleDateString()}</td>
+                          <td className="px-4 py-2 text-sm text-text-primary">{entry.description}</td>
+                          <td className="px-4 py-2 text-sm text-right font-mono">
+                            {entry.debit > 0 ? <span className="text-emerald-400">{sym}{fmt(entry.debit)}</span> : <span className="text-text-muted">-</span>}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-mono">
+                            {entry.credit > 0 ? <span className="text-blue-400">{sym}{fmt(entry.credit)}</span> : <span className="text-text-muted">-</span>}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right font-mono font-medium">
+                            <span className={entry.balance >= 0 ? "text-emerald-400" : "text-red-400"}>
+                              {sym}{fmt(Math.abs(entry.balance))}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Add/Edit Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-md">
@@ -155,6 +275,15 @@ export default function AccountsPage() {
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("field.name")} *</label>
                   <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" placeholder="Account name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("accounts.parent")}</label>
+                  <select value={form.parentId} onChange={e => setForm({ ...form, parentId: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
+                    <option value="">{t("accounts.no_parent")}</option>
+                    {accounts.filter(a => a.type === form.type && a.id !== editId).map(a => (
+                      <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("accounts.subtype")}</label>
@@ -190,18 +319,33 @@ export default function AccountsPage() {
                       <th className="text-left px-4 py-2 text-xs font-medium text-text-muted">{t("accounts.code")}</th>
                       <th className="text-left px-4 py-2 text-xs font-medium text-text-muted">{t("field.name")}</th>
                       <th className="text-left px-4 py-2 text-xs font-medium text-text-muted">{t("accounts.subtype")}</th>
+                      <th className="text-right px-4 py-2 text-xs font-medium text-text-muted">{t("accounts.balance")}</th>
                       <th className="text-right px-4 py-2 text-xs font-medium text-text-muted">{t("common.actions")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-border/30">
                     {grouped[type].map(acc => (
                       <tr key={acc.id} className="hover:bg-dark-card-hover">
-                        <td className="px-4 py-2.5 text-sm font-mono text-accent">{acc.code}</td>
+                        <td className="px-4 py-2.5 text-sm font-mono text-accent" style={{ paddingLeft: `${16 + acc.depth * 20}px` }}>
+                          {acc.depth > 0 && <span className="text-text-muted mr-1">└</span>}
+                          {acc.code}
+                        </td>
                         <td className="px-4 py-2.5 text-sm font-medium text-text-primary">
                           {acc.name}
                           {acc.isDefault && <span className="ml-2 text-[10px] text-text-muted border border-dark-border rounded px-1">default</span>}
                         </td>
                         <td className="px-4 py-2.5 text-xs text-text-muted">{acc.subtype || "-"}</td>
+                        <td className="px-4 py-2.5 text-right text-sm font-mono">
+                          <button onClick={() => openLedger(acc)} className="hover:underline cursor-pointer">
+                            {(acc.balance ?? 0) !== 0 ? (
+                              <span className={(acc.balance ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                                {sym}{fmt(Math.abs(acc.balance ?? 0))}
+                              </span>
+                            ) : (
+                              <span className="text-text-muted">-</span>
+                            )}
+                          </button>
+                        </td>
                         <td className="px-4 py-2.5 text-right space-x-1">
                           {canEdit && (
                             <>

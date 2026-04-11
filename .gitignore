@@ -43,3 +43,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# claude/ruflo tooling
+.claude-flow/
+.claude/
+.swarm/
+.mcp.json
+CLAUDE.md
+ruvector.db

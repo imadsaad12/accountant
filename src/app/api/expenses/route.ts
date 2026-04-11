@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { journalExpenseCreated } from "@/lib/auto-journal";
 
 // Shared helper: compute calendar-accurate months between two UTC dates
 // Uses actual days-in-month (28/29/30/31) instead of fixed 30
@@ -323,6 +324,16 @@ export async function POST(req: NextRequest) {
       createdById: session.userId,
     },
     include: { createdBy: { select: { name: true } }, account: { select: { name: true, code: true } }, supplier: { select: { id: true, name: true } } },
+  });
+
+  // Auto-journal: Debit expense account, Credit Cash
+  await journalExpenseCreated({
+    organizationId: session.organizationId,
+    expenseId: expense.id,
+    amount: expense.amount,
+    date: expense.date,
+    description: expense.description,
+    accountCode: expense.account?.code,
   });
 
   await logAudit({

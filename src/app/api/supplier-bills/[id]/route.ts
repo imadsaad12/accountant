@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { journalSupplierBillPayment } from "@/lib/auto-journal";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
@@ -55,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!canEdit(session.permissions, "suppliers")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const { id } = await params;
-  const existing = await prisma.supplierBill.findFirst({ where: { id, organizationId: session.organizationId } });
+  const existing = await prisma.supplierBill.findFirst({ where: { id, organizationId: session.organizationId }, include: { supplier: { select: { name: true } } } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
@@ -69,7 +70,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const newAmountPaid = Math.min(existing.amountPaid + payAmount, existing.amount);
     const newStatus = newAmountPaid >= existing.amount - 0.01 ? "paid" : "partially_paid";
     const payDate = body.date ? new Date(body.date + "T12:00:00Z") : new Date();
-    const [bill] = await prisma.$transaction([
+    const [bill, payment] = await prisma.$transaction([
       prisma.supplierBill.update({
         where: { id },
         data: { amountPaid: newAmountPaid, status: newStatus },
@@ -85,6 +86,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         },
       }),
     ]);
+
+    // Auto-journal: Debit Accounts Payable, Credit Cash
+    await journalSupplierBillPayment({
+      organizationId: session.organizationId,
+      paymentId: payment.id,
+      amount: payAmount,
+      date: payDate,
+      supplierName: existing.supplier.name,
+      billReference: existing.reference || undefined,
+    });
+
     await logAudit({ session, action: "update", entity: "supplier_bill", entityId: id, description: `Recorded payment of ${payAmount} on ${payDate.toISOString().split("T")[0]} for bill "${existing.description}"` });
     const updatedBill = await prisma.supplierBill.findFirst({ where: { id }, include: { payments: { orderBy: { date: "asc" } } } });
     return NextResponse.json(updatedBill);

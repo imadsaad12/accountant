@@ -43,6 +43,7 @@ export async function GET(_req: NextRequest) {
   const accounts = await prisma.account.findMany({
     where: { organizationId: session.organizationId },
     orderBy: { code: "asc" },
+    include: { children: { select: { id: true } } },
   });
   return NextResponse.json(accounts);
 }
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       type: data.type,
       subtype: data.subtype || null,
       description: data.description || null,
+      parentId: data.parentId || null,
       organizationId: session.organizationId,
     },
   });
