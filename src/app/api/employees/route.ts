@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       salary: salaryRate,
       salaryPeriod,
       hireDate: data.hireDate ? new Date(data.hireDate) : new Date(),
+      inactiveDate: data.inactiveDate ? new Date(data.inactiveDate) : null,
       organizationId: session.organizationId,
     },
   });
