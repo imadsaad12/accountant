@@ -41,10 +41,11 @@ export default function TrialBalancePage() {
 
   useEffect(() => { loadData(); }, []);
 
-  async function loadData() {
+  async function loadData(dateOverride?: string) {
     setLoading(true);
     const params = new URLSearchParams();
-    if (asOfDate) params.set("asOf", asOfDate);
+    const dateValue = dateOverride !== undefined ? dateOverride : asOfDate;
+    if (dateValue) params.set("asOf", dateValue);
     const res = await fetch(`/api/trial-balance?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -90,14 +91,14 @@ export default function TrialBalancePage() {
             className="px-3 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
           />
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium"
           >
             {t("common.apply")}
           </button>
           {asOfDate && (
             <button
-              onClick={() => { setAsOfDate(""); setTimeout(loadData, 0); }}
+              onClick={() => { setAsOfDate(""); loadData(""); }}
               className="px-3 py-1.5 text-text-muted hover:text-text-primary text-sm"
             >
               {t("common.clear")}

@@ -7,7 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function getBusinessContext(organizationId: string, permissions: Permissions) {
-  const [clients, products, employees, invoices, expenses, salaryAdvances] = await Promise.all([
+  const [clients, products, employees, invoices, expenses, salaryAdvances, accounts, journalEntries, budgets] = await Promise.all([
     canView(permissions, "clients")
       ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true, balance: true, pendingBalance: true } })
       : Promise.resolve(null),
@@ -56,12 +56,38 @@ async function getBusinessContext(organizationId: string, permissions: Permissio
           take: 30,
         })
       : Promise.resolve(null),
+    canView(permissions, "accounts")
+      ? prisma.account.findMany({
+          where: { organizationId },
+          select: { id: true, code: true, name: true, type: true, subtype: true, isDefault: true },
+          orderBy: { code: "asc" },
+        })
+      : Promise.resolve(null),
+    canView(permissions, "accounts")
+      ? prisma.journalEntry.findMany({
+          where: { organizationId },
+          include: {
+            lines: {
+              include: { account: { select: { code: true, name: true } } },
+            },
+          },
+          orderBy: { date: "desc" },
+          take: 30,
+        })
+      : Promise.resolve(null),
+    canView(permissions, "budgets")
+      ? prisma.budget.findMany({
+          where: { organizationId },
+          select: { id: true, name: true, fiscalYear: true, status: true },
+          orderBy: [{ fiscalYear: "desc" }, { name: "asc" }],
+        })
+      : Promise.resolve(null),
   ]);
-  return { clients, products, employees, invoices, expenses, salaryAdvances };
+  return { clients, products, employees, invoices, expenses, salaryAdvances, accounts, journalEntries, budgets };
 }
 
 function buildPermissionContext(permissions: Permissions): string {
-  const features = ["dashboard", "clients", "products", "employees", "invoices", "activity_log"] as const;
+  const features = ["dashboard", "clients", "suppliers", "products", "employees", "invoices", "expenses", "salary_advances", "accounts", "budgets", "reports", "ai", "activity_log"] as const;
   const lines = features.map(f => {
     const view = canView(permissions, f);
     const edit = canEdit(permissions, f);
@@ -151,6 +177,12 @@ ${context.invoices !== null ? `RECENT INVOICES (${context.invoices.length} shown
 
 ${context.expenses !== null ? `EXPENSES (${context.expenses.length} shown, most recent):\n${context.expenses.map((e: {id:string;date:Date;amount:number;description:string;category:string;recurrence:string;vendor:string|null}) => `- ${e.description} | $${e.amount} | ${e.category} | ${e.recurrence !== "none" ? `recurring ${e.recurrence}` : "one-time"} | ${new Date(e.date).toLocaleDateString()}${e.vendor ? ` | ${e.vendor}` : ""} (ID: ${e.id})`).join("\n")}` : "EXPENSES: [NO ACCESS]"}
 
+${context.accounts !== null ? `CHART OF ACCOUNTS (${context.accounts.length} total):\n${context.accounts.map((a: {id:string;code:string;name:string;type:string;subtype:string|null;isDefault:boolean}) => `- ${a.code}: ${a.name} (${a.type}${a.subtype ? `/${a.subtype}` : ""})${a.isDefault ? " [default]" : ""} (ID: ${a.id})`).join("\n")}` : "CHART OF ACCOUNTS: [NO ACCESS]"}
+
+${context.journalEntries !== null ? `RECENT JOURNAL ENTRIES (${context.journalEntries.length} shown):\n${context.journalEntries.map((j: {id:string;date:Date;description:string;type:string;lines:{debit:number;credit:number;account:{code:string;name:string}}[]}) => `- ${new Date(j.date).toLocaleDateString()} | ${j.description} | ${j.type} | Lines: ${j.lines.map((l: {debit:number;credit:number;account:{code:string;name:string}}) => `${l.account.code} ${l.account.name} DR:$${l.debit} CR:$${l.credit}`).join(", ")}`).join("\n")}` : "JOURNAL ENTRIES: [NO ACCESS]"}
+
+${context.budgets !== null ? `BUDGETS (${context.budgets.length} total):\n${context.budgets.length > 0 ? context.budgets.map((b: {id:string;name:string;fiscalYear:number;status:string}) => `- ${b.name} (FY ${b.fiscalYear}, ${b.status}) (ID: ${b.id})`).join("\n") : "No budgets created yet"}` : "BUDGETS: [NO ACCESS]"}
+
 SYSTEM FEATURES OVERVIEW:
 
 INVOICES:
@@ -221,8 +253,53 @@ SALARY ADVANCES:
 
 REPORTS:
 - P&L: revenue (cash-basis: payments received in period), COGS (full unit cost deducted on first payment, not pro-rated), tax (full amount from all invoices in period regardless of payment status), gross profit, expenses by category including dynamically computed salaries, net profit. Also shows total sales issued in period (accrual-basis) separately.
-- Balance Sheet: snapshot at end date — assets (cash, accounts receivable, inventory value), liabilities (full tax payable from all invoices), equity.
+- Balance Sheet: snapshot at end date — assets (cash, accounts receivable, inventory value), liabilities (full tax payable from all invoices), equity. Also available as a journal-based balance sheet from the Chart of Accounts module (assets = liabilities + equity, verified balanced).
 - Aging Report: outstanding invoices bucketed by days overdue (current, 1-30, 31-60, 61-90, 90+).
+- Trial Balance: shows all accounts with debit/credit balances as of a specific date. Total debits must equal total credits. Accounts are grouped by type (asset, liability, equity, revenue, expense). Can filter by date.
+
+CHART OF ACCOUNTS (COA):
+- Full double-entry bookkeeping chart of accounts with account codes, names, types, and subtypes.
+- Account types: asset, liability, equity, revenue, expense.
+- Hierarchical structure: accounts can have parent accounts for grouping (e.g., 1000 Cash under 1xxx Current Assets).
+- Default accounts are auto-created: Cash (1000), Accounts Receivable (1100), Inventory (1200), Accounts Payable (2000), Tax Payable (2100), Sales Revenue (4000), COGS (5000), Salaries Expense (5300).
+- Each account shows its balance (computed from journal entries). Click on balance to see account ledger (all transactions with running balance).
+- Accounts can be filtered by type and date ("as of" date for historical balances).
+- Default accounts cannot be deleted. Accounts used in journal entries or budgets cannot be deleted.
+- Permission-controlled: requires "accounts" permission to view/edit.
+
+JOURNAL ENTRIES (AUTO-JOURNALING):
+- The system automatically creates double-entry journal entries for business transactions:
+  - Invoice created: DR Accounts Receivable, CR Sales Revenue (+ CR Tax Payable if tax applies).
+  - Invoice payment received: DR Cash, CR Accounts Receivable.
+  - Expense recorded: DR Expense Account (category-based or "Other Expenses" 5900), CR Cash.
+  - Supplier bill payment: DR Accounts Payable, CR Cash.
+  - Salary advance: DR Salaries Expense, CR Cash.
+- All journal entries are balanced (total debits = total credits). Entries that don't balance are rejected.
+- Journal entries can be viewed by date range and type, showing all debit/credit lines with account details.
+- When a transaction is deleted (e.g., invoice deleted), its associated journal entries are also deleted.
+- Users can view the journal entries page to see all transactions in proper accounting format.
+
+BUDGETS:
+- Create annual budgets with monthly amounts per account.
+- Each budget has a name, fiscal year, and status (draft/active/closed).
+- Budget lines map to chart of accounts — each line allocates monthly amounts (month1 through month12) for a specific account.
+- Budget vs Actual comparison: compares budgeted amounts against actual journal entry amounts for each month, showing variance and variance percentage.
+- Budgets can be copied from previous years as a starting template.
+- Revenue accounts (income) and expense accounts are tracked separately in the budget.
+- Variance analysis: positive variance = under budget (good for expenses) or over budget (good for revenue); negative = the opposite.
+- Permission-controlled: requires "budgets" permission to view/edit.
+
+TRIAL BALANCE:
+- Shows all accounts with their debit and credit balances as of a given date.
+- Each account appears on one side only based on its normal balance (assets/expenses = debit, liabilities/equity/revenue = credit).
+- Total debits must equal total credits — the page shows whether the books are balanced.
+- Can be filtered by "as of" date for historical snapshots.
+- Permission-controlled: requires "accounts" permission.
+
+ACCOUNT LEDGER:
+- Detailed transaction history for a single account, showing each journal entry line with date, description, debit, credit, and running balance.
+- Running balance is computed based on account type (debit-normal for assets/expenses, credit-normal for liabilities/equity/revenue).
+- Can be filtered by date range.
 
 DASHBOARD:
 - Gross earnings (cash received), net earnings (gross − COGS − all expenses including salaries), pending balance, low stock alerts, recent invoices.
@@ -239,7 +316,13 @@ CAPABILITIES - You can help with:
 6. Salary calculations: explain how salary is computed for a period, advance deductions, calendar-accurate months
 7. Exporting as PDF: invoices (en/fr), clients list, stock/products list, employees list, suppliers list, AI summary reports
 8. Explaining import features: clients and suppliers can be bulk-imported from Excel/CSV files
-8. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments, update stock" : "Ask an admin to perform write operations"}
+9. Chart of Accounts: list accounts, explain account types, show balances, explain double-entry bookkeeping concepts
+10. Journal Entries: explain auto-generated journal entries for invoices, payments, expenses, supplier bills, and salary advances. Show recent journal activity.
+11. Trial Balance: explain whether the books are balanced, show account debit/credit totals
+12. Budgets: list budgets, explain budget vs actual variance, help understand over/under budget items
+13. Balance Sheet: explain assets, liabilities, equity, and whether the accounting equation balances (Assets = Liabilities + Equity)
+14. Account Ledger: explain transaction history for specific accounts, running balances
+15. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments, update stock" : "Ask an admin to perform write operations"}
 
 ACTION BLOCKS — When the user requests an action, append ONE JSON block. The frontend shows a confirmation dialog before executing.
 ALWAYS include "confirmMessage" describing what will happen in the user's language.

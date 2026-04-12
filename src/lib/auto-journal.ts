@@ -32,6 +32,21 @@ interface CreateJournalParams {
 }
 
 /**
+ * Default account definitions used when auto-creating missing accounts.
+ */
+const DEFAULT_ACCOUNTS: Record<string, { name: string; type: string; subtype: string }> = {
+  "1000": { name: "Cash", type: "asset", subtype: "current_asset" },
+  "1100": { name: "Accounts Receivable", type: "asset", subtype: "current_asset" },
+  "1200": { name: "Inventory", type: "asset", subtype: "current_asset" },
+  "2000": { name: "Accounts Payable", type: "liability", subtype: "current_liability" },
+  "2100": { name: "Tax Payable", type: "liability", subtype: "current_liability" },
+  "4000": { name: "Sales Revenue", type: "revenue", subtype: "" },
+  "5000": { name: "Cost of Goods Sold", type: "expense", subtype: "cogs" },
+  "5300": { name: "Salaries Expense", type: "expense", subtype: "" },
+  "5900": { name: "Other Expenses", type: "expense", subtype: "" },
+};
+
+/**
  * Resolves account codes to account IDs for an organization.
  * Creates default accounts if they don't exist yet.
  */
@@ -45,6 +60,25 @@ async function resolveAccountIds(
   });
   const map: Record<string, string> = {};
   for (const a of accounts) map[a.code] = a.id;
+
+  // Auto-create any missing default accounts
+  for (const code of codes) {
+    if (!map[code] && DEFAULT_ACCOUNTS[code]) {
+      const def = DEFAULT_ACCOUNTS[code];
+      const created = await prisma.account.create({
+        data: {
+          code,
+          name: def.name,
+          type: def.type,
+          subtype: def.subtype || null,
+          isDefault: true,
+          organizationId,
+        },
+      });
+      map[code] = created.id;
+    }
+  }
+
   return map;
 }
 
@@ -67,10 +101,10 @@ export async function createJournalEntry(params: CreateJournalParams) {
   const codes = lines.map((l) => l.accountCode);
   const accountMap = await resolveAccountIds(organizationId, codes);
 
-  // Check all accounts exist
+  // Check all accounts exist (should not happen after auto-creation of defaults)
   for (const line of lines) {
     if (!accountMap[line.accountCode]) {
-      console.error(`Account ${line.accountCode} not found for org ${organizationId}`);
+      console.error(`Account ${line.accountCode} not found and could not be auto-created for org ${organizationId}. Create this account manually in Chart of Accounts.`);
       return null;
     }
   }

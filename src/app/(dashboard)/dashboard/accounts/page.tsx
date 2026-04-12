@@ -56,10 +56,11 @@ export default function AccountsPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  async function loadData() {
+  async function loadData(dateOverride?: string) {
     setLoading(true);
     const params = new URLSearchParams();
-    if (asOfDate) params.set("asOf", asOfDate);
+    const dateValue = dateOverride !== undefined ? dateOverride : asOfDate;
+    if (dateValue) params.set("asOf", dateValue);
     const res = await fetch(`/api/accounts/balances?${params}`);
     setAccounts(res.ok ? await res.json() : []);
     setLoading(false);
@@ -185,11 +186,11 @@ export default function AccountsPage() {
             onChange={e => setAsOfDate(e.target.value)}
             className="px-3 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
           />
-          <button onClick={loadData} className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium">
+          <button onClick={() => loadData()} className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium">
             {t("common.apply")}
           </button>
           {asOfDate && (
-            <button onClick={() => { setAsOfDate(""); setTimeout(loadData, 0); }} className="text-xs text-text-muted hover:text-text-primary">
+            <button onClick={() => { setAsOfDate(""); loadData(""); }} className="text-xs text-text-muted hover:text-text-primary">
               {t("common.clear")}
             </button>
           )}
