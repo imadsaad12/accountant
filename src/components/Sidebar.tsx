@@ -14,9 +14,10 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ScrollText,
   UsersRound,
-  Receipt,
+  Calculator,
   Settings,
   TrendingDown,
   BarChart2,
@@ -33,24 +34,72 @@ import { canView, type Permissions } from "@/lib/permissions";
 import { useTranslation } from "@/components/LanguageProvider";
 import CashentLogo from "@/components/CashentLogo";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, feature: "dashboard" as const },
-  { href: "/dashboard/clients", labelKey: "nav.clients", icon: Users, feature: "clients" as const },
-  { href: "/dashboard/suppliers", labelKey: "nav.suppliers", icon: Truck, feature: "suppliers" as const },
-  { href: "/dashboard/stock", labelKey: "nav.stock", icon: Package, feature: "products" as const },
-  { href: "/dashboard/employees", labelKey: "nav.employees", icon: UserCog, feature: "employees" as const },
-  { href: "/dashboard/invoices", labelKey: "nav.invoices", icon: FileText, feature: "invoices" as const },
-  { href: "/dashboard/expenses", labelKey: "nav.expenses", icon: TrendingDown, feature: "expenses" as const },
-  { href: "/dashboard/salary-advances", labelKey: "nav.salary_advances", icon: Banknote, feature: "salary_advances" as const },
-  { href: "/dashboard/accounts", labelKey: "nav.accounts", icon: BookOpen, feature: "accounts" as const },
-  { href: "/dashboard/journal-entries", labelKey: "nav.journal", icon: ScrollText, feature: "accounts" as const },
-  { href: "/dashboard/trial-balance", labelKey: "nav.trial_balance", icon: Scale, feature: "accounts" as const },
-  { href: "/dashboard/budgets", labelKey: "nav.budgets", icon: Wallet, feature: "budgets" as const },
-  { href: "/dashboard/reports", labelKey: "nav.reports", icon: BarChart2, feature: "reports" as const },
-  { href: "/dashboard/ai-assistant", labelKey: "nav.ai", icon: Mic, feature: "ai" as const },
-  { href: "/dashboard/activity-log", labelKey: "nav.activity", icon: ScrollText, feature: "activity_log" as const },
-  { href: "/dashboard/tax", labelKey: "nav.tax", icon: Receipt, feature: "tax" as const },
-  { href: "/how-it-works", labelKey: "nav.how_it_works", icon: HelpCircle, feature: "dashboard" as const, newTab: true },
+interface NavItem {
+  href: string;
+  labelKey: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  feature: "dashboard" | "clients" | "suppliers" | "products" | "employees" | "invoices" | "expenses" | "salary_advances" | "accounts" | "budgets" | "reports" | "ai" | "activity_log" | "tax" | "settings";
+  newTab?: boolean;
+}
+
+interface NavCategory {
+  labelKey: string | null; // null = no category header (standalone item)
+  items: NavItem[];
+}
+
+const NAV_STRUCTURE: NavCategory[] = [
+  {
+    labelKey: null,
+    items: [
+      { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard, feature: "dashboard" },
+    ],
+  },
+  {
+    labelKey: "nav.category.sales",
+    items: [
+      { href: "/dashboard/clients", labelKey: "nav.clients", icon: Users, feature: "clients" },
+      { href: "/dashboard/invoices", labelKey: "nav.invoices", icon: FileText, feature: "invoices" },
+    ],
+  },
+  {
+    labelKey: "nav.category.purchases",
+    items: [
+      { href: "/dashboard/suppliers", labelKey: "nav.suppliers", icon: Truck, feature: "suppliers" },
+      { href: "/dashboard/expenses", labelKey: "nav.expenses", icon: TrendingDown, feature: "expenses" },
+    ],
+  },
+  {
+    labelKey: "nav.category.operations",
+    items: [
+      { href: "/dashboard/stock", labelKey: "nav.stock", icon: Package, feature: "products" },
+      { href: "/dashboard/employees", labelKey: "nav.employees", icon: UserCog, feature: "employees" },
+      { href: "/dashboard/salary-advances", labelKey: "nav.salary_advances", icon: Banknote, feature: "salary_advances" },
+    ],
+  },
+  {
+    labelKey: "nav.category.accounting",
+    items: [
+      { href: "/dashboard/accounts", labelKey: "nav.accounts", icon: BookOpen, feature: "accounts" },
+      { href: "/dashboard/journal-entries", labelKey: "nav.journal", icon: ScrollText, feature: "accounts" },
+      { href: "/dashboard/trial-balance", labelKey: "nav.trial_balance", icon: Scale, feature: "accounts" },
+      { href: "/dashboard/budgets", labelKey: "nav.budgets", icon: Wallet, feature: "budgets" },
+    ],
+  },
+  {
+    labelKey: "nav.category.reports",
+    items: [
+      { href: "/dashboard/reports", labelKey: "nav.reports", icon: BarChart2, feature: "reports" },
+      { href: "/dashboard/tax", labelKey: "nav.tax", icon: Calculator, feature: "tax" },
+    ],
+  },
+  {
+    labelKey: "nav.category.tools",
+    items: [
+      { href: "/dashboard/ai-assistant", labelKey: "nav.ai", icon: Mic, feature: "ai" },
+      { href: "/dashboard/activity-log", labelKey: "nav.activity", icon: ScrollText, feature: "activity_log" },
+      { href: "/how-it-works", labelKey: "nav.how_it_works", icon: HelpCircle, feature: "dashboard", newTab: true },
+    ],
+  },
 ];
 
 export default function Sidebar({
@@ -65,11 +114,11 @@ export default function Sidebar({
   onMobileClose?: () => void;
 }) {
   const pathname = usePathname();
-
   const t = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [optimisticPath, setOptimisticPath] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const isAdmin = user.role === "admin";
 
   useEffect(() => {
@@ -94,29 +143,59 @@ export default function Sidebar({
     window.location.href = "/login";
   }
 
-  const visibleItems = useMemo(() => {
-    const permitted = NAV_ITEMS.filter((item) => {
-      if (!permissions) return isAdmin || item.feature === "dashboard";
-      return canView(permissions, item.feature);
-    });
-    if (!navSearch.trim()) return permitted;
-    const q = navSearch.toLowerCase();
-    return permitted.filter((item) => t(item.labelKey).toLowerCase().includes(q));
+  function toggleGroup(key: string) {
+    setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  const visibleCategories = useMemo(() => {
+    const q = navSearch.toLowerCase().trim();
+    return NAV_STRUCTURE.map((cat) => {
+      const filteredItems = cat.items.filter((item) => {
+        const hasPermission = !permissions
+          ? isAdmin || item.feature === "dashboard"
+          : canView(permissions, item.feature);
+        if (!hasPermission) return false;
+        if (q) return t(item.labelKey).toLowerCase().includes(q);
+        return true;
+      });
+      return { ...cat, items: filteredItems };
+    }).filter((cat) => cat.items.length > 0);
   }, [isAdmin, permissions, navSearch, t]);
+
+  function renderNavItem(item: NavItem) {
+    const activePath = optimisticPath ?? pathname;
+    const isActive =
+      item.href === "/dashboard"
+        ? activePath === "/dashboard"
+        : activePath.startsWith(item.href);
+    const isNewTab = item.newTab;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        {...(isNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        onClick={() => { if (!isNewTab) setOptimisticPath(item.href); onMobileClose(); }}
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
+          isActive
+            ? "bg-accent/10 text-accent-hover border border-accent/20"
+            : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
+        }`}
+        title={collapsed ? t(item.labelKey) : undefined}
+      >
+        <item.icon size={18} className={isActive ? "text-accent" : ""} />
+        {!collapsed && <span>{t(item.labelKey)}</span>}
+      </Link>
+    );
+  }
 
   return (
     <aside
       style={{ height: "100dvh" }}
       className={[
-        // Mobile: fixed overlay
         "fixed inset-y-0 left-0 z-50",
-        // Desktop: static in-flow
         "md:static md:z-auto",
-        // Width
         collapsed ? "md:w-[72px] w-48" : "w-48 md:w-48 lg:w-52 xl:w-56",
-        // Mobile open/close via transform
         mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        // Common
         "bg-dark-sidebar border-r border-dark-border flex flex-col",
         "transition-transform md:transition-all duration-300",
         "overflow-hidden shrink-0",
@@ -130,14 +209,12 @@ export default function Sidebar({
             <span className="text-xs text-text-muted truncate">{orgName}</span>
           </div>
         )}
-        {/* Desktop collapse button */}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="hidden md:block p-1.5 rounded-lg hover:bg-dark-card text-text-muted hover:text-text-secondary"
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
-        {/* Mobile close button */}
         <button
           onClick={onMobileClose}
           className="md:hidden p-1.5 rounded-lg hover:bg-dark-card text-text-muted hover:text-text-secondary"
@@ -146,7 +223,7 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Search — sticky above nav */}
+      {/* Search */}
       {!collapsed && (
         <div className="px-2 pt-2 shrink-0">
           <div className="relative">
@@ -163,30 +240,46 @@ export default function Sidebar({
       )}
 
       {/* Nav */}
-      <nav className="flex-1 p-2 space-y-0.5 mt-1 overflow-y-auto">
-        {visibleItems.map((item) => {
-          const activePath = optimisticPath ?? pathname;
-          const isActive =
-            item.href === "/dashboard"
+      <nav className="flex-1 p-2 space-y-1 mt-1 overflow-y-auto">
+        {visibleCategories.map((cat, idx) => {
+          if (!cat.labelKey) {
+            // Standalone items (Dashboard)
+            return <div key={idx}>{cat.items.map(renderNavItem)}</div>;
+          }
+
+          const groupKey = cat.labelKey;
+          const isGroupCollapsed = collapsedGroups[groupKey] && !navSearch.trim();
+          const hasActiveChild = cat.items.some((item) => {
+            const activePath = optimisticPath ?? pathname;
+            return item.href === "/dashboard"
               ? activePath === "/dashboard"
               : activePath.startsWith(item.href);
-          const isNewTab = "newTab" in item && item.newTab;
+          });
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              {...(isNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              onClick={() => { if (!isNewTab) setOptimisticPath(item.href); onMobileClose(); }}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-                isActive
-                  ? "bg-accent/10 text-accent-hover border border-accent/20"
-                  : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
-              }`}
-              title={collapsed ? t(item.labelKey) : undefined}
-            >
-              <item.icon size={18} className={isActive ? "text-accent" : ""} />
-              {!collapsed && <span>{t(item.labelKey)}</span>}
-            </Link>
+            <div key={groupKey}>
+              {!collapsed ? (
+                <button
+                  onClick={() => toggleGroup(groupKey)}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 mt-2 mb-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider ${
+                    hasActiveChild ? "text-accent" : "text-text-muted"
+                  } hover:text-text-secondary transition-colors`}
+                >
+                  <span>{t(groupKey)}</span>
+                  <ChevronDown
+                    size={12}
+                    className={`transition-transform duration-200 ${isGroupCollapsed ? "-rotate-90" : ""}`}
+                  />
+                </button>
+              ) : (
+                <div className="mx-auto my-2 w-6 border-t border-dark-border" />
+              )}
+              {!isGroupCollapsed && (
+                <div className="space-y-0.5">
+                  {cat.items.map(renderNavItem)}
+                </div>
+              )}
+            </div>
           );
         })}
 
@@ -195,7 +288,7 @@ export default function Sidebar({
           <Link
             href="/dashboard/team"
             onClick={() => { setOptimisticPath("/dashboard/team"); onMobileClose(); }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
               (optimisticPath ?? pathname).startsWith("/dashboard/team")
                 ? "bg-accent/10 text-accent-hover border border-accent/20"
                 : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"
@@ -207,12 +300,12 @@ export default function Sidebar({
           </Link>
         )}
 
-        {/* Settings — always visible */}
+        {/* Settings */}
         {(!navSearch.trim() || t("nav.settings").toLowerCase().includes(navSearch.toLowerCase())) && (
           <Link
             href="/dashboard/settings"
             onClick={() => { setOptimisticPath("/dashboard/settings"); onMobileClose(); }}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
               (optimisticPath ?? pathname).startsWith("/dashboard/settings")
                 ? "bg-accent/10 text-accent-hover border border-accent/20"
                 : "text-text-secondary hover:bg-dark-card hover:text-text-primary border border-transparent"

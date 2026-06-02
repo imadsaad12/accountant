@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronDown, ChevronRight, Filter } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Filter, Loader2 } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -138,8 +138,10 @@ export default function JournalEntriesPage() {
           />
           <button
             onClick={loadData}
-            className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium"
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium disabled:opacity-60"
           >
+            {loading && <Loader2 size={14} className="animate-spin" />}
             {t("common.apply")}
           </button>
         </div>

@@ -24,6 +24,12 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.budgets": "Budgets",
     "nav.reports": "Reports",
     "nav.how_it_works": "How It Works",
+    "nav.category.sales": "Sales",
+    "nav.category.purchases": "Purchases",
+    "nav.category.operations": "Operations",
+    "nav.category.accounting": "Accounting",
+    "nav.category.reports": "Reports & Tax",
+    "nav.category.tools": "Tools",
 
     // Salary advances
     "salary_advances.title": "Salary Advances",
@@ -739,6 +745,12 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.budgets": "Budgets",
     "nav.reports": "Rapports",
     "nav.how_it_works": "Comment Ça Marche",
+    "nav.category.sales": "Ventes",
+    "nav.category.purchases": "Achats",
+    "nav.category.operations": "Opérations",
+    "nav.category.accounting": "Comptabilité",
+    "nav.category.reports": "Rapports & Taxes",
+    "nav.category.tools": "Outils",
 
     "salary_advances.title": "Avances sur Salaire",
     "salary_advances.subtitle": "Suivre les avances accordées aux employés et leur statut de remboursement",
@@ -1411,6 +1423,12 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.budgets": "الميزانيات",
     "nav.reports": "التقارير",
     "nav.how_it_works": "كيفية العمل",
+    "nav.category.sales": "المبيعات",
+    "nav.category.purchases": "المشتريات",
+    "nav.category.operations": "العمليات",
+    "nav.category.accounting": "المحاسبة",
+    "nav.category.reports": "التقارير والضرائب",
+    "nav.category.tools": "الأدوات",
 
     "salary_advances.title": "سلف الرواتب",
     "salary_advances.subtitle": "تتبع السلف الممنوحة للموظفين وحالة السداد",

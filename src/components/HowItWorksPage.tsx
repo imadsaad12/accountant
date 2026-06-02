@@ -11,10 +11,16 @@ const SECTIONS = [
   { id: "expenses", label: "Expenses & Recurring" },
   { id: "salary", label: "Employees & Payroll" },
   { id: "supplier-bills", label: "Supplier Bills" },
+  { id: "chart-of-accounts", label: "Chart of Accounts" },
+  { id: "journal-entries", label: "Journal Entries" },
+  { id: "trial-balance", label: "Trial Balance" },
+  { id: "budgets", label: "Budgets" },
+  { id: "balance-sheet", label: "Balance Sheet" },
   { id: "excel-import", label: "Excel Import" },
   { id: "tax", label: "Tax Calculations" },
   { id: "reports", label: "Financial Reports" },
   { id: "dashboard", label: "Dashboard KPIs" },
+  { id: "ai-assistant", label: "AI Assistant" },
   { id: "validation", label: "Data Integrity" },
   { id: "faq", label: "FAQ" },
 ];
@@ -452,6 +458,202 @@ export default function HowItWorksPage() {
             </Subsection>
           </Section>
 
+          {/* Chart of Accounts */}
+          <Section id="chart-of-accounts" title="Chart of Accounts (COA)">
+            <Subsection title="Account Structure">
+              <p className="text-text-secondary mb-4">
+                The Chart of Accounts organizes all financial accounts into 5 types:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-3 text-sm text-text-secondary">
+                <div><strong className="text-blue-400">Assets</strong> — What the business owns (Cash, Receivables, Inventory)</div>
+                <div><strong className="text-red-400">Liabilities</strong> — What the business owes (Payables, Tax Payable)</div>
+                <div><strong className="text-purple-400">Equity</strong> — Owner&apos;s stake (Retained Earnings, Capital)</div>
+                <div><strong className="text-emerald-400">Revenue</strong> — Income earned (Sales Revenue)</div>
+                <div><strong className="text-orange-400">Expenses</strong> — Costs incurred (COGS, Salaries, Rent)</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Account Codes & Hierarchy">
+              <p className="text-text-secondary mb-4">
+                Each account has a unique code (e.g. 1000 = Cash). Accounts can be nested under parent accounts for sub-categorization.
+              </p>
+              <Table
+                headers={["Code Range", "Type", "Examples"]}
+                rows={[
+                  ["1000-1999", "Assets", "1000 Cash, 1100 Accounts Receivable, 1200 Inventory"],
+                  ["2000-2999", "Liabilities", "2000 Accounts Payable, 2100 Tax Payable"],
+                  ["3000-3999", "Equity", "3000 Owner's Equity"],
+                  ["4000-4999", "Revenue", "4000 Sales Revenue"],
+                  ["5000-5999", "Expenses", "5000 COGS, 5300 Salaries, 5900 Other Expenses"],
+                ]}
+              />
+            </Subsection>
+
+            <Subsection title="Default Accounts & Auto-Creation">
+              <p className="text-text-secondary mb-4">
+                Default accounts (Cash, AR, AP, Revenue, COGS, etc.) are auto-created when needed by the auto-journaling system. You can add custom accounts at any time.
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• Default accounts are marked with a <code className="bg-dark-bg px-1 rounded">default</code> badge</div>
+                <div>• Default accounts cannot be deleted (they are used by auto-journaling)</div>
+                <div>• Custom accounts can be created, edited, and deleted freely</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Account Ledger">
+              <p className="text-text-secondary mb-4">
+                Click any account balance to view its ledger — a chronological list of all journal entries affecting that account with a running balance.
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Running Balance = Previous Balance + Debit − Credit (for Assets/Expenses)",
+                  "Running Balance = Previous Balance + Credit − Debit (for Liabilities/Equity/Revenue)",
+                ]}
+              />
+            </Subsection>
+          </Section>
+
+          {/* Journal Entries */}
+          <Section id="journal-entries" title="Journal Entries & Auto-Journaling">
+            <Subsection title="Double-Entry Bookkeeping">
+              <p className="text-text-secondary mb-4">
+                Every financial transaction is recorded as a journal entry with at least two lines that must balance:
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Total Debits = Total Credits (always)",
+                  "Each line: Debit OR Credit (never both)",
+                ]}
+              />
+            </Subsection>
+
+            <Subsection title="Auto-Journaling">
+              <p className="text-text-secondary mb-4">
+                The system automatically creates journal entries for business transactions:
+              </p>
+              <Table
+                headers={["Event", "Debit", "Credit"]}
+                rows={[
+                  ["Invoice Created", "Accounts Receivable", "Sales Revenue + Tax Payable"],
+                  ["Invoice Payment", "Cash", "Accounts Receivable"],
+                  ["Expense Recorded", "Expense Account", "Cash"],
+                  ["Supplier Bill Payment", "Accounts Payable", "Cash"],
+                  ["Salary Advance", "Salaries Expense", "Cash"],
+                ]}
+              />
+              <p className="text-text-secondary text-sm mt-4">
+                Auto-journaling happens silently in the background. You never need to create journal entries manually for standard transactions.
+              </p>
+            </Subsection>
+
+            <Subsection title="Journal Entry Types">
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div><strong className="text-emerald-400">Invoice Payment</strong> — Cash received from clients</div>
+                <div><strong className="text-blue-400">Invoice Created</strong> — Revenue recognized at invoice creation</div>
+                <div><strong className="text-orange-400">Expense</strong> — Operating costs paid</div>
+                <div><strong className="text-red-400">Supplier Payment</strong> — Bills paid to suppliers</div>
+                <div><strong className="text-purple-400">Salary Advance</strong> — Advance paid to employee</div>
+                <div><strong className="text-gray-400">Manual</strong> — Entries created manually</div>
+              </div>
+            </Subsection>
+          </Section>
+
+          {/* Trial Balance */}
+          <Section id="trial-balance" title="Trial Balance">
+            <Subsection title="What is a Trial Balance?">
+              <p className="text-text-secondary mb-4">
+                A trial balance lists all accounts and their balances to verify that total debits equal total credits. It is the primary check for accounting accuracy.
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Total Debits = SUM(all debit balances)",
+                  "Total Credits = SUM(all credit balances)",
+                  "If Total Debits = Total Credits → BALANCED",
+                  "If Total Debits ≠ Total Credits → ERROR exists somewhere",
+                ]}
+              />
+            </Subsection>
+
+            <Subsection title="How Balances Are Calculated">
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• <strong>Assets & Expenses:</strong> Normal debit balance → Debit Balance = Total Debits − Total Credits</div>
+                <div>• <strong>Liabilities, Equity & Revenue:</strong> Normal credit balance → Credit Balance = Total Credits − Total Debits</div>
+                <div>• Accounts with zero balance are excluded from the trial balance</div>
+                <div>• You can filter by date to see the trial balance as of a specific date</div>
+              </div>
+            </Subsection>
+          </Section>
+
+          {/* Budgets */}
+          <Section id="budgets" title="Budgets">
+            <Subsection title="Budget Structure">
+              <p className="text-text-secondary mb-4">
+                Each budget covers a fiscal year with monthly allocations per account:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• <strong>Name & Year:</strong> e.g. &quot;Operating Budget 2026&quot;</div>
+                <div>• <strong>Monthly Amounts:</strong> Set a budget amount for each account for each month (Jan-Dec)</div>
+                <div>• <strong>Copy From:</strong> Create a new budget by copying from an existing one</div>
+                <div>• <strong>Status:</strong> Active or Archived</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Spreadsheet Editor">
+              <p className="text-text-secondary mb-4">
+                Edit budgets in a spreadsheet-style grid. Tips:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• <strong>Double-click</strong> any cell to copy that value to all 12 months</div>
+                <div>• <strong>Add Account</strong> button to add new accounts to the budget</div>
+                <div>• Accounts are grouped by type (Revenue, Expense, etc.)</div>
+                <div>• Annual totals are calculated automatically</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Budget vs Actual">
+              <p className="text-text-secondary mb-4">
+                Compare budgeted amounts against actual journal entry totals:
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Actual = SUM(journal line amounts) for account in that month",
+                  "Variance = Budgeted − Actual",
+                  "Variance % = (Variance ÷ Budgeted) × 100",
+                ]}
+              />
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary mt-4">
+                <div>• <strong className="text-emerald-400">Green</strong> = under budget (good)</div>
+                <div>• <strong className="text-amber-400">Amber</strong> = &gt;80% of budget used (warning)</div>
+                <div>• <strong className="text-red-400">Red</strong> = over budget (action needed)</div>
+              </div>
+            </Subsection>
+          </Section>
+
+          {/* Balance Sheet */}
+          <Section id="balance-sheet" title="Balance Sheet (Journal-Based)">
+            <Subsection title="How It Works">
+              <p className="text-text-secondary mb-4">
+                The balance sheet is computed from actual journal entries, giving you a real-time snapshot of financial position:
+              </p>
+              <FormulaBox
+                formulas={[
+                  "Assets = SUM(debit − credit) for all Asset accounts",
+                  "Liabilities = SUM(credit − debit) for all Liability accounts",
+                  "Equity = SUM(credit − debit) for all Equity accounts",
+                  "Net Income = Revenue − Expenses (from journal entries)",
+                  "Equity + Net Income = Total Equity",
+                  "Assets = Liabilities + Total Equity (accounting equation)",
+                ]}
+              />
+            </Subsection>
+
+            <Subsection title="Date Filtering">
+              <p className="text-text-secondary">
+                Filter by &quot;as of&quot; date to see the balance sheet at any point in time. Only journal entries on or before the selected date are included.
+              </p>
+            </Subsection>
+          </Section>
+
           {/* Excel Import */}
           <Section id="excel-import" title="Excel Import">
             <Subsection title="Client Import">
@@ -645,6 +847,39 @@ export default function HowItWorksPage() {
             </Subsection>
           </Section>
 
+          {/* AI Assistant */}
+          <Section id="ai-assistant" title="AI Assistant">
+            <Subsection title="What It Can Do">
+              <p className="text-text-secondary mb-4">
+                The AI assistant has full context of your business data and can:
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• <strong>Query data:</strong> &quot;How much revenue did we make this month?&quot;</div>
+                <div>• <strong>Create records:</strong> &quot;Add a new client called Tech Solutions&quot;</div>
+                <div>• <strong>Update records:</strong> &quot;Update USB-C Hub stock to 50&quot;</div>
+                <div>• <strong>Export PDFs:</strong> &quot;Export all January invoices as PDF&quot;</div>
+                <div>• <strong>Generate reports:</strong> &quot;Create a financial summary report&quot;</div>
+                <div>• <strong>Accounting queries:</strong> &quot;Show me the trial balance&quot; or &quot;What is the balance of account 1000?&quot;</div>
+              </div>
+            </Subsection>
+
+            <Subsection title="Voice Input">
+              <p className="text-text-secondary mb-4">
+                Supports voice input in English, French, and Arabic (Lebanese and Standard). Click the microphone button and speak — the AI will auto-send after 2 seconds of silence.
+              </p>
+            </Subsection>
+
+            <Subsection title="Action Confirmation">
+              <p className="text-text-secondary mb-4">
+                Write actions (create, update, delete) require explicit confirmation before execution. Read-only actions (exports, queries) execute automatically.
+              </p>
+              <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
+                <div>• <strong>Admin:</strong> Can perform all actions</div>
+                <div>• <strong>Employee:</strong> Can only query data (no write actions)</div>
+              </div>
+            </Subsection>
+          </Section>
+
           {/* Data Integrity */}
           <Section id="validation" title="Data Integrity & Validation">
             <Subsection title="Invoice Creation Validation">
@@ -759,6 +994,26 @@ export default function HowItWorksPage() {
                   question: "What happens when an employee has an inactive date?",
                   answer:
                     "Salary is only calculated up to the inactive date. If the inactive date is before the report period, the employee is excluded entirely. This affects P&L, Comprehensive reports, and dashboard earnings.",
+                },
+                {
+                  question: "What is auto-journaling and do I need to create journal entries manually?",
+                  answer:
+                    "Auto-journaling automatically creates double-entry journal entries when you create invoices, record payments, add expenses, or pay supplier bills. You don't need to create entries manually for standard transactions. All entries are visible in the Journal Entries section.",
+                },
+                {
+                  question: "My trial balance is unbalanced — what should I do?",
+                  answer:
+                    "An unbalanced trial balance means there's a data error. Check recent manual journal entries for mistakes. Auto-generated entries are always balanced. The difference amount shown will help you track down the error.",
+                },
+                {
+                  question: "How does Budget vs Actual work?",
+                  answer:
+                    "It compares your budgeted amounts per account per month against actual journal entry totals. Green means under budget, amber means >80% used, red means over budget. Variance shows the difference and percentage.",
+                },
+                {
+                  question: "Can the AI assistant modify my accounting data?",
+                  answer:
+                    "The AI can create clients, invoices, products, and expenses — but every write action requires your explicit confirmation before it executes. Read-only queries and exports happen automatically. Employee-role users can only query data.",
                 },
               ]}
             />

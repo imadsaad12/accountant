@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, X, Edit2, BookOpen, Calendar, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, X, Edit2, BookOpen, Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useTranslation } from "@/components/LanguageProvider";
 import { useOrgSettings } from "@/components/OrgSettingsProvider";
@@ -53,6 +53,8 @@ export default function AccountsPage() {
   const [asOfDate, setAsOfDate] = useState("");
   const [ledger, setLedger] = useState<{ account: { id: string; code: string; name: string; type: string }; entries: { id: string; date: string; description: string; type: string; reference: string | null; debit: number; credit: number; balance: number }[] } | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -95,27 +97,32 @@ export default function AccountsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSaving(true);
     const method = editId ? "PUT" : "POST";
     const url = editId ? `/api/accounts/${editId}` : "/api/accounts";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     if (!res.ok) {
       const data = await res.json();
       setError(data.error || t("common.error"));
+      setSaving(false);
       return;
     }
+    setSaving(false);
     setShowForm(false);
     loadData();
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t("accounts.delete_confirm"))) return;
+    setDeleting(id);
     const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json();
       alert(data.error || t("common.error"));
-      return;
+    } else {
+      await loadData();
     }
-    loadData();
+    setDeleting(null);
   }
 
   const filtered = filterType ? accounts.filter(a => a.type === filterType) : accounts;
@@ -186,7 +193,8 @@ export default function AccountsPage() {
             onChange={e => setAsOfDate(e.target.value)}
             className="px-3 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm"
           />
-          <button onClick={() => loadData()} className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium">
+          <button onClick={() => loadData()} disabled={loading} className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover font-medium disabled:opacity-60">
+            {loading && <Loader2 size={14} className="animate-spin" />}
             {t("common.apply")}
           </button>
           {asOfDate && (
@@ -295,8 +303,11 @@ export default function AccountsPage() {
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm" />
                 </div>
                 <div className="flex gap-3 justify-end">
-                  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                  <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">{t("common.save")}</button>
+                  <button type="button" onClick={() => setShowForm(false)} disabled={saving} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover disabled:opacity-50">{t("common.cancel")}</button>
+                  <button type="submit" disabled={saving} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                    {saving && <Loader2 size={14} className="animate-spin" />}
+                    {t("common.save")}
+                  </button>
                 </div>
               </form>
             </div>
@@ -352,7 +363,9 @@ export default function AccountsPage() {
                             <>
                               <button onClick={() => openEdit(acc)} className="text-text-muted hover:text-accent p-1"><Edit2 size={14} /></button>
                               {!acc.isDefault && (
-                                <button onClick={() => handleDelete(acc.id)} className="text-text-muted hover:text-danger p-1"><Trash2 size={14} /></button>
+                                <button onClick={() => handleDelete(acc.id)} disabled={deleting === acc.id} className="text-text-muted hover:text-danger p-1 disabled:opacity-50">
+                                  {deleting === acc.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                </button>
                               )}
                             </>
                           )}
