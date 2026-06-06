@@ -5,6 +5,27 @@ import { logAudit } from "@/lib/audit";
 import { canEdit } from "@/lib/permissions";
 import * as XLSX from "xlsx";
 
+// Parse a money value from a spreadsheet cell, tolerating currency symbols,
+// thousands separators and comma decimals. Returns a non-negative 2-dp number.
+function parseAmount(raw: string): number {
+  if (!raw) return 0;
+  let s = raw.replace(/[^0-9.,-]/g, "").trim(); // strip currency symbols, spaces, etc.
+  if (!s) return 0;
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  if (lastDot >= 0 && lastComma >= 0) {
+    // The right-most separator is the decimal point.
+    if (lastComma > lastDot) s = s.replace(/\./g, "").replace(",", ".");
+    else s = s.replace(/,/g, "");
+  } else if (lastComma >= 0) {
+    // Only commas: treat as decimal if 1-2 trailing digits, else thousands.
+    s = /,\d{1,2}$/.test(s) ? s.replace(",", ".") : s.replace(/,/g, "");
+  }
+  const n = parseFloat(s);
+  if (isNaN(n)) return 0;
+  return Math.max(0, parseFloat(n.toFixed(2)));
+}
+
 export async function POST(req: NextRequest) {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -64,8 +85,8 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const balance = parseFloat(row.balance || "0") || 0;
-      const pending = parseFloat(row.pending || row.total_pending || row.due || "0") || 0;
+      const balance = parseAmount(row.balance || "0");
+      const pending = parseAmount(row.pending || row.total_pending || row.due || "0");
 
       await prisma.client.create({
         data: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BookOpen, ChevronDown, ChevronRight, Filter, Loader2 } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
@@ -47,6 +48,8 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function JournalEntriesPage() {
+  // Accounting module temporarily disabled — see Sidebar.tsx
+  redirect("/dashboard");
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
   const sym = CURRENCY_SYMBOLS[orgSettings.defaultCurrency] ?? orgSettings.defaultCurrency;

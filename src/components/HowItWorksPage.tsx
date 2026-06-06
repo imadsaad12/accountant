@@ -319,9 +319,8 @@ export default function HowItWorksPage() {
               </div>
 
               <div className="bg-dark-card border border-dark-border rounded p-4 space-y-2 text-sm text-text-secondary">
-                <div><strong>Rounding difference between reports:</strong></div>
-                <div>• <strong>P&L Report:</strong> Uses the exact number (e.g. 1.0484 months)</div>
-                <div>• <strong>Comprehensive Report:</strong> Rounds to the nearest whole month (e.g. 1.0484 → 1 month)</div>
+                <div><strong>Consistent across reports:</strong></div>
+                <div>• Both the <strong>P&L</strong> and <strong>Comprehensive</strong> reports use the exact fractional value (e.g. 1.0484 months) so the two reports always agree for the same period.</div>
               </div>
             </Subsection>
           </Section>
@@ -943,7 +942,7 @@ export default function HowItWorksPage() {
                 {
                   question: "How is monthly recurring expense pro-ration calculated?",
                   answer:
-                    "Uses calendar-accurate month calculation based on actual days in each month (28/29/30/31). Feb 15 → Mar 17 = 1.0484 months. The Comprehensive Report uses Math.round() (1.0484 → 1 month), while the P&L report uses the exact fractional value.",
+                    "Uses calendar-accurate month calculation based on actual days in each month (28/29/30/31). Feb 15 → Mar 17 = 1.0484 months. Both the P&L and Comprehensive reports use the exact fractional value so they always agree for the same period.",
                 },
                 {
                   question: "Can I use multiple currencies?",

@@ -25,9 +25,7 @@ import {
   Banknote,
   HelpCircle,
   Search,
-  BookOpen,
-  Scale,
-  Wallet,
+  // BookOpen, Scale, Wallet — used by the temporarily-disabled Accounting nav block
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { canView, type Permissions } from "@/lib/permissions";
@@ -76,15 +74,18 @@ const NAV_STRUCTURE: NavCategory[] = [
       { href: "/dashboard/salary-advances", labelKey: "nav.salary_advances", icon: Banknote, feature: "salary_advances" },
     ],
   },
-  {
-    labelKey: "nav.category.accounting",
-    items: [
-      { href: "/dashboard/accounts", labelKey: "nav.accounts", icon: BookOpen, feature: "accounts" },
-      { href: "/dashboard/journal-entries", labelKey: "nav.journal", icon: ScrollText, feature: "accounts" },
-      { href: "/dashboard/trial-balance", labelKey: "nav.trial_balance", icon: Scale, feature: "accounts" },
-      { href: "/dashboard/budgets", labelKey: "nav.budgets", icon: Wallet, feature: "budgets" },
-    ],
-  },
+  // TEMPORARILY DISABLED — Accounting module (Chart of Accounts, Journal Entries,
+  // Trial Balance, Budgets, journal-based Balance Sheet) is hidden until the
+  // double-entry ledger wiring is completed. Re-enable this block to restore it.
+  // {
+  //   labelKey: "nav.category.accounting",
+  //   items: [
+  //     { href: "/dashboard/accounts", labelKey: "nav.accounts", icon: BookOpen, feature: "accounts" },
+  //     { href: "/dashboard/journal-entries", labelKey: "nav.journal", icon: ScrollText, feature: "accounts" },
+  //     { href: "/dashboard/trial-balance", labelKey: "nav.trial_balance", icon: Scale, feature: "accounts" },
+  //     { href: "/dashboard/budgets", labelKey: "nav.budgets", icon: Wallet, feature: "budgets" },
+  //   ],
+  // },
   {
     labelKey: "nav.category.reports",
     items: [

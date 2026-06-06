@@ -5,6 +5,8 @@ import { logAudit } from "@/lib/audit";
 import { canEdit, canView } from "@/lib/permissions";
 import { journalInvoicePayment, deleteJournalEntriesBySource } from "@/lib/auto-journal";
 
+const round2 = (n: number) => parseFloat((n || 0).toFixed(2));
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionWithPermissions();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,8 +56,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  const totalPaid = totalPaidSoFar + appliedToInvoice;
-  if (totalPaid >= invoice.total) {
+  const totalPaid = round2(totalPaidSoFar + appliedToInvoice);
+  if (totalPaid >= round2(invoice.total)) {
     await prisma.invoice.update({ where: { id }, data: { status: "paid" } });
   } else if (totalPaid > 0) {
     await prisma.invoice.update({ where: { id }, data: { status: "partially_paid" } });
@@ -108,9 +110,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     include: { payments: true },
   });
   if (invoice) {
-    const totalPaid = invoice.payments.reduce((s, p) => s + p.amount, 0);
+    const totalPaid = round2(invoice.payments.reduce((s, p) => s + p.amount, 0));
     let newStatus: string;
-    if (totalPaid >= invoice.total) {
+    if (totalPaid >= round2(invoice.total)) {
       newStatus = "paid";
     } else if (totalPaid > 0) {
       newStatus = "partially_paid";

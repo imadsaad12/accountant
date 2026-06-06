@@ -31,21 +31,29 @@ export async function POST(req: NextRequest) {
   const { components, ...productData } = data;
   const isComposite = productData.type === "composite";
 
-  const product = await prisma.product.create({
-    data: {
-      name: productData.name,
-      sku: productData.sku,
-      description: productData.description || null,
-      price: parseFloat(productData.price),
-      cost: parseFloat(productData.cost) || 0,
-      quantity: isComposite ? 0 : (parseFloat(productData.quantity) || 0),
-      minStock: parseInt(productData.minStock) || 0,
-      unit: productData.unit || "piece",
-      type: productData.type || "simple",
-      categoryId: productData.categoryId || null,
-      organizationId: session.organizationId,
-    },
-  });
+  let product;
+  try {
+    product = await prisma.product.create({
+      data: {
+        name: productData.name,
+        sku: productData.sku,
+        description: productData.description || null,
+        price: parseFloat(productData.price),
+        cost: parseFloat(productData.cost) || 0,
+        quantity: isComposite ? 0 : (parseFloat(productData.quantity) || 0),
+        minStock: parseInt(productData.minStock) || 0,
+        unit: productData.unit || "piece",
+        type: productData.type || "simple",
+        categoryId: productData.categoryId || null,
+        organizationId: session.organizationId,
+      },
+    });
+  } catch (e: unknown) {
+    if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002") {
+      return NextResponse.json({ error: `SKU "${productData.sku}" is already in use. Please use a different SKU.` }, { status: 409 });
+    }
+    throw e;
+  }
 
   if (isComposite && Array.isArray(components) && components.length > 0) {
     await prisma.productComponent.createMany({

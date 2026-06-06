@@ -1,5 +1,6 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { Fragment, useEffect, useState, useCallback } from "react";
 import { Wallet, Plus, Trash2, Copy, BarChart3, Save, Archive, ChevronDown, X, Loader2 } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
@@ -50,6 +51,8 @@ interface VsActualRow {
 }
 
 export default function BudgetsPage() {
+  // Accounting module temporarily disabled — see Sidebar.tsx
+  redirect("/dashboard");
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
   const { canEditFeature } = usePermissions();

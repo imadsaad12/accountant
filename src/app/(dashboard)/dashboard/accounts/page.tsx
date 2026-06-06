@@ -1,5 +1,6 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus, Trash2, X, Edit2, BookOpen, Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
@@ -38,6 +39,8 @@ const TYPE_COLORS: Record<string, string> = {
 const emptyForm = { code: "", name: "", type: "asset", subtype: "", description: "", parentId: "" };
 
 export default function AccountsPage() {
+  // Accounting module temporarily disabled — see Sidebar.tsx
+  redirect("/dashboard");
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("accounts");
   const t = useTranslation();

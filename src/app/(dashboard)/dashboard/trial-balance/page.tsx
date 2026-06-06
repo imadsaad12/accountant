@@ -1,5 +1,6 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { Scale, Calendar, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
@@ -28,6 +29,8 @@ interface TrialRow {
 }
 
 export default function TrialBalancePage() {
+  // Accounting module temporarily disabled — see Sidebar.tsx
+  redirect("/dashboard");
   const t = useTranslation();
   const { orgSettings } = useOrgSettings();
   const sym = CURRENCY_SYMBOLS[orgSettings.defaultCurrency] ?? orgSettings.defaultCurrency;

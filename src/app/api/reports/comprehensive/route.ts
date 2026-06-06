@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   const excludeParam = searchParams.get("exclude") ?? "";
   const excludedCategories = new Set(excludeParam ? excludeParam.split(",") : []);
   const fromDate = new Date(fromStr + "T00:00:00Z");
-  const toDate = new Date(toStr + "T23:59:59Z");
+  const toDate = new Date(toStr + "T23:59:59.999Z");
   const orgId = session.organizationId;
 
   const [invoices, expenses, employees, bills, receivedPayments, allInvoicePayments, allBillPayments] = await Promise.all([
@@ -208,8 +208,7 @@ export async function GET(req: NextRequest) {
     let salary = 0;
     if (period === "day") salary = rate * days;
     else if (period === "week") salary = rate * (days / 7);
-    else if (period === "year") salary = rate * (days / 365);
-    else salary = rate * calcMonths(eff, empEnd);
+    else salary = rate * calcMonths(eff, empEnd); // month (and any other value) — consistent with P&L/expenses/dashboard
     salary = parseFloat(salary.toFixed(2));
 
     // Deduct each advance pro-rated over remaining days in its pay period from advance date

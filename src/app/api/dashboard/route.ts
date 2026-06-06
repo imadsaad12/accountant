@@ -88,9 +88,13 @@ export async function GET() {
   // Filter low stock — compute effective quantity for composite products
   const lowStock = lowStockProducts
     .map(p => {
-      const effectiveQty = p.type === "composite" && p.components.length > 0
-        ? Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)))
-        : p.quantity;
+      let effectiveQty: number;
+      if (p.type === "composite" && p.components.length > 0) {
+        const ratios = p.components.filter(c => c.quantity > 0).map(c => c.component.quantity / c.quantity);
+        effectiveQty = ratios.length > 0 ? Math.floor(Math.min(...ratios)) : 0;
+      } else {
+        effectiveQty = p.quantity;
+      }
       return { id: p.id, name: p.name, quantity: effectiveQty, minStock: p.minStock };
     })
     .filter(p => p.quantity <= (p.minStock ?? 0));
@@ -150,24 +154,13 @@ export async function GET() {
     } else {
       amount = parseFloat((rate * calcMonths(hireDate, empEnd)).toFixed(2));
     }
-    // Deduct advances (same logic as expenses page)
+    // Deduct advances: dashboard is an all-time view, so the FULL advance amount
+    // is deducted (overlap = entire advance period). "Returned" advances were
+    // repaid directly (not via salary) and are excluded.
     let totalDeduction = 0;
     for (const adv of emp.salaryAdvances) {
-      const advDate = new Date(adv.date);
-      let periodEnd: Date;
-      if (period === "month") {
-        periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth() + 1, 0, 23, 59, 59, 999));
-      } else if (period === "week") {
-        const satDate = advDate.getUTCDate() + (6 - advDate.getUTCDay());
-        periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), satDate, 23, 59, 59, 999));
-      } else {
-        periodEnd = new Date(Date.UTC(advDate.getUTCFullYear(), advDate.getUTCMonth(), advDate.getUTCDate(), 23, 59, 59, 999));
-      }
-      const remainingDays = calcDays(advDate, periodEnd);
-      if (remainingDays <= 0) continue;
-      const overlapEnd = periodEnd < empEnd ? periodEnd : empEnd;
-      if (advDate > overlapEnd) continue;
-      totalDeduction += (Number(adv.amount) / remainingDays) * calcDays(advDate, overlapEnd);
+      if (adv.status === "returned") continue;
+      totalDeduction += Number(adv.amount);
     }
     totalSalaries += Math.max(0, amount - parseFloat(totalDeduction.toFixed(2)));
   }
