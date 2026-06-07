@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const data = await req.json();
   const { components, ...productData } = data;
   const isComposite = existing.type === "composite";
+  const isService = existing.type === "service";
 
   const product = await prisma.product.update({
     where: { id },
@@ -43,9 +44,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       description: productData.description || null,
       price: parseFloat(productData.price),
       cost: parseFloat(productData.cost) || 0,
-      quantity: isComposite ? 0 : (parseFloat(productData.quantity) || 0),
-      minStock: parseInt(productData.minStock) || 0,
+      quantity: isComposite || isService ? 0 : (parseFloat(productData.quantity) || 0),
+      minStock: isService ? 0 : (parseInt(productData.minStock) || 0),
       unit: productData.unit || existing.unit,
+      ...(isService ? { available: productData.available !== false } : {}),
       categoryId: productData.categoryId || null,
     },
   });

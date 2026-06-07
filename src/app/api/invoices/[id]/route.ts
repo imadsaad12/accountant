@@ -81,6 +81,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // 1. Restore stock for the OLD items
       for (const old of existing.items) {
         if (!old.productId || !old.product) continue;
+        if (old.product.type === "service") continue; // services are not stock-tracked
         if (old.product.components && old.product.components.length > 0) {
           for (const comp of old.product.components) {
             await tx.product.update({ where: { id: comp.componentId }, data: { quantity: { increment: comp.quantity * old.quantity } } });
@@ -106,6 +107,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         costSnapshot.set(item.productId, product.cost);
         if (Number(item.unitPrice) < product.cost) {
           throw new InvoiceValidationError(`Unit price for "${product.name}" cannot be below its cost ($${product.cost.toFixed(2)}).`);
+        }
+        if (product.type === "service") {
+          if (!product.available) throw new InvoiceValidationError(`"${product.name}" is not available.`);
+          continue; // services are not stock-tracked
         }
         if (product.type === "composite") {
           for (const comp of product.components) {
@@ -257,6 +262,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (!item.productId) continue;
     const product = item.product;
     if (!product) continue;
+    if (product.type === "service") continue; // services are not stock-tracked
 
     if (product.components && product.components.length > 0) {
       // Composite product: restore each component's stock
