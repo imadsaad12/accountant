@@ -125,6 +125,12 @@ export async function POST(req: NextRequest) {
         throw new InvoiceValidationError(`Unit price for "${product.name}" cannot be below its cost ($${product.cost.toFixed(2)}).`);
       }
 
+      // Services are not stock-tracked — never deduct, but block if marked unavailable.
+      if (product.type === "service") {
+        if (!product.available) throw new InvoiceValidationError(`"${product.name}" is not available.`);
+        continue;
+      }
+
       if (product.type === "composite") {
         for (const comp of product.components) {
           const needed = comp.quantity * item.quantity;

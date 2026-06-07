@@ -85,8 +85,10 @@ export async function GET() {
     }),
   ]);
 
-  // Filter low stock — compute effective quantity for composite products
+  // Filter low stock — compute effective quantity for composite products.
+  // Services are not stock-tracked, so they are never "low stock".
   const lowStock = lowStockProducts
+    .filter(p => p.type !== "service")
     .map(p => {
       let effectiveQty: number;
       if (p.type === "composite" && p.components.length > 0) {

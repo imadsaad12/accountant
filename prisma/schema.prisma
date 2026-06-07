@@ -168,7 +168,8 @@ model Product {
   quantity       Float              @default(0)
   minStock       Int                @default(5)
   unit           String             @default("piece")
-  type           String             @default("simple")   // simple | composite
+  type           String             @default("simple")   // simple | composite | service
+  available      Boolean            @default(true)       // for service type: sellable or not (services are not stock-tracked)
   categoryId     String?
   category       Category?          @relation(fields: [categoryId], references: [id])
   organizationId String

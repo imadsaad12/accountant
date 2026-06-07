@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown, Loader2, Layers, Package, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, X, AlertTriangle, Search, ChevronUp, ChevronDown, Loader2, Layers, Package, Download, Wrench } from "lucide-react";
 import { TablePageSkeleton } from "@/components/skeletons/TablePageSkeleton";
 import { PermissionGuard, usePermissions } from "@/components/PermissionGuard";
 import { useOrgSettings, currencySymbol } from "@/components/OrgSettingsProvider";
@@ -34,6 +34,7 @@ interface Product {
   minStock: number;
   unit: string;
   type: string;
+  available: boolean;
   categoryId: string | null;
   category: { id: string; name: string } | null;
   components: ProductComponent[];
@@ -78,6 +79,13 @@ function canMakeQty(product: Product): number {
   return Math.floor(Math.min(...product.components.map(c => c.component.quantity / c.quantity)));
 }
 
+// Services are not stock-tracked, so they are never "low stock".
+function isLowStock(product: Product): boolean {
+  if (product.type === "service") return false;
+  const qty = product.type === "composite" ? canMakeQty(product) : product.quantity;
+  return qty <= product.minStock;
+}
+
 export default function StockPage() {
   const { canEditFeature } = usePermissions();
   const canEdit = canEditFeature("products");
@@ -92,7 +100,8 @@ export default function StockPage() {
   const [showForm, setShowForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [productType, setProductType] = useState<"simple" | "composite">("simple");
+  const [productType, setProductType] = useState<"simple" | "composite" | "service">("simple");
+  const [available, setAvailable] = useState(true);
   const [form, setForm] = useState(emptySimpleProduct);
   const [formComponents, setFormComponents] = useState<ComponentRow[]>([{ componentId: "", quantity: "1" }]);
   const [formError, setFormError] = useState<string | null>(null);
@@ -101,7 +110,7 @@ export default function StockPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
-  const [filterType, setFilterType] = useState<"all" | "simple" | "composite">("all");
+  const [filterType, setFilterType] = useState<"all" | "simple" | "composite" | "service">("all");
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
@@ -122,6 +131,7 @@ export default function StockPage() {
   function openCreate() {
     setForm(emptySimpleProduct);
     setProductType("simple");
+    setAvailable(true);
     setFormComponents([{ componentId: "", quantity: "1" }]);
     setEditing(null);
     setSkuAuto(true);
@@ -132,7 +142,8 @@ export default function StockPage() {
   function openEdit(product: Product) {
     setSkuAuto(false);
     setFormError(null);
-    setProductType(product.type === "composite" ? "composite" : "simple");
+    setProductType(product.type === "composite" ? "composite" : product.type === "service" ? "service" : "simple");
+    setAvailable(product.available !== false);
     setForm({
       name: product.name,
       sku: product.sku,
@@ -207,6 +218,20 @@ export default function StockPage() {
             categoryId: form.categoryId || null,
             components: validComponents.map(c => ({ componentId: c.componentId, quantity: parseFloat(c.quantity) })),
           }
+        : productType === "service"
+        ? {
+            name: form.name,
+            sku: form.sku,
+            description: form.description,
+            price: parseFloat(form.price),
+            cost: parseFloat(form.cost) || 0,
+            quantity: 0,
+            minStock: 0,
+            unit: form.unit,
+            type: "service",
+            available,
+            categoryId: form.categoryId || null,
+          }
         : {
             name: form.name,
             sku: form.sku,
@@ -280,10 +305,7 @@ export default function StockPage() {
         (!q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.category?.name || "").toLowerCase().includes(q)) &&
         (!filterCategory || p.categoryId === filterCategory) &&
         (filterType === "all" || p.type === filterType) &&
-        (filterStock === "all" ||
-          (filterStock === "low"
-            ? (p.type === "composite" ? canMakeQty(p) <= p.minStock : p.quantity <= p.minStock)
-            : (p.type === "composite" ? canMakeQty(p) > p.minStock : p.quantity > p.minStock)))
+        (filterStock === "all" || (filterStock === "low" ? isLowStock(p) : !isLowStock(p)))
       )
       .sort((a, b) => {
         if (!sortField) return 0;
@@ -326,18 +348,19 @@ export default function StockPage() {
         startY: 28,
         head: [[t("field.name"), "SKU", "Type", t("stock.category"), `${t("field.price")} (${currSym})`, `${t("field.cost")} (${currSym})`, t("field.quantity"), t("stock.min_stock"), t("field.status")]],
         body: filtered.map(p => {
+          const isService = p.type === "service";
           const qty = p.type === "composite" ? canMakeQty(p) : p.quantity;
-          const isLow = qty <= p.minStock;
+          const isLow = isLowStock(p);
           return [
             p.name,
             p.sku,
-            p.type === "composite" ? t("stock.filter.composite") : t("stock.filter.simple"),
+            isService ? "Service" : p.type === "composite" ? t("stock.filter.composite") : t("stock.filter.simple"),
             p.category?.name || "—",
             fmtAmt(p.price),
             fmtAmt(p.cost),
-            `${qty} ${p.unit}`,
-            String(p.minStock),
-            isLow ? "LOW STOCK" : "OK",
+            isService ? (p.available ? "Available" : "Unavailable") : `${qty} ${p.unit}`,
+            isService ? "—" : String(p.minStock),
+            isService ? (p.available ? "OK" : "—") : (isLow ? "LOW STOCK" : "OK"),
           ];
         }),
         styles: { fontSize: 8 },
@@ -400,10 +423,11 @@ export default function StockPage() {
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-          <select value={filterType} onChange={e => setFilterType(e.target.value as "all" | "simple" | "composite")} className="flex-1 min-w-[120px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+          <select value={filterType} onChange={e => setFilterType(e.target.value as "all" | "simple" | "composite" | "service")} className="flex-1 min-w-[120px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
             <option value="all">{t("stock.filter.all_types")}</option>
             <option value="simple">{t("stock.filter.simple")}</option>
             <option value="composite">{t("stock.filter.composite")}</option>
+            <option value="service">Service</option>
           </select>
           <select value={filterStock} onChange={e => setFilterStock(e.target.value as "all" | "low" | "ok")} className="flex-1 min-w-[120px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
             <option value="all">{t("stock.filter.all")}</option>
@@ -472,6 +496,13 @@ export default function StockPage() {
                 >
                   <Layers size={15} /> {t("stock.type.composite")}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setProductType("service")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${productType === "service" ? "bg-accent text-white" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  <Wrench size={15} /> Service
+                </button>
               </div>
             )}
 
@@ -481,6 +512,15 @@ export default function StockPage() {
                 <Layers size={14} className="text-purple-400" />
                 <span className="text-sm text-purple-400 font-medium">{t("stock.type.composite")}</span>
                 <span className="text-xs text-text-muted ml-1">{t("stock.composite_type_fixed")}</span>
+              </div>
+            )}
+
+            {/* Service type badge when editing */}
+            {editing && editing.type === "service" && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-sky-500/10 border border-sky-500/20 rounded-lg">
+                <Wrench size={14} className="text-sky-400" />
+                <span className="text-sm text-sky-400 font-medium">Service</span>
+                <span className="text-xs text-text-muted ml-1">not stock-tracked</span>
               </div>
             )}
 
@@ -538,11 +578,25 @@ export default function StockPage() {
                     <input type="number" min="0" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
                   </div>
                 )}
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">{t("stock.min_stock")}</label>
-                  <input type="number" min="0" value={form.minStock} onChange={e => setForm({ ...form, minStock: e.target.value })} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
-                  <p className="mt-1 text-xs text-text-muted">{t("stock.low_stock_hint")}</p>
-                </div>
+                {productType === "service" ? (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Availability</label>
+                    <button
+                      type="button"
+                      onClick={() => setAvailable(a => !a)}
+                      className={`w-full px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${available ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"}`}
+                    >
+                      {available ? "Available" : "Not available"}
+                    </button>
+                    <p className="mt-1 text-xs text-text-muted">Services are always sellable while available (no stock).</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">{t("stock.min_stock")}</label>
+                    <input type="number" min="0" value={form.minStock} onChange={e => setForm({ ...form, minStock: e.target.value })} onKeyDown={e => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
+                    <p className="mt-1 text-xs text-text-muted">{t("stock.low_stock_hint")}</p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">{t("stock.unit")}</label>
                   <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent">
@@ -691,8 +745,9 @@ export default function StockPage() {
               <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted">{search || filterCategory || filterStock !== "all" ? t("common.no_results") : t("stock.empty")}</td></tr>
             ) : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(product => {
               const isComposite = product.type === "composite";
+              const isService = product.type === "service";
               const effectiveQty = isComposite ? canMakeQty(product) : product.quantity;
-              const isLow = effectiveQty <= product.minStock;
+              const isLow = isLowStock(product);
               return (
                 <tr key={product.id} className="hover:bg-dark-card-hover">
                   <td className="px-4 py-3">
@@ -700,6 +755,11 @@ export default function StockPage() {
                       {isComposite && (
                         <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium shrink-0">
                           <Layers size={9} /> {t("stock.composite_badge")}
+                        </span>
+                      )}
+                      {isService && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-medium shrink-0">
+                          <Wrench size={9} /> Service
                         </span>
                       )}
                       <div>
@@ -717,11 +777,17 @@ export default function StockPage() {
                   <td className="px-4 py-3 text-sm text-text-secondary">{product.category?.name || "-"}</td>
                   <td className="px-4 py-3 text-sm text-text-primary text-right font-medium">{currSym}{fmtAmt(product.price)}</td>
                   <td className="px-4 py-3 text-right">
-                    <span className={`inline-flex items-center gap-1 text-sm font-medium ${isLow ? "text-danger" : "text-success"}`}>
-                      {isLow && <AlertTriangle size={14} />}
-                      {effectiveQty} {product.unit}
-                      {isComposite && <span className="text-xs text-text-muted font-normal ml-1">({t("stock.can_make")})</span>}
-                    </span>
+                    {isService ? (
+                      <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full border font-medium ${product.available ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-red-400 border-red-500/30 bg-red-500/10"}`}>
+                        {product.available ? "Available" : "Unavailable"}
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1 text-sm font-medium ${isLow ? "text-danger" : "text-success"}`}>
+                        {isLow && <AlertTriangle size={14} />}
+                        {effectiveQty} {product.unit}
+                        {isComposite && <span className="text-xs text-text-muted font-normal ml-1">({t("stock.can_make")})</span>}
+                      </span>
+                    )}
                   </td>
                   {canEdit && (
                     <td className="px-4 py-3 text-right">

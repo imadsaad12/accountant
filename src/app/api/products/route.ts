@@ -30,29 +30,49 @@ export async function POST(req: NextRequest) {
   const data = await req.json();
   const { components, ...productData } = data;
   const isComposite = productData.type === "composite";
+  const isService = productData.type === "service";
+
+  const baseData = {
+    name: productData.name,
+    description: productData.description || null,
+    price: parseFloat(productData.price),
+    cost: parseFloat(productData.cost) || 0,
+    // Services and composites are not directly stock-tracked.
+    quantity: isComposite || isService ? 0 : (parseFloat(productData.quantity) || 0),
+    minStock: isService ? 0 : (parseInt(productData.minStock) || 0),
+    unit: productData.unit || "piece",
+    type: productData.type || "simple",
+    available: isService ? productData.available !== false : true,
+    categoryId: productData.categoryId || null,
+    organizationId: session.organizationId,
+  };
+
+  // SKU is unique per org and the column is non-nullable, so an empty SKU would
+  // collide with any other SKU-less product. Auto-generate a unique one when blank.
+  const providedSku = String(productData.sku ?? "").trim();
+  const genSku = () => {
+    const base = (String(productData.name ?? "").toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, 4)) || "PRD";
+    const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+    return `${base}-${rand}`;
+  };
 
   let product;
-  try {
-    product = await prisma.product.create({
-      data: {
-        name: productData.name,
-        sku: productData.sku,
-        description: productData.description || null,
-        price: parseFloat(productData.price),
-        cost: parseFloat(productData.cost) || 0,
-        quantity: isComposite ? 0 : (parseFloat(productData.quantity) || 0),
-        minStock: parseInt(productData.minStock) || 0,
-        unit: productData.unit || "piece",
-        type: productData.type || "simple",
-        categoryId: productData.categoryId || null,
-        organizationId: session.organizationId,
-      },
-    });
-  } catch (e: unknown) {
-    if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002") {
-      return NextResponse.json({ error: `SKU "${productData.sku}" is already in use. Please use a different SKU.` }, { status: 409 });
+  let sku = providedSku || genSku();
+  for (let attempt = 0; ; attempt++) {
+    try {
+      product = await prisma.product.create({ data: { ...baseData, sku } });
+      break;
+    } catch (e: unknown) {
+      const isDup = typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
+      if (isDup) {
+        // A user-supplied SKU that clashes → clear error. An auto-generated clash → retry.
+        if (providedSku) {
+          return NextResponse.json({ error: `SKU "${providedSku}" is already in use. Please use a different SKU.` }, { status: 409 });
+        }
+        if (attempt < 5) { sku = genSku(); continue; }
+      }
+      throw e;
     }
-    throw e;
   }
 
   if (isComposite && Array.isArray(components) && components.length > 0) {

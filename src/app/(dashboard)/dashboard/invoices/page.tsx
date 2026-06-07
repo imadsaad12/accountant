@@ -11,6 +11,7 @@ import { useTranslation, useLang } from "@/components/LanguageProvider";
 import { fmtAmt as _fmtAmt, fmtCompact as _fmtCompact } from "@/lib/format-number";
 import { useOrgSettings, useOrgTimezone, currencySymbol as getCurrencySymbol } from "@/components/OrgSettingsProvider";
 import { todayInTz, formatDateInTz } from "@/lib/tz";
+import SimpleInvoiceForm from "@/components/SimpleInvoiceForm";
 
 interface Client {
   id: string;
@@ -25,7 +26,9 @@ interface Product {
   price: number;
   quantity: number;
   type: string;
+  available?: boolean;
   components: { componentId: string; quantity: number; component: { id: string; name: string; quantity: number } }[];
+  category?: { id: string; name: string } | null;
 }
 
 interface InvoiceItem {
@@ -106,7 +109,8 @@ export default function InvoicesPage() {
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
   const [sortField, setSortField] = useState<InvSortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"list" | "create">("list");
+  const [formMode, setFormMode] = useState<"detailed" | "simple">("detailed");
   const [editId, setEditId] = useState<string | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const defaultTaxRate = String(orgSettings.defaultTaxRate ?? 0);
@@ -261,7 +265,7 @@ export default function InvoicesPage() {
           }
         }
       }
-      setShowForm(false);
+      setActiveTab("list");
       setEditId(null);
       setItems([{ ...emptyItem }]);
       setFees([]);
@@ -339,7 +343,7 @@ export default function InvoicesPage() {
       productId: item.productId || "",
     })));
     setFees(inv.fees.map(f => ({ id: f.id, label: f.label, amount: f.amount })));
-    setShowForm(true);
+    // Editing opens as a popup (driven by editId); the create tab is for new invoices only.
   }
 
   const pdfTranslations: Record<string, Record<string, string>> = {
@@ -470,15 +474,25 @@ export default function InvoicesPage() {
   return (
     <PermissionGuard feature="invoices">
     <div>
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{t("invoices.title")}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-4">{t("invoices.title")}</h1>
+      <div className="flex gap-1 border-b border-dark-border mb-4 sm:mb-6">
+        <button
+          onClick={() => { setActiveTab("list"); setEditId(null); }}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === "list" ? "border-accent text-accent" : "border-transparent text-text-secondary hover:text-text-primary"}`}
+        >
+          {t("invoices.title")}
+        </button>
         {canEdit && (
-          <button onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: lang, notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setShowForm(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
-            <Plus size={16} /> {t("invoices.add")}
+          <button
+            onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: lang, notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setEditId(null); setActiveTab("create"); }}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px inline-flex items-center gap-1.5 ${activeTab === "create" ? "border-accent text-accent" : "border-transparent text-text-secondary hover:text-text-primary"}`}
+          >
+            <Plus size={15} /> {t("invoices.add")}
           </button>
         )}
       </div>
 
+      {activeTab === "list" && (<>
       {/* Search & Filter Bar */}
       <div className="mb-4 space-y-3">
         <div className="relative">
@@ -573,6 +587,7 @@ export default function InvoicesPage() {
           </div>
         );
       })()}
+      </>)}
 
       {/* View Invoice Modal */}
       {viewInvoice && (
@@ -777,13 +792,34 @@ export default function InvoicesPage() {
       )}
 
       {/* Create Invoice Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-text-primary">{editId ? t("invoices.edit") : t("invoices.add")}</h2>
-              <button onClick={() => { setShowForm(false); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+      {(editId || activeTab === "create") && (
+        <div className={editId ? "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" : ""}>
+          <div className={`bg-dark-card border border-dark-border rounded-2xl p-4 sm:p-6 w-full ${editId ? "max-w-3xl max-h-[90vh] overflow-y-auto" : `mx-auto ${formMode === "simple" ? "" : "max-w-5xl"}`}`}>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-text-primary">{editId ? t("invoices.edit") : t("invoices.add")}</h2>
+                {!editId && (
+                  <div className="inline-flex rounded-lg border border-dark-border overflow-hidden text-xs font-medium">
+                    <button type="button" onClick={() => setFormMode("detailed")} className={`px-3 py-1.5 ${formMode === "detailed" ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"}`}>Detailed</button>
+                    <button type="button" onClick={() => setFormMode("simple")} className={`px-3 py-1.5 ${formMode === "simple" ? "bg-accent text-white" : "text-text-secondary hover:text-text-primary"}`}>Simple</button>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => { setActiveTab("list"); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
+            {formMode === "simple" && !editId ? (
+              <SimpleInvoiceForm
+                products={products}
+                clients={clients}
+                currencySymbol={currencySymbol}
+                fmtAmt={fmtAmt}
+                date={todayInTz(tz)}
+                language={lang}
+                onClose={() => { setActiveTab("list"); setFormMode("detailed"); }}
+                onSaved={(invoice) => { setInvoices(prev => [invoice as unknown as Invoice, ...prev]); }}
+                onClientsRefresh={() => { fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); }); }}
+              />
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -1027,17 +1063,19 @@ export default function InvoicesPage() {
               )}
 
               <div className="flex gap-3 justify-end">
-                <button type="button" onClick={() => { setShowForm(false); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
+                <button type="button" onClick={() => { setActiveTab("list"); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
                   {saving && <Loader2 size={14} className="animate-spin" />}
                   {editId ? t("common.save") : t("invoices.add")}
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}
 
+      {activeTab === "list" && (<>
       {/* Invoice List */}
       <div className="bg-dark-card rounded-xl border border-dark-border overflow-x-auto">
         <table className="w-full min-w-[640px]">
@@ -1132,6 +1170,7 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+      </>)}
     </div>
     </PermissionGuard>
   );
