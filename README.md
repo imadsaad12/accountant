@@ -99,3 +99,13 @@ Price slightly below Xero/FreshBooks (which charge $20–33 for comparable featu
 Basic at $14 undercuts FreshBooks Lite ($19) and matches Zoho Standard ($20) while being cheaper
 Pro at $34 matches FreshBooks Plus ($33) but includes AI, which FreshBooks doesn't offer at any tier
 Annual billing discount (28–35% off) drives commitment and improves cash flow predictability
+
+
+1. we should add loading button on adding category in stock and deleting item in stock
+2. in filters in stock we do not have available and unavailable for services
+3. in suppliers we should have same validation as clients (no duplicate emails or phone numbers)
+4. we removed daily paid we should re-add it in employee creation
+5. when we create service in stock section then we navigate to invoice to create one in detailed invoices the drop down list to choose product/service its always disabled even if its avalble
+6. when adding extra payment in invice it shows:  payments.excess_to_balance instead of readable word 
+7. when creating detailed invoice in products drop down we should only display product name not name-price
+8. when creating invoice with this payload i gott g00 internal server error: {"clientId":"cmq6chcya000pjvasyqhhubwy","date":"2026-06-09","dueDate":"","taxRate":19,"discount":10,"language":"en","notes":"","status":"draft","items":[{"description":"MSI Screen ","quantity":1,"unitPrice":100,"productId":"cmq6bn92a0001r6cc730ey2ks"}],"fees":[]}

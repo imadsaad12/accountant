@@ -37,6 +37,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const isComposite = existing.type === "composite";
   const isService = existing.type === "service";
 
+  // Services stay filed under the dedicated "Service" category (find-or-create).
+  let categoryId: string | null = productData.categoryId || null;
+  if (isService) {
+    let cat = await prisma.category.findFirst({ where: { organizationId: session.organizationId, name: "Service" } });
+    if (!cat) cat = await prisma.category.create({ data: { name: "Service", organizationId: session.organizationId } });
+    categoryId = cat.id;
+  }
+
   const product = await prisma.product.update({
     where: { id },
     data: {
@@ -48,7 +56,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       minStock: isService ? 0 : (parseInt(productData.minStock) || 0),
       unit: productData.unit || existing.unit,
       ...(isService ? { available: productData.available !== false } : {}),
-      categoryId: productData.categoryId || null,
+      categoryId,
     },
   });
 

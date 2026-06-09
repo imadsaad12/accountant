@@ -107,10 +107,19 @@ export async function POST(req: NextRequest) {
   const feesTotal = round2(Array.isArray(fees) ? fees.reduce((s: number, f: { amount: number }) => s + (f.amount || 0), 0) : 0);
   const total = round2(afterDiscount + tax + feesTotal);
 
-  // Create invoice + validate/deduct stock + auto-apply client balance ATOMICALLY.
+  // Auto-apply client credit balance — computed up front (client + total are known)
+  // so the invoice can be created with its final status in ONE write (no extra
+  // update round-trip; important for the high-latency serverless→remote-DB path).
+  const balanceApplied = client.balance > 0 ? round2(Math.min(client.balance, total)) : 0;
+  const finalStatus = balanceApplied > 0
+    ? (balanceApplied >= total ? "paid" : "partially_paid")
+    : (invoiceData.status || "draft");
+
+  // Create invoice + validate/deduct stock + apply client balance ATOMICALLY.
   // updateMany with a `quantity >= needed` guard makes deduction safe against
   // concurrent invoices (no oversell), and the transaction guarantees no
-  // orphaned invoice without deduction (and vice-versa).
+  // orphaned invoice without deduction (and vice-versa). The longer timeout
+  // accommodates the latency between Vercel functions and the remote DB.
   const result = await prisma.$transaction(async (tx) => {
     const costSnapshot = new Map<string, number>();
     for (const item of items) {
@@ -163,6 +172,7 @@ export async function POST(req: NextRequest) {
         tax,
         taxRate,
         total,
+        status: finalStatus,
         date: invoiceData.date ? new Date(invoiceData.date) : new Date(),
         dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
         organizationId: session.organizationId,
@@ -187,12 +197,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Auto-apply client credit balance (capped at the invoice total, rounded).
-    let balanceApplied = 0;
-    let finalStatus = created.status;
-    if (client.balance > 0) {
-      balanceApplied = round2(Math.min(client.balance, total));
-      finalStatus = balanceApplied >= total ? "paid" : "partially_paid";
+    // Record the auto-applied balance as a payment and decrement the client's credit.
+    if (balanceApplied > 0) {
       await tx.payment.create({
         data: {
           invoiceId: created.id,
@@ -203,19 +209,18 @@ export async function POST(req: NextRequest) {
           organizationId: session.organizationId,
         },
       });
-      await tx.invoice.update({ where: { id: created.id }, data: { status: finalStatus } });
       await tx.client.update({ where: { id: client.id }, data: { balance: { decrement: balanceApplied } } });
     }
 
-    return { invoice: created, balanceApplied, finalStatus };
-  }).catch((e): { error: string } => {
+    return { invoice: created };
+  }, { maxWait: 10000, timeout: 20000 }).catch((e): { error: string } => {
     if (e instanceof InvoiceValidationError) return { error: e.message };
     throw e;
   });
 
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
 
-  const { invoice, balanceApplied, finalStatus } = result;
+  const { invoice } = result;
   await logAudit({ session, action: "create", entity: "invoice", entityId: invoice.id, description: `Created invoice ${invoice.number} for ${invoice.client.name} - $${total.toFixed(2)}${balanceApplied > 0 ? `. $${balanceApplied.toFixed(2)} auto-applied from client balance.` : ""}` });
   return NextResponse.json({ ...invoice, status: finalStatus, balanceApplied, amountPaid: balanceApplied }, { status: 201 });
 }

@@ -43,6 +43,7 @@ const CURRENCIES = [
 ];
 
 const SALARY_PERIODS = [
+  { value: "day", label: "Per Day" },
   { value: "week", label: "Per Week" },
   { value: "month", label: "Per Month" },
 ];

@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       });
     }
     return { bill, payment };
-  });
+  }, { maxWait: 10000, timeout: 20000 });
 
   if (payment) {
     // Auto-journal: Debit Accounts Payable, Credit Cash

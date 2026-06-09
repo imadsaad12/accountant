@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
     const emailExists = await prisma.supplier.findFirst({ where: { email: data.email, organizationId } });
     if (emailExists) return NextResponse.json({ error: "A supplier with this email already exists." }, { status: 400 });
   }
+  if (data.phone) {
+    const phoneExists = await prisma.supplier.findFirst({ where: { phone: data.phone, organizationId } });
+    if (phoneExists) return NextResponse.json({ error: "A supplier with this phone number already exists." }, { status: 400 });
+  }
 
   const supplier = await prisma.supplier.create({ data: { ...data, organizationId } });
   await logAudit({ session, action: "create", entity: "supplier", entityId: supplier.id, description: `Created supplier "${supplier.name}"` });

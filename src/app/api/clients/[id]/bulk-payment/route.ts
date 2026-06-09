@@ -106,7 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
 
     return { paymentsCreated, remaining, totalApplied, clientPayment };
-  });
+  }, { maxWait: 10000, timeout: 20000 });
 
   await logAudit({
     session,

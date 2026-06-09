@@ -32,6 +32,14 @@ export async function POST(req: NextRequest) {
   const isComposite = productData.type === "composite";
   const isService = productData.type === "service";
 
+  // Services are always filed under a dedicated "Service" category (find-or-create).
+  let categoryId: string | null = productData.categoryId || null;
+  if (isService) {
+    let cat = await prisma.category.findFirst({ where: { organizationId: session.organizationId, name: "Service" } });
+    if (!cat) cat = await prisma.category.create({ data: { name: "Service", organizationId: session.organizationId } });
+    categoryId = cat.id;
+  }
+
   const baseData = {
     name: productData.name,
     description: productData.description || null,
@@ -43,7 +51,7 @@ export async function POST(req: NextRequest) {
     unit: productData.unit || "piece",
     type: productData.type || "simple",
     available: isService ? productData.available !== false : true,
-    categoryId: productData.categoryId || null,
+    categoryId,
     organizationId: session.organizationId,
   };
 

@@ -109,11 +109,13 @@ export default function StockPage() {
   const [newCategory, setNewCategory] = useState("");
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
+  const [filterStock, setFilterStock] = useState<"all" | "low" | "ok" | "available" | "unavailable">("all");
   const [filterType, setFilterType] = useState<"all" | "simple" | "composite" | "service">("all");
   const [sortField, setSortField] = useState<SortField>("");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [saving, setSaving] = useState(false);
+  const [catSaving, setCatSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -269,19 +271,29 @@ export default function StockPage() {
 
   async function handleDelete(id: string) {
     if (!confirm(t("stock.delete_confirm"))) return;
-    const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-    if (!res.ok) { const d = await res.json(); alert(d.error || t("common.error")); return; }
-    setProducts(prev => prev.filter(p => p.id !== id));
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (!res.ok) { const d = await res.json(); alert(d.error || t("common.error")); return; }
+      setProducts(prev => prev.filter(p => p.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCategory }) });
-    if (!res.ok) return;
-    const cat = await res.json();
-    setCategories(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)));
-    setNewCategory("");
-    setShowCategoryForm(false);
+    setCatSaving(true);
+    try {
+      const res = await fetch("/api/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCategory }) });
+      if (!res.ok) return;
+      const cat = await res.json();
+      setCategories(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewCategory("");
+      setShowCategoryForm(false);
+    } finally {
+      setCatSaving(false);
+    }
   }
 
   async function handleDeleteCategory(id: string) {
@@ -305,7 +317,12 @@ export default function StockPage() {
         (!q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || (p.category?.name || "").toLowerCase().includes(q)) &&
         (!filterCategory || p.categoryId === filterCategory) &&
         (filterType === "all" || p.type === filterType) &&
-        (filterStock === "all" || (filterStock === "low" ? isLowStock(p) : !isLowStock(p)))
+        (filterStock === "all" ? true
+          : filterStock === "low" ? isLowStock(p)
+          : filterStock === "ok" ? !isLowStock(p)
+          : filterStock === "available" ? (p.type === "service" && p.available)
+          : filterStock === "unavailable" ? (p.type === "service" && !p.available)
+          : true)
       )
       .sort((a, b) => {
         if (!sortField) return 0;
@@ -429,10 +446,12 @@ export default function StockPage() {
             <option value="composite">{t("stock.filter.composite")}</option>
             <option value="service">Service</option>
           </select>
-          <select value={filterStock} onChange={e => setFilterStock(e.target.value as "all" | "low" | "ok")} className="flex-1 min-w-[120px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+          <select value={filterStock} onChange={e => setFilterStock(e.target.value as "all" | "low" | "ok" | "available" | "unavailable")} className="flex-1 min-w-[120px] sm:flex-none px-3 py-2 bg-dark-card border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
             <option value="all">{t("stock.filter.all")}</option>
             <option value="low">{t("stock.filter.low")}</option>
             <option value="ok">{t("stock.filter.ok")}</option>
+            <option value="available">Available (services)</option>
+            <option value="unavailable">Unavailable (services)</option>
           </select>
         </div>
       </div>
@@ -461,7 +480,8 @@ export default function StockPage() {
               <input required value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder={t("stock.category_placeholder")} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg focus:ring-accent focus:border-accent" />
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowCategoryForm(false)} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
-                <button type="submit" className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover">
+                <button type="submit" disabled={catSaving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
+                  {catSaving && <Loader2 size={14} className="animate-spin" />}
                   {t("stock.add_category")}
                 </button>
               </div>
@@ -613,24 +633,34 @@ export default function StockPage() {
               {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">{t("stock.category")}</label>
-                <select
-                  value={form.categoryId}
-                  onChange={e => {
-                    const catId = e.target.value;
-                    const cat = categories.find(c => c.id === catId);
-                    setForm(f => ({
-                      ...f,
-                      categoryId: catId,
-                      sku: (skuAuto || !!editing)
-                        ? (cat ? generateSKU(cat.name, editing ? products.filter(p => p.id !== editing.id) : products) : f.sku)
-                        : f.sku,
-                    }));
-                  }}
-                  className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent"
-                >
-                  <option value="">{t("stock.no_category")}</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                {productType === "service" ? (
+                  <select
+                    disabled
+                    value="service"
+                    className="w-full px-3 py-2 bg-dark-bg border border-dark-border text-text-muted rounded-lg cursor-not-allowed"
+                  >
+                    <option value="service">Service</option>
+                  </select>
+                ) : (
+                  <select
+                    value={form.categoryId}
+                    onChange={e => {
+                      const catId = e.target.value;
+                      const cat = categories.find(c => c.id === catId);
+                      setForm(f => ({
+                        ...f,
+                        categoryId: catId,
+                        sku: (skuAuto || !!editing)
+                          ? (cat ? generateSKU(cat.name, editing ? products.filter(p => p.id !== editing.id) : products) : f.sku)
+                          : f.sku,
+                      }));
+                    }}
+                    className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg focus:ring-accent focus:border-accent"
+                  >
+                    <option value="">{t("stock.no_category")}</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
               </div>
 
               {/* Components — composite only */}
@@ -792,7 +822,7 @@ export default function StockPage() {
                   {canEdit && (
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => openEdit(product)} className="text-text-muted hover:text-accent p-1"><Pencil size={16} /></button>
-                      <button onClick={() => handleDelete(product.id)} className="text-text-muted hover:text-danger p-1 ml-1"><Trash2 size={16} /></button>
+                      <button onClick={() => handleDelete(product.id)} disabled={deletingId === product.id} className="text-text-muted hover:text-danger p-1 ml-1 disabled:opacity-50">{deletingId === product.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>
                     </td>
                   )}
                 </tr>

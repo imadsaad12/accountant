@@ -447,6 +447,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "payments.history": "Payment History",
     "payments.no_payments": "No payments recorded",
     "payments.overpaid": "Overpaid",
+    "payments.excess_to_balance": "will be added to client balance",
     "payments.save": "Save Payment",
 
     // Aging
@@ -1136,6 +1137,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "payments.history": "Historique des paiements",
     "payments.no_payments": "Aucun paiement enregistré",
     "payments.overpaid": "Surpayé",
+    "payments.excess_to_balance": "sera ajouté au solde du client",
     "payments.save": "Enregistrer le paiement",
     "aging.title": "Créances par ancienneté",
     "aging.current": "Courant",
@@ -1814,6 +1816,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "payments.history": "سجل المدفوعات",
     "payments.no_payments": "لا توجد مدفوعات مسجلة",
     "payments.overpaid": "مدفوع زيادة",
+    "payments.excess_to_balance": "سيُضاف إلى رصيد العميل",
     "payments.save": "حفظ الدفعة",
     "aging.title": "تقادم المستحقات",
     "aging.current": "الحالي",

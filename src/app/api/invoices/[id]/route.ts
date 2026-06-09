@@ -161,7 +161,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           fees: true,
         },
       });
-    }).catch((e): { error: string } => {
+    }, { maxWait: 10000, timeout: 20000 }).catch((e): { error: string } => {
       if (e instanceof InvoiceValidationError) return { error: e.message };
       throw e;
     });

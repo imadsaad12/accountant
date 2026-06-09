@@ -900,25 +900,26 @@ export default function InvoicesPage() {
                           <select value={item.productId} onChange={e => updateItem(idx, "productId", e.target.value)} className="px-2 py-1.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm">
                             <option value="">{t("invoices.custom_item")}</option>
                             {products.map(p => {
+                              // Services are always sellable while available (not stock-tracked).
+                              if (p.type === "service") {
+                                return (
+                                  <option key={p.id} value={p.id} disabled={p.available === false}>
+                                    {p.available === false ? `${p.name} (unavailable)` : p.name}
+                                  </option>
+                                );
+                              }
                               if (p.type === "composite" && p.components.length) {
                                 const canMake = Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)));
-                                const missing = canMake === 0
-                                  ? p.components.filter(c => c.component.quantity < c.quantity).map(c => c.component.name).join(", ")
-                                  : null;
                                 return (
                                   <option key={p.id} value={p.id} disabled={canMake === 0}>
-                                    {canMake === 0
-                                      ? `⚠ ${p.name} — no stock (missing: ${missing})`
-                                      : `${p.name} — ${currencySymbol}${p.price} (can make ${canMake})`}
+                                    {canMake === 0 ? `${p.name} (out of stock)` : p.name}
                                   </option>
                                 );
                               }
                               const avail = p.quantity;
                               return (
                                 <option key={p.id} value={p.id} disabled={avail === 0}>
-                                  {avail === 0
-                                    ? `⚠ ${p.name} — out of stock`
-                                    : `${p.name} — ${currencySymbol}${p.price} (${avail} avail.)`}
+                                  {avail === 0 ? `${p.name} (out of stock)` : p.name}
                                 </option>
                               );
                             })}
