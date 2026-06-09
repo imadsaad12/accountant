@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         supplierId: data.supplierId,
         amount,
         amountPaid: isPaid ? amount : 0,
-        billType: data.billType || "expense",
+        billType: data.billType || "stock",
         description: data.description,
         reference: data.reference || null,
         date: billDate,

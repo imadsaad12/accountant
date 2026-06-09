@@ -125,6 +125,7 @@ export default function InvoicesPage() {
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: todayInTz(tz), method: "cash", reference: "", note: "" });
   const [savingPayment, setSavingPayment] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   // Initial payment on create
   const [showInitPayment, setShowInitPayment] = useState(false);
   const [initPayment, setInitPayment] = useState({ amount: "", date: todayInTz(tz), method: "cash", reference: "" });
@@ -225,8 +226,32 @@ export default function InvoicesPage() {
     setItems(updated);
   }
 
+  // Validate that requested quantities don't exceed available stock (create flow).
+  function stockValidationError(): string | null {
+    if (editId) return null; // edits adjust stock server-side; server error is surfaced below
+    for (const item of items) {
+      if (!item.productId || !(item.quantity > 0)) continue;
+      const p = products.find(x => x.id === item.productId);
+      if (!p) continue;
+      if (p.type === "service") {
+        if (p.available === false) return `"${p.name}" is not available and cannot be sold.`;
+        continue;
+      }
+      const avail = p.type === "composite" && p.components.length
+        ? Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)))
+        : p.quantity;
+      if (item.quantity > avail) {
+        return `Not enough stock for "${p.name}". Available: ${avail}, requested: ${item.quantity}. Reduce the quantity.`;
+      }
+    }
+    return null;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
+    const stockErr = stockValidationError();
+    if (stockErr) { setFormError(stockErr); return; }
     setSaving(true);
     try {
       const payload = {
@@ -238,33 +263,33 @@ export default function InvoicesPage() {
       };
       if (editId) {
         const res = await fetch(`/api/invoices/${editId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        if (res.ok) patchInvoice(await res.json());
+        if (!res.ok) { setFormError((await res.json().catch(() => ({})))?.error || "Failed to save invoice."); return; }
+        patchInvoice(await res.json());
       } else {
         const res = await fetch("/api/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        if (res.ok) {
-          const invoice = await res.json();
-          let amountPaid = invoice.amountPaid || 0;
-          let hasExcess = false;
-          if (showInitPayment && parseFloat(initPayment.amount) > 0) {
-            const payRes = await fetch(`/api/invoices/${invoice.id}/payments`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ amount: parseFloat(initPayment.amount), date: initPayment.date, method: initPayment.method, reference: initPayment.reference || null }),
-            });
-            if (payRes.ok) {
-              const payResult = await payRes.json();
-              amountPaid += payResult.amount;
-              if (payResult.excessAmount > 0) hasExcess = true;
-            }
-          }
-          const status = amountPaid >= invoice.total ? "paid" : amountPaid > 0 ? "partially_paid" : invoice.status;
-          setInvoices(prev => [{ ...invoice, amountPaid, status }, ...prev]);
-          // Refresh clients to reflect any balance changes from auto-applied balance or excess payment
-          if (invoice.balanceApplied > 0 || hasExcess) {
-            fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); });
+        if (!res.ok) { setFormError((await res.json().catch(() => ({})))?.error || "Failed to create invoice."); return; }
+        const invoice = await res.json();
+        let amountPaid = invoice.amountPaid || 0;
+        let hasExcess = false;
+        if (showInitPayment && parseFloat(initPayment.amount) > 0) {
+          const payRes = await fetch(`/api/invoices/${invoice.id}/payments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount: parseFloat(initPayment.amount), date: initPayment.date, method: initPayment.method, reference: initPayment.reference || null }),
+          });
+          if (payRes.ok) {
+            const payResult = await payRes.json();
+            amountPaid += payResult.amount;
+            if (payResult.excessAmount > 0) hasExcess = true;
           }
         }
+        const status = amountPaid >= invoice.total ? "paid" : amountPaid > 0 ? "partially_paid" : invoice.status;
+        setInvoices(prev => [{ ...invoice, amountPaid, status }, ...prev]);
+        if (invoice.balanceApplied > 0 || hasExcess) {
+          fetch("/api/clients").then(r => r.json()).then(data => { if (Array.isArray(data)) setClients(data); });
+        }
       }
+      // Success only — close and reset
       setActiveTab("list");
       setEditId(null);
       setItems([{ ...emptyItem }]);
@@ -324,6 +349,7 @@ export default function InvoicesPage() {
   }
 
   function openEdit(inv: Invoice) {
+    setFormError(null);
     setEditId(inv.id);
     setForm({
       clientId: inv.clientId,
@@ -484,7 +510,7 @@ export default function InvoicesPage() {
         </button>
         {canEdit && (
           <button
-            onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: lang, notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setEditId(null); setActiveTab("create"); }}
+            onClick={() => { setForm({ clientId: "", date: todayInTz(tz), dueDate: "", taxRate: defaultTaxRate, discount: "0", language: lang, notes: "", status: "draft" }); setItems([{ ...emptyItem }]); setFees([]); setShowInitPayment(false); setInitPayment({ amount: "", date: todayInTz(tz), method: "cash", reference: "" }); setEditId(null); setFormError(null); setActiveTab("create"); }}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px inline-flex items-center gap-1.5 ${activeTab === "create" ? "border-accent text-accent" : "border-transparent text-text-secondary hover:text-text-primary"}`}
           >
             <Plus size={15} /> {t("invoices.add")}
@@ -1063,8 +1089,11 @@ export default function InvoicesPage() {
                 </div>
               )}
 
+              {formError && (
+                <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{formError}</p>
+              )}
               <div className="flex gap-3 justify-end">
-                <button type="button" onClick={() => { setActiveTab("list"); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); }} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
+                <button type="button" onClick={() => { setActiveTab("list"); setEditId(null); setItems([{ ...emptyItem }]); setFees([]); setFormError(null); }} className="px-4 py-2 text-sm font-medium text-text-secondary bg-dark-card border border-dark-border rounded-lg hover:bg-dark-card-hover">{t("common.cancel")}</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60">
                   {saving && <Loader2 size={14} className="animate-spin" />}
                   {editId ? t("common.save") : t("invoices.add")}

@@ -56,7 +56,7 @@ const emptySupplier = {
 };
 
 const emptyBill = {
-  description: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending", billType: "expense",
+  description: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending", billType: "stock",
 };
 
 export default function SuppliersPage() {
@@ -210,7 +210,7 @@ export default function SuppliersPage() {
       reference: bill.reference || "",
       note: bill.note || "",
       status: bill.status,
-      billType: bill.billType || "expense",
+      billType: bill.billType || "stock",
     });
     setShowBillForm(true);
   }
@@ -232,6 +232,7 @@ export default function SuppliersPage() {
         });
       }
       setShowBillForm(false);
+      setEditingBill(null);
       setShowInitBillPayment(false);
       setInitBillPayment({ amount: "", date: new Date().toISOString().split("T")[0], method: "cash" });
       const refreshed = await fetch(`/api/supplier-bills?supplierId=${billsSupplier!.id}`);
@@ -410,6 +411,106 @@ export default function SuppliersPage() {
     } finally {
       setExportingList(false);
     }
+  }
+
+  // Bill add/edit form — rendered at the top of the modal for ADD, and inline
+  // under the specific bill row for EDIT.
+  function renderBillForm() {
+    return (
+      <form onSubmit={handleBillSubmit} className="bg-dark-bg border border-dark-border rounded-xl p-6 mb-6 space-y-4">
+        <h3 className="text-lg font-semibold text-text-primary">{editingBill ? "Edit Bill" : "New Bill"}</h3>
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">{t("field.description")} *</label>
+          <input required value={billForm.description} onChange={e => setBillForm({ ...billForm, description: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Office supplies invoice" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Amount *</label>
+            <input type="number" step="0.01" min="0.01" required value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="0.00" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Reference</label>
+            <input value={billForm.reference} onChange={e => setBillForm({ ...billForm, reference: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Invoice #" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Bill Date *</label>
+            <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Due Date</label>
+            <input type="date" value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
+          <select value={billForm.status} onChange={e => setBillForm({ ...billForm, status: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+        {!editingBill && billForm.status === "paid" && (
+          <p className="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-lg px-3 py-2">
+            <CheckCircle2 size={13} className="inline -mt-0.5 mr-1" />
+            This bill will be recorded as fully paid automatically.
+          </p>
+        )}
+        {!editingBill && billForm.status !== "paid" && (
+          <div className="border border-dark-border rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowInitBillPayment(!showInitBillPayment)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-dark-input/30 hover:bg-dark-card-hover text-sm font-medium text-text-primary"
+            >
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={15} className="text-emerald-400" />
+                Record Payment Now
+                {showInitBillPayment && parseFloat(initBillPayment.amount) > 0 && (
+                  <span className="text-xs text-green-400 font-semibold ml-1">{currencySymbol}{initBillPayment.amount}</span>
+                )}
+              </span>
+              <ChevronDown size={15} className={`text-text-muted transition-transform ${showInitBillPayment ? "rotate-180" : ""}`} />
+            </button>
+            {showInitBillPayment && (
+              <div className="p-4 border-t border-dark-border space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Amount</label>
+                    <input
+                      type="number" min="0.01" step="0.01"
+                      value={initBillPayment.amount}
+                      onChange={e => setInitBillPayment({ ...initBillPayment, amount: e.target.value })}
+                      className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Payment Date</label>
+                    <input type="date" value={initBillPayment.date} onChange={e => setInitBillPayment({ ...initBillPayment, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Method</label>
+                    <select value={initBillPayment.method} onChange={e => setInitBillPayment({ ...initBillPayment, method: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
+                      {["cash", "bank_transfer", "check", "card"].map(m => (
+                        <option key={m} value={m}>{t(`payments.method.${m}` as Parameters<typeof t>[0])}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end pt-4">
+          <button type="button" onClick={() => { setShowBillForm(false); setEditingBill(null); }} className="px-5 py-2 text-sm font-medium text-text-secondary bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-card-hover transition-colors">{t("common.cancel")}</button>
+          <button type="submit" disabled={billSaving} className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors">
+            {billSaving && <Loader2 size={14} className="animate-spin" />}
+            {t("common.save")}
+          </button>
+        </div>
+      </form>
+    );
   }
 
   if (loading) return <TablePageSkeleton rows={8} hasFilters cols={6} statCards={3} />;
@@ -741,115 +842,7 @@ export default function SuppliersPage() {
 
             <div className="flex-1 overflow-y-auto p-6 sm:p-8">
               {/* Add/Edit bill form */}
-              {showBillForm && (
-                <form onSubmit={handleBillSubmit} className="bg-dark-bg border border-dark-border rounded-xl p-6 mb-6 space-y-4">
-                  <h3 className="text-lg font-semibold text-text-primary">{editingBill ? "Edit Bill" : "New Bill"}</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">{t("field.description")} *</label>
-                    <input required value={billForm.description} onChange={e => setBillForm({ ...billForm, description: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Office supplies invoice" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-2">Amount *</label>
-                      <input type="number" step="0.01" min="0.01" required value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="0.00" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-2">Reference</label>
-                      <input value={billForm.reference} onChange={e => setBillForm({ ...billForm, reference: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="Invoice #" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-2">Bill Date *</label>
-                      <input type="date" required value={billForm.date} onChange={e => setBillForm({ ...billForm, date: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-2">Due Date</label>
-                      <input type="date" value={billForm.dueDate} onChange={e => setBillForm({ ...billForm, dueDate: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
-                      <select value={billForm.status} onChange={e => setBillForm({ ...billForm, status: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
-                        <option value="pending">Pending</option>
-                        <option value="paid">Paid</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-2">{t("suppliers.bill_type")}</label>
-                      <select value={billForm.billType} onChange={e => setBillForm({ ...billForm, billType: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
-                        <option value="stock">{t("suppliers.bill_type_stock")}</option>
-                        <option value="expense">{t("suppliers.bill_type_expense")}</option>
-                      </select>
-                    </div>
-                  </div>
-                  <p className="text-xs text-text-muted -mt-2">
-                    {billForm.billType === "stock" ? t("suppliers.bill_type_stock_desc") : t("suppliers.bill_type_expense_desc")}
-                  </p>
-                  {/* Marked paid on creation → auto-settled, no manual payment needed */}
-                  {!editingBill && billForm.status === "paid" && (
-                    <p className="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-lg px-3 py-2">
-                      <CheckCircle2 size={13} className="inline -mt-0.5 mr-1" />
-                      This bill will be recorded as fully paid automatically.
-                    </p>
-                  )}
-                  {/* Initial Payment (create only, and only when not already marked paid) */}
-                  {!editingBill && billForm.status !== "paid" && (
-                    <div className="border border-dark-border rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setShowInitBillPayment(!showInitBillPayment)}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-dark-input/30 hover:bg-dark-card-hover text-sm font-medium text-text-primary"
-                      >
-                        <span className="flex items-center gap-2">
-                          <CheckCircle2 size={15} className="text-emerald-400" />
-                          Record Payment Now
-                          {showInitBillPayment && parseFloat(initBillPayment.amount) > 0 && (
-                            <span className="text-xs text-green-400 font-semibold ml-1">{currencySymbol}{initBillPayment.amount}</span>
-                          )}
-                        </span>
-                        <ChevronDown size={15} className={`text-text-muted transition-transform ${showInitBillPayment ? "rotate-180" : ""}`} />
-                      </button>
-                      {showInitBillPayment && (
-                        <div className="p-4 border-t border-dark-border space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-xs font-medium text-text-secondary mb-1">Amount</label>
-                              <input
-                                type="number" min="0.01" step="0.01"
-                                value={initBillPayment.amount}
-                                onChange={e => setInitBillPayment({ ...initBillPayment, amount: e.target.value })}
-                                className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-text-secondary mb-1">Payment Date</label>
-                              <input type="date" value={initBillPayment.date} onChange={e => setInitBillPayment({ ...initBillPayment, date: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent" />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-text-secondary mb-1">Method</label>
-                              <select value={initBillPayment.method} onChange={e => setInitBillPayment({ ...initBillPayment, method: e.target.value })} className="w-full px-3 py-2 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-accent focus:border-accent">
-                                {["cash", "bank_transfer", "check", "card"].map(m => (
-                                  <option key={m} value={m}>{t(`payments.method.${m}` as Parameters<typeof t>[0])}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 justify-end pt-4">
-                    <button type="button" onClick={() => setShowBillForm(false)} className="px-5 py-2 text-sm font-medium text-text-secondary bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-card-hover transition-colors">{t("common.cancel")}</button>
-                    <button type="submit" disabled={billSaving} className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors">
-                      {billSaving && <Loader2 size={14} className="animate-spin" />}
-                      {t("common.save")}
-                    </button>
-                  </div>
-                </form>
-              )}
+              {showBillForm && !editingBill && renderBillForm()}
 
               {/* Bills list */}
               {billsLoading ? (
@@ -996,6 +989,10 @@ export default function SuppliersPage() {
                             </div>
                           )}
                         </div>
+                        {/* Edit form — rendered inline directly under this bill */}
+                        {showBillForm && editingBill?.id === bill.id && (
+                          <div className="mt-4 pt-4 border-t border-dark-border">{renderBillForm()}</div>
+                        )}
                       </div>
                     );
                   })}

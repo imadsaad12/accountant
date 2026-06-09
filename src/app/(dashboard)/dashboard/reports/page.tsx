@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Scale, Filter, ChevronDown, Check, BookOpen, Info } from "lucide-react";
+import { BarChart2, TrendingUp, TrendingDown, FileText, Loader2, Download, Filter, ChevronDown, Check, BookOpen, Info } from "lucide-react";
 import { PermissionGuard } from "@/components/PermissionGuard";
 import { useTranslation, useLang } from "@/components/LanguageProvider";
 import { fmtAmt as _fmtAmt } from "@/lib/format-number";
@@ -353,7 +353,8 @@ export default function ReportsPage() {
 
   const tabs = [
     { id: "pl" as const, label: t("reports.pl"), icon: BarChart2 },
-    { id: "bs" as const, label: t("reports.bs"), icon: Scale },
+    // Balance Sheet temporarily disabled (depends on the hidden accounting/journal module)
+    // { id: "bs" as const, label: t("reports.bs"), icon: Scale },
     { id: "comprehensive" as const, label: "Comprehensive", icon: BookOpen },
   ];
 
