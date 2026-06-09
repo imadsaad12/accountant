@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionWithPermissions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canView, canEdit } from "@/lib/permissions";
+import { journalSupplierBillPayment } from "@/lib/auto-journal";
 
 export async function GET(req: NextRequest) {
   const session = await getSessionWithPermissions();
@@ -29,22 +30,58 @@ export async function POST(req: NextRequest) {
   if (!canEdit(session.permissions, "suppliers")) return NextResponse.json({ error: "No permission" }, { status: 403 });
 
   const data = await req.json();
-  const bill = await prisma.supplierBill.create({
-    data: {
-      supplierId: data.supplierId,
-      amount: parseFloat(data.amount),
-      billType: data.billType || "expense",
-      description: data.description,
-      reference: data.reference || null,
-      date: new Date(data.date),
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      status: data.status || "pending",
-      note: data.note || null,
-      organizationId: session.organizationId,
-    },
-    include: { supplier: { select: { id: true, name: true } } },
+  const amount = parseFloat(data.amount);
+  const status = data.status || "pending";
+  // When a bill is created already marked "paid", fully settle it: set amountPaid
+  // and record a real payment (so remaining = 0 and reports/Cash Out reflect it).
+  const isPaid = status === "paid" && amount > 0;
+  const billDate = new Date(data.date);
+
+  const { bill, payment } = await prisma.$transaction(async (tx) => {
+    const bill = await tx.supplierBill.create({
+      data: {
+        supplierId: data.supplierId,
+        amount,
+        amountPaid: isPaid ? amount : 0,
+        billType: data.billType || "expense",
+        description: data.description,
+        reference: data.reference || null,
+        date: billDate,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        status,
+        note: data.note || null,
+        organizationId: session.organizationId,
+      },
+      include: { supplier: { select: { id: true, name: true } } },
+    });
+    let payment = null;
+    if (isPaid) {
+      payment = await tx.supplierBillPayment.create({
+        data: {
+          billId: bill.id,
+          amount,
+          date: billDate,
+          method: data.method || "cash",
+          note: data.note || null,
+          organizationId: session.organizationId,
+        },
+      });
+    }
+    return { bill, payment };
   });
 
-  await logAudit({ session, action: "create", entity: "supplier_bill", entityId: bill.id, description: `Added bill "${bill.description}" for supplier` });
+  if (payment) {
+    // Auto-journal: Debit Accounts Payable, Credit Cash
+    await journalSupplierBillPayment({
+      organizationId: session.organizationId,
+      paymentId: payment.id,
+      amount,
+      date: billDate,
+      supplierName: bill.supplier.name,
+      billReference: bill.reference || undefined,
+    });
+  }
+
+  await logAudit({ session, action: "create", entity: "supplier_bill", entityId: bill.id, description: `Added bill "${bill.description}" for supplier${isPaid ? ` (paid ${amount})` : ""}` });
   return NextResponse.json(bill, { status: 201 });
 }

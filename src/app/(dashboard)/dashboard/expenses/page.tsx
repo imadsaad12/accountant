@@ -104,8 +104,8 @@ export default function ExpensesPage() {
   const [deletingCat, setDeletingCat] = useState<string | null>(null);
   const initializedRef = useRef(false);
 
-  const loadData = useCallback(async (cat = "", from = "", to = "") => {
-    setLoading(true);
+  const loadData = useCallback(async (cat = "", from = "", to = "", silent = false) => {
+    if (!silent) setLoading(true);
     const params = new URLSearchParams();
     if (cat) params.set("category", cat);
     if (from) params.set("from", from);
@@ -121,7 +121,7 @@ export default function ExpensesPage() {
     setExpenses(filteredRes.ok ? await filteredRes.json() : []);
     setAllExpenses(allRes.ok ? await allRes.json() : []);
     setLastMonthExpenses(lmRes.ok ? await lmRes.json() : []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, []);
 
   // Build from/to for a month key "YYYY-MM"
@@ -306,6 +306,9 @@ export default function ExpensesPage() {
             : prev.filter(e => e.id !== editId)
         );
       }
+      // Silently re-sync from the server so recurring/prorated amounts (_computedAmount)
+      // and the stat boxes reflect the saved values without a manual refresh.
+      loadData(filterCategory, currentFrom(), currentTo(), true);
     } finally {
       setSaving(false);
     }

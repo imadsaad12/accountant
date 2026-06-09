@@ -223,7 +223,7 @@ export default function SuppliersPage() {
       const url = editingBill ? `/api/supplier-bills/${editingBill.id}` : "/api/supplier-bills";
       const method = editingBill ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!editingBill && res.ok && showInitBillPayment && parseFloat(initBillPayment.amount) > 0) {
+      if (!editingBill && billForm.status !== "paid" && res.ok && showInitBillPayment && parseFloat(initBillPayment.amount) > 0) {
         const bill = await res.json();
         await fetch(`/api/supplier-bills/${bill.id}`, {
           method: "PATCH",
@@ -787,8 +787,15 @@ export default function SuppliersPage() {
                   <p className="text-xs text-text-muted -mt-2">
                     {billForm.billType === "stock" ? t("suppliers.bill_type_stock_desc") : t("suppliers.bill_type_expense_desc")}
                   </p>
-                  {/* Initial Payment (create only) */}
-                  {!editingBill && (
+                  {/* Marked paid on creation → auto-settled, no manual payment needed */}
+                  {!editingBill && billForm.status === "paid" && (
+                    <p className="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-lg px-3 py-2">
+                      <CheckCircle2 size={13} className="inline -mt-0.5 mr-1" />
+                      This bill will be recorded as fully paid automatically.
+                    </p>
+                  )}
+                  {/* Initial Payment (create only, and only when not already marked paid) */}
+                  {!editingBill && billForm.status !== "paid" && (
                     <div className="border border-dark-border rounded-lg overflow-hidden">
                       <button
                         type="button"
