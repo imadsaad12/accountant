@@ -6,125 +6,17 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-async function getBusinessContext(organizationId: string, permissions: Permissions) {
-  const [clients, products, employees, invoices, expenses, salaryAdvances, accounts, journalEntries, budgets] = await Promise.all([
-    canView(permissions, "clients")
-      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true, balance: true, pendingBalance: true } })
-      : Promise.resolve(null),
-    canView(permissions, "products")
-      ? prisma.product.findMany({
-          where: { organizationId },
-          select: {
-            id: true, name: true, sku: true, price: true, cost: true, quantity: true, minStock: true, type: true, unit: true,
-            components: { select: { quantity: true, component: { select: { name: true, quantity: true } } } },
-          },
-        })
-      : Promise.resolve(null),
-    canView(permissions, "employees")
-      ? prisma.employee.findMany({
-          where: { organizationId },
-          select: { id: true, firstName: true, lastName: true, position: true, department: true, status: true, salary: true, salaryPeriod: true, hireDate: true },
-        })
-      : Promise.resolve(null),
-    canView(permissions, "invoices")
-      ? prisma.invoice.findMany({
-          where: { organizationId },
-          select: {
-            id: true, number: true, date: true, dueDate: true, total: true, subtotal: true, tax: true, taxRate: true, discount: true, status: true, notes: true,
-            client: { select: { name: true } },
-            items: { select: { description: true, quantity: true, unitPrice: true, total: true } },
-            fees: { select: { label: true, amount: true } },
-            payments: { select: { amount: true, date: true, method: true } },
-          },
-          orderBy: { date: "desc" },
-          take: 50,
-        })
-      : Promise.resolve(null),
-    canView(permissions, "expenses")
-      ? prisma.expense.findMany({
-          where: { organizationId },
-          select: { id: true, date: true, amount: true, description: true, category: true, recurrence: true, vendor: true },
-          orderBy: { date: "desc" },
-          take: 50,
-        })
-      : Promise.resolve(null),
-    canView(permissions, "employees")
-      ? prisma.salaryAdvance.findMany({
-          where: { organizationId },
-          select: { id: true, amount: true, date: true, status: true, note: true, employee: { select: { firstName: true, lastName: true } } },
-          orderBy: { date: "desc" },
-          take: 30,
-        })
-      : Promise.resolve(null),
-    canView(permissions, "accounts")
-      ? prisma.account.findMany({
-          where: { organizationId },
-          select: { id: true, code: true, name: true, type: true, subtype: true, isDefault: true },
-          orderBy: { code: "asc" },
-        })
-      : Promise.resolve(null),
-    canView(permissions, "accounts")
-      ? prisma.journalEntry.findMany({
-          where: { organizationId },
-          include: {
-            lines: {
-              include: { account: { select: { code: true, name: true } } },
-            },
-          },
-          orderBy: { date: "desc" },
-          take: 30,
-        })
-      : Promise.resolve(null),
-    canView(permissions, "budgets")
-      ? prisma.budget.findMany({
-          where: { organizationId },
-          select: { id: true, name: true, fiscalYear: true, status: true },
-          orderBy: [{ fiscalYear: "desc" }, { name: "asc" }],
-        })
-      : Promise.resolve(null),
-  ]);
-  return { clients, products, employees, invoices, expenses, salaryAdvances, accounts, journalEntries, budgets };
-}
-
-function buildPermissionContext(permissions: Permissions): string {
-  const features = ["dashboard", "clients", "suppliers", "products", "employees", "invoices", "expenses", "salary_advances", "accounts", "budgets", "reports", "ai", "activity_log"] as const;
-  const lines = features.map(f => {
-    const view = canView(permissions, f);
-    const edit = canEdit(permissions, f);
-    if (edit) return `- ${f}: full access (view + edit)`;
-    if (view) return `- ${f}: view only`;
-    return `- ${f}: NO ACCESS`;
-  });
-  return lines.join("\n");
-}
-
-export async function POST(req: NextRequest) {
-  const session = await getSessionWithPermissions();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!canView(session.permissions, "ai")) return NextResponse.json({ error: "No permission" }, { status: 403 });
-
-  // Check org token limit
-  const org = await prisma.organization.findUnique({
-    where: { id: session.organizationId },
-    select: { aiTokensLimit: true, aiTokensUsed: true, status: true },
-  });
-  if (!org || org.status === "inactive") {
-    return NextResponse.json({ error: "Account inactive" }, { status: 403 });
-  }
-  if (org.aiTokensUsed >= org.aiTokensLimit) {
-    return NextResponse.json({ error: "AI token limit reached. Contact your administrator." }, { status: 429 });
-  }
-
-  const { message, conversationHistory = [], language = "en" } = await req.json();
-
-  const context = await getBusinessContext(session.organizationId, session.permissions);
-
-  const systemPrompt = `You are an AI assistant for an accounting/business management application called "Cashent". You help business owners manage their operations.
-
-Today's date: ${new Date().toISOString().split("T")[0]}
+// ─────────────────────────────────────────────────────────────────────────────
+// STATIC SYSTEM INSTRUCTIONS — identical for every request, every org, every user.
+// Kept as a module-level constant (no interpolation) so it is byte-for-byte stable.
+// This is the bulk of the prompt's tokens and is sent first with a cache breakpoint,
+// so it is written to the prompt cache once and read at ~0.1x cost on every later call.
+// Anything that varies per request/org/user lives in the dynamic block below instead —
+// any byte change in this prefix would invalidate the cache. See shared/prompt-caching.
+// ─────────────────────────────────────────────────────────────────────────────
+const STATIC_SYSTEM_PROMPT = `You are an AI assistant for an accounting/business management application called "Cashent". You help business owners manage their operations.
 
 LANGUAGE & DIALECT HANDLING:
-- The user's app language is set to: ${language === "ar" ? "Arabic (العربية)" : language === "fr" ? "French (Français)" : "English"}. PREFER responding in this language unless the user clearly writes in a different language.
 - The user may speak in English, French, Arabic, or ANY MIX of these languages.
 - The user is Lebanese and often uses Lebanese Arabic dialect (عامية لبنانية) which commonly mixes Arabic with French and English words in the same sentence.
 - Examples of mixed Lebanese speech you should understand:
@@ -143,45 +35,10 @@ LANGUAGE & DIALECT HANDLING:
 - Also understand transliterated Arabic: "badde", "shou", "3atini", "wariine", "ab3atli", "2adesh", "masarif", "mouwazzaf", "rateb", "solfeh".
 - Understand French accounting terms: facture (invoice), chiffre d'affaires (revenue), bénéfice (profit), solde (balance), fournisseur (supplier), client, stock, TVA (tax), charges (expenses), salaire (salary), avance (advance).
 
-USER PERMISSIONS:
-${buildPermissionContext(session.permissions)}
-
 IMPORTANT PERMISSION RULES:
 - If the user asks about data from a feature marked "NO ACCESS", you MUST refuse and say they do not have permission to access that data. Do not reveal or guess the data.
 - If the user asks to edit/create/delete data from a feature where they only have "view only", refuse and say they need edit permission for that feature.
-- Only provide data and actions that match the user's actual permissions above.
-
-You have access to the following live business data:
-
-${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null;balance:number;pendingBalance:number}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"}, Credit Balance: $${c.balance.toFixed(2)}${c.pendingBalance > 0 ? `, Imported Pending: $${c.pendingBalance.toFixed(2)}` : ""})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
-
-${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string;components:{quantity:number;component:{name:string;quantity:number}}[]}) => {
-  if (p.type === "composite" && p.components.length > 0) {
-    const canMake = Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)));
-    const parts = p.components.map(c => `${c.component.name}: ${c.component.quantity} avail, needs ${c.quantity}`).join("; ");
-    return `- ${p.name} [COMPOSITE] (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Can make: ${canMake} units, MinStock: ${p.minStock}, Components: ${parts})${canMake <= p.minStock ? " ⚠ LOW/NO STOCK" : ""}`;
-  }
-  return `- ${p.name} [SIMPLE] (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Cost: $${p.cost}, Stock: ${p.quantity} ${p.unit}, MinStock: ${p.minStock})${p.quantity <= p.minStock ? " ⚠ LOW STOCK" : ""}`;
-}).join("\n")}` : "PRODUCTS/STOCK: [NO ACCESS]"}
-
-${context.employees !== null ? `EMPLOYEES (${context.employees.length} total):\n${context.employees.map((e: {id:string;firstName:string;lastName:string;position:string;department:string|null;status:string;salary:number;salaryPeriod:string;hireDate:Date}) => `- ${e.firstName} ${e.lastName} (ID: ${e.id}, Position: ${e.position}, Dept: ${e.department ?? "—"}, Salary: $${e.salary}/${e.salaryPeriod}, Hired: ${new Date(e.hireDate).toLocaleDateString()}, Status: ${e.status})`).join("\n")}` : "EMPLOYEES: [NO ACCESS]"}
-
-${context.salaryAdvances !== null && context.salaryAdvances.length > 0 ? `SALARY ADVANCES (${context.salaryAdvances.length} total):\n${context.salaryAdvances.map((a: {id:string;amount:number;date:Date;status:string;note:string|null;employee:{firstName:string;lastName:string}}) => `- ${a.employee.firstName} ${a.employee.lastName}: $${a.amount} on ${new Date(a.date).toLocaleDateString()} — ${a.status}${a.note ? ` (${a.note})` : ""}`).join("\n")}` : "SALARY ADVANCES: none recorded"}
-
-${context.invoices !== null ? `RECENT INVOICES (${context.invoices.length} shown):\n${context.invoices.map((i: {id:string;number:string;date:Date;dueDate:Date|null;total:number;subtotal:number;tax:number;taxRate:number;discount:number;status:string;notes:string|null;client:{name:string};items:{description:string;quantity:number;unitPrice:number;total:number}[];fees:{label:string;amount:number}[];payments:{amount:number;date:Date;method:string}[]}) => {
-  const totalPaid = i.payments.reduce((s: number, p: {amount:number}) => s + p.amount, 0);
-  const balance = i.total - totalPaid;
-  const feesStr = i.fees.length > 0 ? `, Fees: ${i.fees.map((f: {label:string;amount:number}) => `${f.label}=$${f.amount}`).join("+")}` : "";
-  return `- ${i.number}: $${i.total} (subtotal $${i.subtotal}, tax ${i.taxRate}%=$${i.tax}${i.discount > 0 ? `, discount ${i.discount}%` : ""}${feesStr}) — ${i.status} — ${i.client.name} (${new Date(i.date).toLocaleDateString()})${i.dueDate ? ` due ${new Date(i.dueDate).toLocaleDateString()}` : ""} — Paid: $${totalPaid.toFixed(2)}, Balance: $${balance.toFixed(2)} — Items: ${i.items.length} (ID: ${i.id})`;
-}).join("\n")}` : "INVOICES: [NO ACCESS]"}
-
-${context.expenses !== null ? `EXPENSES (${context.expenses.length} shown, most recent):\n${context.expenses.map((e: {id:string;date:Date;amount:number;description:string;category:string;recurrence:string;vendor:string|null}) => `- ${e.description} | $${e.amount} | ${e.category} | ${e.recurrence !== "none" ? `recurring ${e.recurrence}` : "one-time"} | ${new Date(e.date).toLocaleDateString()}${e.vendor ? ` | ${e.vendor}` : ""} (ID: ${e.id})`).join("\n")}` : "EXPENSES: [NO ACCESS]"}
-
-${context.accounts !== null ? `CHART OF ACCOUNTS (${context.accounts.length} total):\n${context.accounts.map((a: {id:string;code:string;name:string;type:string;subtype:string|null;isDefault:boolean}) => `- ${a.code}: ${a.name} (${a.type}${a.subtype ? `/${a.subtype}` : ""})${a.isDefault ? " [default]" : ""} (ID: ${a.id})`).join("\n")}` : "CHART OF ACCOUNTS: [NO ACCESS]"}
-
-${context.journalEntries !== null ? `RECENT JOURNAL ENTRIES (${context.journalEntries.length} shown):\n${context.journalEntries.map((j: {id:string;date:Date;description:string;type:string;lines:{debit:number;credit:number;account:{code:string;name:string}}[]}) => `- ${new Date(j.date).toLocaleDateString()} | ${j.description} | ${j.type} | Lines: ${j.lines.map((l: {debit:number;credit:number;account:{code:string;name:string}}) => `${l.account.code} ${l.account.name} DR:$${l.debit} CR:$${l.credit}`).join(", ")}`).join("\n")}` : "JOURNAL ENTRIES: [NO ACCESS]"}
-
-${context.budgets !== null ? `BUDGETS (${context.budgets.length} total):\n${context.budgets.length > 0 ? context.budgets.map((b: {id:string;name:string;fiscalYear:number;status:string}) => `- ${b.name} (FY ${b.fiscalYear}, ${b.status}) (ID: ${b.id})`).join("\n") : "No budgets created yet"}` : "BUDGETS: [NO ACCESS]"}
+- Only provide data and actions that match the user's actual permissions (provided below).
 
 SYSTEM FEATURES OVERVIEW:
 
@@ -304,9 +161,6 @@ ACCOUNT LEDGER:
 DASHBOARD:
 - Gross earnings (cash received), net earnings (gross − COGS − all expenses including salaries), pending balance, low stock alerts, recent invoices.
 
-USER ROLE: ${session.role}
-${session.role === "admin" ? "This user is an ADMIN and can execute write actions (add, edit, delete) for features they have edit permission on." : "This user is NOT an admin. They can only view data and export PDFs. Do NOT include write action blocks for non-admin users. If they ask to create/edit/delete anything, tell them they need admin privileges."}
-
 CAPABILITIES - You can help with:
 1. Answering questions about clients (including credit balances and imported pending balances), products, invoices, expenses, employees, salary advances
 2. Financial summaries: revenue, expenses (including salaries), net profit, COGS, tax collected, cash out
@@ -322,7 +176,7 @@ CAPABILITIES - You can help with:
 12. Budgets: list budgets, explain budget vs actual variance, help understand over/under budget items
 13. Balance Sheet: explain assets, liabilities, equity, and whether the accounting equation balances (Assets = Liabilities + Equity)
 14. Account Ledger: explain transaction history for specific accounts, running balances
-15. ${session.role === "admin" ? "ADMIN: Create/edit/delete clients, products, employees, invoices, expenses, salary advances, record payments, update stock" : "Ask an admin to perform write operations"}
+15. Write actions (create/edit/delete records, record payments, update stock) — available to ADMIN users only, for features they have edit permission on. Non-admin users can only view data and export PDFs.
 
 ACTION BLOCKS — When the user requests an action, append ONE JSON block. The frontend shows a confirmation dialog before executing.
 ALWAYS include "confirmMessage" describing what will happen in the user's language.
@@ -479,7 +333,169 @@ RULES:
 - When asked about P&L or financial reports, explain that revenue is cash-basis (when payment received) while salaries are accrual-basis (when work done)
 - Salary advance amount cannot exceed the employee's salary — warn the user if they try
 - When a client has a credit balance, mention it when relevant (e.g., creating a new invoice for that client)
+- NON-ADMIN users can only view data and export PDFs. Do NOT include write action blocks for non-admin users. If they ask to create/edit/delete anything, tell them they need admin privileges.
 - Be concise, helpful, and professional`;
+
+async function getBusinessContext(organizationId: string, permissions: Permissions) {
+  const [clients, products, employees, invoices, expenses, salaryAdvances, accounts, journalEntries, budgets] = await Promise.all([
+    canView(permissions, "clients")
+      ? prisma.client.findMany({ where: { organizationId }, select: { id: true, name: true, email: true, phone: true, balance: true, pendingBalance: true } })
+      : Promise.resolve(null),
+    canView(permissions, "products")
+      ? prisma.product.findMany({
+          where: { organizationId },
+          select: {
+            id: true, name: true, sku: true, price: true, cost: true, quantity: true, minStock: true, type: true, unit: true,
+            components: { select: { quantity: true, component: { select: { name: true, quantity: true } } } },
+          },
+        })
+      : Promise.resolve(null),
+    canView(permissions, "employees")
+      ? prisma.employee.findMany({
+          where: { organizationId },
+          select: { id: true, firstName: true, lastName: true, position: true, department: true, status: true, salary: true, salaryPeriod: true, hireDate: true },
+        })
+      : Promise.resolve(null),
+    canView(permissions, "invoices")
+      ? prisma.invoice.findMany({
+          where: { organizationId },
+          select: {
+            id: true, number: true, date: true, dueDate: true, total: true, subtotal: true, tax: true, taxRate: true, discount: true, status: true, notes: true,
+            client: { select: { name: true } },
+            items: { select: { description: true, quantity: true, unitPrice: true, total: true } },
+            fees: { select: { label: true, amount: true } },
+            payments: { select: { amount: true, date: true, method: true } },
+          },
+          orderBy: { date: "desc" },
+          take: 50,
+        })
+      : Promise.resolve(null),
+    canView(permissions, "expenses")
+      ? prisma.expense.findMany({
+          where: { organizationId },
+          select: { id: true, date: true, amount: true, description: true, category: true, recurrence: true, vendor: true },
+          orderBy: { date: "desc" },
+          take: 50,
+        })
+      : Promise.resolve(null),
+    canView(permissions, "employees")
+      ? prisma.salaryAdvance.findMany({
+          where: { organizationId },
+          select: { id: true, amount: true, date: true, status: true, note: true, employee: { select: { firstName: true, lastName: true } } },
+          orderBy: { date: "desc" },
+          take: 30,
+        })
+      : Promise.resolve(null),
+    canView(permissions, "accounts")
+      ? prisma.account.findMany({
+          where: { organizationId },
+          select: { id: true, code: true, name: true, type: true, subtype: true, isDefault: true },
+          orderBy: { code: "asc" },
+        })
+      : Promise.resolve(null),
+    canView(permissions, "accounts")
+      ? prisma.journalEntry.findMany({
+          where: { organizationId },
+          include: {
+            lines: {
+              include: { account: { select: { code: true, name: true } } },
+            },
+          },
+          orderBy: { date: "desc" },
+          take: 30,
+        })
+      : Promise.resolve(null),
+    canView(permissions, "budgets")
+      ? prisma.budget.findMany({
+          where: { organizationId },
+          select: { id: true, name: true, fiscalYear: true, status: true },
+          orderBy: [{ fiscalYear: "desc" }, { name: "asc" }],
+        })
+      : Promise.resolve(null),
+  ]);
+  return { clients, products, employees, invoices, expenses, salaryAdvances, accounts, journalEntries, budgets };
+}
+
+function buildPermissionContext(permissions: Permissions): string {
+  const features = ["dashboard", "clients", "suppliers", "products", "employees", "invoices", "expenses", "salary_advances", "accounts", "budgets", "reports", "ai", "activity_log"] as const;
+  const lines = features.map(f => {
+    const view = canView(permissions, f);
+    const edit = canEdit(permissions, f);
+    if (edit) return `- ${f}: full access (view + edit)`;
+    if (view) return `- ${f}: view only`;
+    return `- ${f}: NO ACCESS`;
+  });
+  return lines.join("\n");
+}
+
+export async function POST(req: NextRequest) {
+  const session = await getSessionWithPermissions();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!canView(session.permissions, "ai")) return NextResponse.json({ error: "No permission" }, { status: 403 });
+
+  // Check org token limit
+  const org = await prisma.organization.findUnique({
+    where: { id: session.organizationId },
+    select: { aiTokensLimit: true, aiTokensUsed: true, status: true },
+  });
+  if (!org || org.status === "inactive") {
+    return NextResponse.json({ error: "Account inactive" }, { status: 403 });
+  }
+  if (org.aiTokensUsed >= org.aiTokensLimit) {
+    return NextResponse.json({ error: "AI token limit reached. Contact your administrator." }, { status: 429 });
+  }
+
+  const { message, conversationHistory = [], language = "en" } = await req.json();
+
+  const context = await getBusinessContext(session.organizationId, session.permissions);
+
+  // Dynamic per-request context: date, language preference, role, permissions, and
+  // the live business data. This block comes AFTER the static instructions and is
+  // cached per-conversation (its own breakpoint) so multi-turn chats reuse it too.
+  const langLabel = language === "ar" ? "Arabic (العربية)" : language === "fr" ? "French (Français)" : "English";
+  const dynamicContext = `=== CURRENT SESSION CONTEXT ===
+
+Today's date: ${new Date().toISOString().split("T")[0]}
+
+The user's app language is set to: ${langLabel}. PREFER responding in this language unless the user clearly writes in a different language.
+
+USER ROLE: ${session.role}
+${session.role === "admin" ? "This user is an ADMIN and can execute write actions (add, edit, delete) for features they have edit permission on." : "This user is NOT an admin. They can only view data and export PDFs. Do NOT include write action blocks for this user. If they ask to create/edit/delete anything, tell them they need admin privileges."}
+
+USER PERMISSIONS:
+${buildPermissionContext(session.permissions)}
+
+=== LIVE BUSINESS DATA ===
+
+${context.clients !== null ? `CLIENTS (${context.clients.length} total):\n${context.clients.map((c: {id:string;name:string;email:string|null;phone:string|null;balance:number;pendingBalance:number}) => `- ${c.name} (ID: ${c.id}, Email: ${c.email ?? "—"}, Phone: ${c.phone ?? "—"}, Credit Balance: $${c.balance.toFixed(2)}${c.pendingBalance > 0 ? `, Imported Pending: $${c.pendingBalance.toFixed(2)}` : ""})`).join("\n")}` : "CLIENTS: [NO ACCESS]"}
+
+${context.products !== null ? `PRODUCTS/STOCK (${context.products.length} total):\n${context.products.map((p: {id:string;name:string;sku:string;price:number;cost:number;quantity:number;minStock:number;type:string;unit:string;components:{quantity:number;component:{name:string;quantity:number}}[]}) => {
+  if (p.type === "composite" && p.components.length > 0) {
+    const canMake = Math.floor(Math.min(...p.components.map(c => c.component.quantity / c.quantity)));
+    const parts = p.components.map(c => `${c.component.name}: ${c.component.quantity} avail, needs ${c.quantity}`).join("; ");
+    return `- ${p.name} [COMPOSITE] (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Can make: ${canMake} units, MinStock: ${p.minStock}, Components: ${parts})${canMake <= p.minStock ? " ⚠ LOW/NO STOCK" : ""}`;
+  }
+  return `- ${p.name} [SIMPLE] (ID: ${p.id}, SKU: ${p.sku}, Price: $${p.price}, Cost: $${p.cost}, Stock: ${p.quantity} ${p.unit}, MinStock: ${p.minStock})${p.quantity <= p.minStock ? " ⚠ LOW STOCK" : ""}`;
+}).join("\n")}` : "PRODUCTS/STOCK: [NO ACCESS]"}
+
+${context.employees !== null ? `EMPLOYEES (${context.employees.length} total):\n${context.employees.map((e: {id:string;firstName:string;lastName:string;position:string;department:string|null;status:string;salary:number;salaryPeriod:string;hireDate:Date}) => `- ${e.firstName} ${e.lastName} (ID: ${e.id}, Position: ${e.position}, Dept: ${e.department ?? "—"}, Salary: $${e.salary}/${e.salaryPeriod}, Hired: ${new Date(e.hireDate).toLocaleDateString()}, Status: ${e.status})`).join("\n")}` : "EMPLOYEES: [NO ACCESS]"}
+
+${context.salaryAdvances !== null && context.salaryAdvances.length > 0 ? `SALARY ADVANCES (${context.salaryAdvances.length} total):\n${context.salaryAdvances.map((a: {id:string;amount:number;date:Date;status:string;note:string|null;employee:{firstName:string;lastName:string}}) => `- ${a.employee.firstName} ${a.employee.lastName}: $${a.amount} on ${new Date(a.date).toLocaleDateString()} — ${a.status}${a.note ? ` (${a.note})` : ""}`).join("\n")}` : "SALARY ADVANCES: none recorded"}
+
+${context.invoices !== null ? `RECENT INVOICES (${context.invoices.length} shown):\n${context.invoices.map((i: {id:string;number:string;date:Date;dueDate:Date|null;total:number;subtotal:number;tax:number;taxRate:number;discount:number;status:string;notes:string|null;client:{name:string};items:{description:string;quantity:number;unitPrice:number;total:number}[];fees:{label:string;amount:number}[];payments:{amount:number;date:Date;method:string}[]}) => {
+  const totalPaid = i.payments.reduce((s: number, p: {amount:number}) => s + p.amount, 0);
+  const balance = i.total - totalPaid;
+  const feesStr = i.fees.length > 0 ? `, Fees: ${i.fees.map((f: {label:string;amount:number}) => `${f.label}=$${f.amount}`).join("+")}` : "";
+  return `- ${i.number}: $${i.total} (subtotal $${i.subtotal}, tax ${i.taxRate}%=$${i.tax}${i.discount > 0 ? `, discount ${i.discount}%` : ""}${feesStr}) — ${i.status} — ${i.client.name} (${new Date(i.date).toLocaleDateString()})${i.dueDate ? ` due ${new Date(i.dueDate).toLocaleDateString()}` : ""} — Paid: $${totalPaid.toFixed(2)}, Balance: $${balance.toFixed(2)} — Items: ${i.items.length} (ID: ${i.id})`;
+}).join("\n")}` : "INVOICES: [NO ACCESS]"}
+
+${context.expenses !== null ? `EXPENSES (${context.expenses.length} shown, most recent):\n${context.expenses.map((e: {id:string;date:Date;amount:number;description:string;category:string;recurrence:string;vendor:string|null}) => `- ${e.description} | $${e.amount} | ${e.category} | ${e.recurrence !== "none" ? `recurring ${e.recurrence}` : "one-time"} | ${new Date(e.date).toLocaleDateString()}${e.vendor ? ` | ${e.vendor}` : ""} (ID: ${e.id})`).join("\n")}` : "EXPENSES: [NO ACCESS]"}
+
+${context.accounts !== null ? `CHART OF ACCOUNTS (${context.accounts.length} total):\n${context.accounts.map((a: {id:string;code:string;name:string;type:string;subtype:string|null;isDefault:boolean}) => `- ${a.code}: ${a.name} (${a.type}${a.subtype ? `/${a.subtype}` : ""})${a.isDefault ? " [default]" : ""} (ID: ${a.id})`).join("\n")}` : "CHART OF ACCOUNTS: [NO ACCESS]"}
+
+${context.journalEntries !== null ? `RECENT JOURNAL ENTRIES (${context.journalEntries.length} shown):\n${context.journalEntries.map((j: {id:string;date:Date;description:string;type:string;lines:{debit:number;credit:number;account:{code:string;name:string}}[]}) => `- ${new Date(j.date).toLocaleDateString()} | ${j.description} | ${j.type} | Lines: ${j.lines.map((l: {debit:number;credit:number;account:{code:string;name:string}}) => `${l.account.code} ${l.account.name} DR:$${l.debit} CR:$${l.credit}`).join(", ")}`).join("\n")}` : "JOURNAL ENTRIES: [NO ACCESS]"}
+
+${context.budgets !== null ? `BUDGETS (${context.budgets.length} total):\n${context.budgets.length > 0 ? context.budgets.map((b: {id:string;name:string;fiscalYear:number;status:string}) => `- ${b.name} (FY ${b.fiscalYear}, ${b.status}) (ID: ${b.id})`).join("\n") : "No budgets created yet"}` : "BUDGETS: [NO ACCESS]"}`;
 
   const messages = [
     ...conversationHistory.map((msg: { role: string; content: string }) => ({
@@ -490,14 +506,24 @@ RULES:
   ];
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-haiku-4-5",
     max_tokens: 2048,
-    system: systemPrompt,
+    // Two cache breakpoints (max 4 allowed): the large static instructions cache
+    // across ALL requests; the dynamic context caches across turns in a conversation.
+    system: [
+      { type: "text", text: STATIC_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+      { type: "text", text: dynamicContext, cache_control: { type: "ephemeral" } },
+    ],
     messages,
   });
 
-  // Track token usage
-  const tokensUsed = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0);
+  // Track token usage (count cache reads/writes too so org limits stay accurate)
+  const usage = response.usage;
+  const tokensUsed =
+    (usage?.input_tokens ?? 0) +
+    (usage?.output_tokens ?? 0) +
+    (usage?.cache_creation_input_tokens ?? 0) +
+    (usage?.cache_read_input_tokens ?? 0);
   if (tokensUsed > 0) {
     await prisma.organization.update({
       where: { id: session.organizationId },
