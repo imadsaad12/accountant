@@ -38,6 +38,8 @@ interface SupplierBill {
   amountPaid: number;
   billType: "stock" | "expense";
   description: string;
+  productId: string | null;
+  quantity: number;
   reference: string | null;
   date: string;
   dueDate: string | null;
@@ -56,8 +58,17 @@ const emptySupplier = {
 };
 
 const emptyBill = {
-  description: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending", billType: "stock",
+  description: "", productId: "", quantity: "", amount: "", date: "", dueDate: "", reference: "", note: "", status: "pending", billType: "stock",
 };
+
+interface StockProduct {
+  id: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  unit: string;
+  type: string;
+}
 
 export default function SuppliersPage() {
   const { canEditFeature } = usePermissions();
@@ -71,6 +82,7 @@ export default function SuppliersPage() {
   const fmtCompact = (n: number) => _fmtCompact(n, lang);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [bills, setBills] = useState<SupplierBill[]>([]);
+  const [products, setProducts] = useState<StockProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -105,13 +117,24 @@ export default function SuppliersPage() {
 
   async function loadAll() {
     setLoading(true);
-    const [suppRes, billsRes] = await Promise.all([
+    const [suppRes, billsRes, prodRes] = await Promise.all([
       fetch("/api/suppliers"),
       fetch("/api/supplier-bills"),
+      fetch("/api/products"),
     ]);
     setSuppliers(suppRes.ok ? await suppRes.json() : []);
     setBills(billsRes.ok ? await billsRes.json() : []);
+    await loadProducts(prodRes);
     setLoading(false);
+  }
+
+  // Stock-tracked products only (simple goods can be restocked from a supplier;
+  // composites are assembled and services aren't stock-tracked).
+  async function loadProducts(res?: Response) {
+    const r = res ?? (await fetch("/api/products"));
+    if (!r.ok) { setProducts([]); return; }
+    const all: StockProduct[] = await r.json();
+    setProducts(all.filter(p => p.type === "simple"));
   }
 
   function openCreate() {
@@ -204,6 +227,8 @@ export default function SuppliersPage() {
     setEditingBill(bill);
     setBillForm({
       description: bill.description,
+      productId: bill.productId || "",
+      quantity: bill.quantity ? String(bill.quantity) : "",
       amount: String(bill.amount),
       date: bill.date.split("T")[0],
       dueDate: bill.dueDate ? bill.dueDate.split("T")[0] : "",
@@ -219,7 +244,16 @@ export default function SuppliersPage() {
     e.preventDefault();
     setBillSaving(true);
     try {
-      const payload = { ...billForm, supplierId: billsSupplier!.id };
+      // For stock bills, carry the product name as the bill description so the
+      // bill list (which renders bill.description) stays readable.
+      const selectedProduct = billForm.billType === "stock" && billForm.productId
+        ? products.find(p => p.id === billForm.productId)
+        : null;
+      const payload = {
+        ...billForm,
+        description: selectedProduct ? selectedProduct.name : billForm.description,
+        supplierId: billsSupplier!.id,
+      };
       const url = editingBill ? `/api/supplier-bills/${editingBill.id}` : "/api/supplier-bills";
       const method = editingBill ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -239,6 +273,8 @@ export default function SuppliersPage() {
       setSupplierBills(refreshed.ok ? await refreshed.json() : []);
       const allRes = await fetch("/api/supplier-bills");
       setBills(allRes.ok ? await allRes.json() : []);
+      // Restocking changed product quantities — refresh the dropdown list.
+      await loadProducts();
     } finally {
       setBillSaving(false);
     }
@@ -285,6 +321,8 @@ export default function SuppliersPage() {
     setDeletingBillId(null);
     setSupplierBills(prev => prev.filter(b => b.id !== id));
     setBills(prev => prev.filter(b => b.id !== id));
+    // Deleting a stock bill reverses its restock — refresh product quantities.
+    await loadProducts();
   }
 
   function toggleSort(field: SortField) {
@@ -419,10 +457,37 @@ export default function SuppliersPage() {
     return (
       <form onSubmit={handleBillSubmit} className="bg-dark-bg border border-dark-border rounded-xl p-6 mb-6 space-y-4">
         <h3 className="text-lg font-semibold text-text-primary">{editingBill ? "Edit Bill" : "New Bill"}</h3>
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">{t("field.description")} *</label>
-          <input required value={billForm.description} onChange={e => setBillForm({ ...billForm, description: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Office supplies invoice" />
-        </div>
+        {billForm.billType === "stock" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Product *</label>
+              <select required value={billForm.productId} onChange={e => setBillForm({ ...billForm, productId: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent">
+                <option value="">Select a product…</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.sku}) — in stock: {p.quantity} {p.unit}</option>
+                ))}
+              </select>
+              {products.length === 0 && (
+                <p className="text-xs text-amber-400 mt-1">No stock products yet — add products in the Stock section first.</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">Number of items *</label>
+              <input type="number" step="any" min="0.01" required value={billForm.quantity} onChange={e => setBillForm({ ...billForm, quantity: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. 10" />
+              {(() => {
+                const sel = products.find(p => p.id === billForm.productId);
+                const q = parseFloat(billForm.quantity);
+                if (!sel || !(q > 0)) return null;
+                return <p className="text-xs text-text-muted mt-1">New stock: {sel.quantity} + {q} = <span className="text-emerald-400 font-medium">{sel.quantity + q} {sel.unit}</span></p>;
+              })()}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">{t("field.description")} *</label>
+            <input required value={billForm.description} onChange={e => setBillForm({ ...billForm, description: e.target.value })} className="w-full px-4 py-2.5 bg-dark-input border border-dark-border text-text-primary placeholder:text-text-muted rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent" placeholder="e.g. Office supplies invoice" />
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">Amount *</label>
@@ -896,7 +961,7 @@ export default function SuppliersPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <p className="text-base font-semibold text-text-primary flex items-center gap-2">{bill.description} <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${bill.billType === "stock" ? "bg-blue-500/20 text-blue-400" : "bg-violet-500/20 text-violet-400"}`}>{bill.billType === "stock" ? t("suppliers.bill_type_stock") : t("suppliers.bill_type_expense")}</span></p>
+                                <p className="text-base font-semibold text-text-primary flex items-center gap-2">{bill.description}{bill.productId && bill.quantity > 0 && <span className="text-xs font-normal text-text-muted">× {bill.quantity}</span>} <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${bill.billType === "stock" ? "bg-blue-500/20 text-blue-400" : "bg-violet-500/20 text-violet-400"}`}>{bill.billType === "stock" ? t("suppliers.bill_type_stock") : t("suppliers.bill_type_expense")}</span></p>
                                 <div className="flex flex-wrap gap-3 mt-2 text-sm text-text-muted">
                                   <span className="flex items-center gap-1">
                                     📅 {new Date(bill.date).toLocaleDateString("en-GB")}

@@ -30,20 +30,48 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const amountPaid = Math.min(existing.amountPaid, newAmount);
   const status = amountPaid >= newAmount ? "paid" : amountPaid > 0 ? "partially_paid" : "pending";
 
-  const bill = await prisma.supplierBill.update({
-    where: { id },
-    data: {
-      amount: newAmount,
-      billType: data.billType || existing.billType || "stock",
-      description: data.description,
-      reference: data.reference || null,
-      date: new Date(data.date),
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      status,
-      amountPaid,
-      note: data.note || null,
-    },
-  });
+  const billType = data.billType || existing.billType || "stock";
+  const newQty = parseFloat(data.quantity);
+  // Resolve the product the edited bill should restock (stock bills only).
+  let newProductId: string | null = null;
+  let newProductQty = 0;
+  if (billType === "stock" && data.productId && newQty > 0) {
+    const product = await prisma.product.findFirst({
+      where: { id: data.productId, organizationId: session.organizationId },
+      select: { id: true },
+    });
+    if (!product) return NextResponse.json({ error: "Selected product not found" }, { status: 400 });
+    newProductId = product.id;
+    newProductQty = newQty;
+  }
+
+  const bill = await prisma.$transaction(async (tx) => {
+    const updated = await tx.supplierBill.update({
+      where: { id },
+      data: {
+        amount: newAmount,
+        billType,
+        description: data.description,
+        productId: newProductId,
+        quantity: newProductQty,
+        reference: data.reference || null,
+        date: new Date(data.date),
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        status,
+        amountPaid,
+        note: data.note || null,
+      },
+    });
+    // Reverse the previous restock, then apply the new one (handles same- or
+    // different-product edits, and quantity changes, in one consistent pass).
+    if (existing.productId && existing.quantity > 0) {
+      await tx.product.update({ where: { id: existing.productId }, data: { quantity: { decrement: existing.quantity } } });
+    }
+    if (newProductId && newProductQty > 0) {
+      await tx.product.update({ where: { id: newProductId }, data: { quantity: { increment: newProductQty } } });
+    }
+    return updated;
+  }, { maxWait: 10000, timeout: 20000 });
 
   await logAudit({ session, action: "update", entity: "supplier_bill", entityId: bill.id, description: `Updated bill "${bill.description}"` });
   return NextResponse.json(bill);
@@ -129,7 +157,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const bill = await prisma.supplierBill.findFirst({ where: { id, organizationId: session.organizationId } });
   if (!bill) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.supplierBill.delete({ where: { id } });
+  // Deleting a stock bill reverses the units it added to the product.
+  if (bill.productId && bill.quantity > 0) {
+    await prisma.$transaction([
+      prisma.product.update({ where: { id: bill.productId }, data: { quantity: { decrement: bill.quantity } } }),
+      prisma.supplierBill.delete({ where: { id } }),
+    ], { maxWait: 10000, timeout: 20000 });
+  } else {
+    await prisma.supplierBill.delete({ where: { id } });
+  }
   await logAudit({ session, action: "delete", entity: "supplier_bill", entityId: id, description: `Deleted bill "${bill.description}"` });
   return NextResponse.json({ success: true });
 }

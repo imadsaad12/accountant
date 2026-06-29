@@ -36,6 +36,18 @@ export async function POST(req: NextRequest) {
   // and record a real payment (so remaining = 0 and reports/Cash Out reflect it).
   const isPaid = status === "paid" && amount > 0;
   const billDate = new Date(data.date);
+  const billType = data.billType || "stock";
+
+  // Stock bills can be tied to a product: receiving the bill restocks that product.
+  const qty = parseFloat(data.quantity);
+  let stockProduct: { id: string; name: string } | null = null;
+  if (billType === "stock" && data.productId && qty > 0) {
+    stockProduct = await prisma.product.findFirst({
+      where: { id: data.productId, organizationId: session.organizationId },
+      select: { id: true, name: true },
+    });
+    if (!stockProduct) return NextResponse.json({ error: "Selected product not found" }, { status: 400 });
+  }
 
   const { bill, payment } = await prisma.$transaction(async (tx) => {
     const bill = await tx.supplierBill.create({
@@ -43,8 +55,10 @@ export async function POST(req: NextRequest) {
         supplierId: data.supplierId,
         amount,
         amountPaid: isPaid ? amount : 0,
-        billType: data.billType || "stock",
+        billType,
         description: data.description,
+        productId: stockProduct ? stockProduct.id : null,
+        quantity: stockProduct ? qty : 0,
         reference: data.reference || null,
         date: billDate,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
@@ -54,6 +68,10 @@ export async function POST(req: NextRequest) {
       },
       include: { supplier: { select: { id: true, name: true } } },
     });
+    // Restock: increase the product's on-hand quantity by the units received.
+    if (stockProduct) {
+      await tx.product.update({ where: { id: stockProduct.id }, data: { quantity: { increment: qty } } });
+    }
     let payment = null;
     if (isPaid) {
       payment = await tx.supplierBillPayment.create({
@@ -82,6 +100,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await logAudit({ session, action: "create", entity: "supplier_bill", entityId: bill.id, description: `Added bill "${bill.description}" for supplier${isPaid ? ` (paid ${amount})` : ""}` });
+  await logAudit({ session, action: "create", entity: "supplier_bill", entityId: bill.id, description: `Added bill "${bill.description}" for supplier${stockProduct ? ` (restocked ${qty} × ${stockProduct.name})` : ""}${isPaid ? ` (paid ${amount})` : ""}` });
   return NextResponse.json(bill, { status: 201 });
 }

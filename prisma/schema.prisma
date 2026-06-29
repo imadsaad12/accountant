@@ -71,6 +71,11 @@ model SupplierBill {
   amount         Float
   billType       String               @default("expense")  // stock | expense
   description    String
+  // For stock bills: the product received and how many units. Restocking a bill
+  // increases Product.quantity; editing/deleting the bill reverses the change.
+  productId      String?
+  product        Product?             @relation(fields: [productId], references: [id], onDelete: SetNull)
+  quantity       Float                @default(0)
   reference      String?
   date           DateTime
   dueDate        DateTime?
@@ -86,6 +91,7 @@ model SupplierBill {
   @@index([supplierId])
   @@index([organizationId])
   @@index([status])
+  @@index([productId])
 }
 
 model SupplierBillPayment {
@@ -179,6 +185,7 @@ model Product {
   invoiceItems   InvoiceItem[]
   components     ProductComponent[] @relation("CompositeProduct")
   usedIn         ProductComponent[] @relation("ComponentProduct")
+  supplierBills  SupplierBill[]
 
   @@unique([sku, organizationId])
   @@index([organizationId])
